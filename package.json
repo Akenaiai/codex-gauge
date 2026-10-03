@@ -1,0 +1,32 @@
+{
+  "name": "codex-gauge",
+  "version": "0.1.0",
+  "description": "A precision-styled, read-only Codex usage gauge for your desktop.",
+  "main": "src/main.cjs",
+  "author": "Aken",
+  "license": "MIT",
+  "repository": "https://github.com/Akenaiai/codex-gauge",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "preview": "node scripts/preview.cjs",
+    "build:native": "node scripts/build-native.cjs",
+    "postinstall": "node scripts/build-native.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "smoke": "node scripts/smoke.cjs",
+    "build:win": "npm run build:native && electron-builder --win nsis zip --x64",
+    "build:mac": "electron-builder --mac dmg zip"
+  },
+  "devDependencies": { "electron": "44.5.1", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "com.aken.codexgauge",
+    "productName": "Codex Gauge",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "assets/**/*", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md"],
+    "extraResources": [{ "from": "native/bin", "to": "native", "filter": ["*.exe"] }],
+    "win": { "icon": "assets/icon.ico", "signExecutable": false },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "createDesktopShortcut": true },
+    "mac": { "category": "public.app-category.developer-tools", "icon": "assets/icon.png", "extraResources": [] },
+    "publish": null
+  }
+}

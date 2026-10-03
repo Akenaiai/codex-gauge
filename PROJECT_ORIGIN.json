@@ -1,0 +1,14 @@
+{
+  "project_id": "codex-gauge",
+  "name": "Codex Gauge",
+  "name_zh": "刻度",
+  "author": "Aken",
+  "created_on": "2026-10-03",
+  "ai_assistance": "Design implementation, software development and verification with Codex, directed by Aken.",
+  "reference": {
+    "repository": "https://github.com/returnk/codex-usage-badge",
+    "commit": "b4b2d4327eafd76aa5354043a11a775a08d03b7b",
+    "scope": "Functional reference, read-only quota and reset-credit rules, Windows profile-anchor discovery. Original artwork and binaries are not reused."
+  },
+  "first_public_source_on": null
+}
