@@ -28,6 +28,12 @@ Normal mode hides when Codex is minimized or another app is foreground. Keep-on-
 
 No extra API key is required. If CLI discovery fails, set `CODEX_GAUGE_CLI` to the **native Codex executable**, not a `.cmd` or `.ps1` wrapper. Restart Gauge after changing the environment.
 
+### Show automatically with Codex
+
+In the installed Windows app, open **Settings → Launch at login**. Gauge then starts in the background when you sign in to Windows and shows above your profile when Codex is in the foreground. Closing Codex hides the gauge while its tray process remains available. This uses Windows login startup, not a Codex plugin or a task that calls an AI model. The setting is optional and off by default; cloning the repository does not enable it.
+
+If the gauge disappears after a Codex update, first open **Codex Gauge** from the desktop or Start menu. An exited Gauge process needs to be started again; login startup does not restart it during the same Windows session. If Gauge is already running, use its tray menu to open the panel and check the host or connection status.
+
 ## Run from Git
 
 Install Node.js 22.12+ (a current LTS version is recommended), Git and the signed-in Codex CLI.
