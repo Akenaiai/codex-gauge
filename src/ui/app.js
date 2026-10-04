@@ -111,7 +111,7 @@
       <div class="setting"><label class="label" for="theme">${t('外观', 'Appearance')}</label><select id="theme" data-select="theme">${[['system', t('跟随系统', 'System')], ['dark', t('石墨黑', 'Graphite')], ['light', t('瓷白', 'Porcelain')]].map(([v, label]) => `<option value="${v}" ${v === s.theme ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
       <div class="setting"><label class="label" for="language">${t('语言', 'Language')}</label><select id="language" data-select="language"><option value="zh-CN" ${s.language === 'zh-CN' ? 'selected' : ''}>简体中文</option><option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option></select></div>
       ${toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized'))}
-      ${toggle('autostart', t('开机启动', 'Launch at login'), t('登录电脑后自动运行', 'Start when you sign in'))}
+      ${toggle('autostart', state.host.platform === 'win32' ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), state.host.platform === 'win32' ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
       ${toggle('notifications', t('重置卡到期提醒', 'Credit expiry reminders'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
       <div class="settings-actions"><button class="text-button" data-action="reset-position">${t('恢复默认位置', 'Reset position')}</button><button class="text-button" data-action="check-update">${t('检查更新', 'Check for updates')}</button><button class="text-button" data-action="source">GitHub ↗</button></div>
       ${state.update.state !== 'idle' ? `<div class="notice">${updateLabel()}${state.update.state === 'available' ? `<br><button class="text-button" data-action="releases">${t('前往下载更新', 'Download update')} ↗</button>` : ''}</div>` : ''}
@@ -124,7 +124,7 @@
   function panelMarkup() {
     return `<section class="panel"><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
       ${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
-      <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}</div>
+      <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
       ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
   }

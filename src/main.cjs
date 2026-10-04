@@ -5,6 +5,7 @@ const { createInterface } = require('node:readline');
 const path = require('node:path');
 const fs = require('node:fs');
 const { Store } = require('./store.cjs');
+const { createStartup } = require('./startup.cjs');
 const { QuotaService } = require('./cli.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
 const ROOT = path.resolve(__dirname, '..');
@@ -16,13 +17,13 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else app.whenReady().then(start);
 let badge, panel, tray, store, quota, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
-let update = { state: 'idle' };
+let update = { state: 'idle' }, startup, startupError = false;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
 function state() {
   return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
-    settingsError: store.error, host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
+    settingsError: store.error, startupError, host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
     update, version: app.getVersion(), demo };
 }
 function broadcast() { for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state()); }
@@ -84,7 +85,10 @@ function refreshTray() {
     { label: text('保持置顶', 'Keep on top'), type: 'checkbox', checked: s.topmost, click: item => save({ topmost: item.checked }) },
     { label: text('回到头像上方', 'Reset position'), click: () => save({ offset: { x: 0, y: 0 }, floating: null }) },
     { type: 'separator' },
-    { label: text('退出刻度', 'Quit Codex Gauge'), click: () => app.quit() }
+    { label: text('退出刻度', 'Quit Codex Gauge'), click: async () => {
+      try { if (store.settings.autostart) await startup.pause(); app.quit(); }
+      catch { store.error = true; broadcast(); }
+    } }
   ]));
 }
 function updateDrag() {
@@ -146,10 +150,17 @@ async function action(name, value) {
       if ('autostart' in value) {
         if (!app.isPackaged) return { ok: false, error: 'install_first' };
         patch.autostart = value.autostart === true;
-        try { app.setLoginItemSettings({ openAtLogin: patch.autostart }); } catch { return { ok: false, error: 'save_failed' }; }
       }
+      const previousAutostart = store.settings.autostart;
       const result = save(patch);
-      if (!result.ok && 'autostart' in patch) app.setLoginItemSettings({ openAtLogin: store.settings.autostart });
+      if (result.ok && 'autostart' in patch) {
+        try { await startup.set(patch.autostart); startupError = false; broadcast(); }
+        catch {
+          save({ autostart: previousAutostart });
+          try { await startup.set(previousAutostart); } catch { }
+          startupError = true; broadcast(); return { ok: false, error: 'save_failed' };
+        }
+      }
       return result;
     }
     case 'reset-position': return save({ offset: { x: 0, y: 0 }, floating: null });
@@ -179,6 +190,10 @@ async function action(name, value) {
 }
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService();
+  startup = createStartup(app, ROOT);
+  if (app.isPackaged && !demo && store.settings.autostart) {
+    try { await startup.set(true); } catch { startupError = true; }
+  }
   if (process.platform === 'darwin' && !store.settings.floating) {
     const area = screen.getPrimaryDisplay().workArea; store.settings.topmost = true;
     store.settings.floating = { x: area.x + area.width - 90, y: area.y + 90 };

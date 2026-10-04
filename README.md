@@ -15,7 +15,7 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 - Shows reset times, available reset credits and expiry details. Optional silent expiry reminders, deduplicated by account and credit.
 - Drag to adjust position; double-click or use the tray menu to reset. Attached and floating positions are saved separately.
 - Graphite, porcelain and system appearance. Complete English and Simplified Chinese interface.
-- Tray access, optional login startup in installed builds, optional keep-on-top mode, manual update checks with a link to releases.
+- Tray access, optional start-with-Codex on Windows in installed builds, optional keep-on-top mode, manual update checks with a link to releases.
 - Uses local `codex app-server` read-only RPCs. No model prompts, automatic resets, telemetry or account credential export.
 
 ## Windows installation
@@ -30,9 +30,13 @@ No extra API key is required. If CLI discovery fails, set `CODEX_GAUGE_CLI` to t
 
 ### Show automatically with Codex
 
-In the installed Windows app, open **Settings → Launch at login**. Gauge then starts in the background when you sign in to Windows and shows above your profile when Codex is in the foreground. Closing Codex hides the gauge while its tray process remains available. This uses Windows login startup, not a Codex plugin or a task that calls an AI model. The setting is optional and off by default; cloning the repository does not enable it.
+In the installed Windows app, enable **Settings → Start with Codex**. Version 0.1.1 registers a current-user Windows task that runs a small companion launcher independently of Codex. The helper checks for the Codex desktop window every two seconds and opens Gauge when needed. It also recovers an unexpected Gauge exit, with a 30-second retry limit. No administrator password or model calls are required.
 
-If the gauge disappears after a Codex update, first open **Codex Gauge** from the desktop or Start menu. An exited Gauge process needs to be started again; login startup does not restart it during the same Windows session. If Gauge is already running, use its tray menu to open the panel and check the host or connection status.
+The helper starts at Windows sign-in; a one-minute task trigger recovers the helper if it exits. Codex does not have to be running at sign-in. **Quit Codex Gauge** pauses automatic relaunch for the current Codex process; reopening Codex permits it again. Disable **Start with Codex** to remove the task. The installer stops the helper before replacement, and uninstall removes its task.
+
+An enabled 0.1.0 login-startup preference migrates when 0.1.1 first runs. When Gauge was previously launched inside the MSIX Codex environment, the helper resolves the physical settings file and imports it only if the normal Windows profile has no settings file. Existing normal-profile settings are never overwritten. This fixes the observed case where interactive and scheduled launches saw different settings locations. The default remains off for new users.
+
+If the gauge remains absent, open it from the desktop or Start menu and check its settings. Local `follow-status.json` in Gauge's user-data folder records only launcher state, host count and error types; it contains no account or quota information. A real Windows re-login and a future Codex update still need field verification.
 
 ## Run from Git
 
