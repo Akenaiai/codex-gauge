@@ -70,6 +70,15 @@
     return { time: w.minutes >= 1440 ? date.toLocaleDateString(locale, { weekday: 'short' }) + ' ' + time : time,
       hint: days > 0 ? t(`${days} 天 ${hours} 小时后重置`, `Resets in ${days}d ${hours}h`) : hours > 0 ? t(`${hours} 小时 ${minutes} 分后重置`, `Resets in ${hours}h ${minutes}m`) : t(`${minutes} 分钟后重置`, `Resets in ${minutes}m`) };
   }
+  function creditExpiry(expiresAt) {
+    const delta = expiresAt - Date.now();
+    if (delta <= 0) return t('最近一张已到期，等待更新', 'Next credit expired; awaiting update');
+    if (delta < 3600000) return t('最近一张还有不到 1 小时到期', 'Next expires in less than 1h');
+    const totalHours = Math.ceil(delta / 3600000);
+    const days = Math.floor(totalHours / 24), hours = totalHours % 24;
+    return days > 0 ? t(`最近一张还有约 ${days} 天 ${hours} 小时到期`, `Next expires in ~${days}d ${hours}h`)
+      : t(`最近一张还有约 ${hours} 小时到期`, `Next expires in ~${hours}h`);
+  }
   function errors() {
     const pair = {
       connecting: ['正在连接本机 Codex', 'Connecting to local Codex'],
@@ -98,7 +107,7 @@
       <div class="resets"><div><div class="reset-time">${a.time}</div><div class="reset-hint">${a.hint}</div></div><div><div class="reset-time">${b.time}</div><div class="reset-hint">${b.hint}</div></div></div>
       <div class="readout"><div><h2>${t('可用余量', 'AVAILABLE CAPACITY')}</h2><p>${t('以较少的周期为参考', 'Based on the more limited window')}</p></div><div class="range" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<span class="${i < Math.ceil(closest / 100 * 18) ? 'on' : ''}"></span>`).join('')}</div></div>
       <div class="credit-card"><span class="ticket-icon">${icon('ticket')}</span><div class="credit-info"><div class="credit-title"><strong>${s.creditCount ?? '—'}</strong>${t('次重置机会', 'reset credits')}</div>
-      <div class="credit-caption">${s.credits.length ? t(`最近一张约 ${Math.max(0, Math.ceil((s.credits[0].expiresAt - Date.now()) / 3600000))} 小时后到期`, `Next expires in ~${Math.max(0, Math.ceil((s.credits[0].expiresAt - Date.now()) / 3600000))}h`) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div></div>
+      <div class="credit-caption">${s.credits.length ? creditExpiry(s.credits[0].expiresAt) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div></div>
       ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
       ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}

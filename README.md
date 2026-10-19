@@ -12,7 +12,7 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
 - Shows the 5-hour and weekly windows actually returned by Codex. Weekly-only accounts put their weekly value first. Missing data stays unknown.
-- Shows reset times, available reset credits and expiry details. Optional silent expiry reminders, deduplicated by account and credit.
+- Shows reset times, available reset credits and expiry details. Credit expiry countdowns use days and hours (for example, 84 hours appears as 3d 12h). Optional silent expiry reminders, deduplicated by account and credit.
 - Drag to adjust position; double-click or use the tray menu to reset. Attached and floating positions are saved separately.
 - Graphite, porcelain and system appearance. Complete English and Simplified Chinese interface.
 - Tray access, optional start-with-Codex on Windows in installed builds, optional keep-on-top mode, manual update checks with a link to releases.

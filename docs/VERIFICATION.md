@@ -1,6 +1,12 @@
 # Verification / 验证记录
 
-Version: 0.1.1. Date: 2026-10-04. Platform: Windows x64.
+Version: 0.1.2. Date: 2026-10-19. Platform: Windows x64.
+
+## 0.1.2 expiry display / 到期显示
+
+- Reset-credit expiry uses days and hours: 84 hours becomes 3d 12h. Sub-day values use hours, sub-hour values say less than one hour, and elapsed deadlines await refreshed data. Both English and Simplified Chinese were checked.
+- Twelve existing automated checks passed. Sixteen isolated renderer checks covered long durations, exact days, rounding, sub-day/sub-hour values, elapsed deadlines, missing credits and unavailable metadata. An isolated Electron renderer returned the expected Chinese and English captions with synthetic data.
+- 重置卡到期提示改为“还有约 3 天 12 小时”格式；12 项现有检查和 16 项隔离渲染检查通过。临近到期、已到期及信息缺失均覆盖，中英文渲染已核对。真实到期通知及 Mac 验证边界沿用下方记录。
 
 ## Verified
 
