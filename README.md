@@ -13,6 +13,8 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
 - Shows the 5-hour and weekly windows actually returned by Codex. Weekly-only accounts put their weekly value first. Missing data stays unknown.
 - Shows reset times, available reset credits and expiry details. Credit expiry countdowns use days and hours (for example, 84 hours appears as 3d 12h). Optional silent expiry reminders, deduplicated by account and credit.
+- Pairs the next scheduled reset countdown with the remaining percentage. With at least 30% remaining, silent reminders fire within 2 hours and 1 hour of the reset, once per account, window and stage. An amber mark on the small gauge points to reminders.
+- Shows temporary reset and credit-grant announcements via AIHOT, with original-post links and source collection time. Announced deadlines, estimated windows and confirmations remain distinct; a credit grant never implies an immediate quota reset. No account replenishment is inferred from a public post.
 - Drag to adjust position; double-click or use the tray menu to reset. Attached and floating positions are saved separately.
 - Graphite, porcelain and system appearance. Complete English and Simplified Chinese interface.
 - Tray access, optional start-with-Codex on Windows in installed builds, optional keep-on-top mode, manual update checks with a link to releases.
@@ -71,6 +73,14 @@ npm run build:win    # Windows setup executable + portable ZIP
 ## Data and limitations
 
 Settings and reminder deduplication records stay in the application's per-user data folder. Account identities are hashed in reminder keys. No quota history, email address, auth file, chat content or raw app-server output is saved by Gauge. Settings are written after changes; corrupt existing files are preserved and reported instead of silently overwritten.
+
+Usage reset reminders and public announcements are enabled by default and have separate settings switches. Credit-expiry notifications keep their existing separate setting. Notifications open the usage panel when clicked. New public confirmations form a historical baseline on the first fetch, rather than replaying old news; new announcements and subsequent material changes can notify. Reminder fingerprints persist across restarts. Naturally occurring reset notifications and Windows notification-center delivery still require field verification.
+
+While Codex is open or the usage panel is opened manually, the app checks the anonymous [AIHOT recent-reset feed](https://aihot.news/api/v1/codex-resets/recent) every five minutes. Requests send no account, balance, chat, authentication data or model prompts. The service receives ordinary network metadata such as the IP address and application User-Agent. Conditional requests, cache lifetime and Retry-After are respected. The last response stays in memory; only hashed event fingerprints are saved. Failed, empty or malformed responses retain the previous display with a stale warning. Old source verification times suppress actionable news reminders. Closing the app, closing Codex without an open panel, sleeping the computer or disabling announcements stops these checks; this is not an overnight monitoring service.
+
+Public announcements are third-party summaries, not a guaranteed early-warning channel. A post may specify only a time range or appear after the reset. Exact countdowns require an exact announced time; deadlines are shown as “by” and may occur earlier. Use the original post and actual account data before deciding whether to spend a reset credit. The app neither spends credits nor changes the model's reasoning settings or creates work to consume usage.
+
+AIHOT is a third-party source. Its [public use rules](https://aihot.news/terms), checked on 2026-10-21, allow eligible personal, nonprofit and internal use. Commercial uses and data redistribution may require separate permission; this repository's MIT license covers its code, not AIHOT data, service or third-party posts. No live announcement data is distributed in the repository or installers.
 
 Usage is polled once per minute while active, with bounded retry backoff. Failed reads are marked stale; passing a scheduled reset time never invents replenished quota. Reset cards are view-only.
 

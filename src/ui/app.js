@@ -5,12 +5,12 @@
   document.title = view === 'panel' ? 'Codex Gauge · Panel' : 'Codex Gauge';
   const preview = !window.gauge;
   const app = document.getElementById('app');
-  let screenName = 'gauge', details = false, toast = '', lastRender = '', toastTimer, pointer, suppressClick = false;
+  let screenName = 'gauge', details = false, newsDetails = false, toast = '', lastRender = '', toastTimer, pointer, suppressClick = false;
   const now = Date.now();
-  let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false },
+  let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false, resetReminders: true, resetNews: true },
     dark: true, status: 'ready', snapshot: { fiveHour: { remaining: 68, minutes: 300, resetsAt: now + 8640000 },
       weekly: { remaining: 34, minutes: 10080, resetsAt: now + 276480000 }, credits: [{ key: 'demo', expiresAt: now + 129600000 }], creditCount: 1, fetchedAt: now },
-    host: { exists: true, anchored: true, platform: 'win32' }, update: { state: 'idle' }, version: '0.1.0', demo: true };
+    host: { exists: true, anchored: true, platform: 'win32' }, resetFeed: { status: 'ready', events: [], checkedAt: now, fetchedAt: now }, update: { state: 'idle' }, version: '0.2.0', demo: true };
   const t = (cn, en) => state.settings.language === 'zh-CN' ? cn : en;
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icons = {
@@ -29,6 +29,48 @@
   const pct = w => w && Number.isFinite(w.remaining) ? Math.floor(w.remaining) : '—';
   const primary = () => state.snapshot?.fiveHour || state.snapshot?.weekly || state.snapshot?.windows?.[0];
   const stale = () => state.status !== 'ready' || state.snapshot && Date.now() - state.snapshot.fetchedAt > 150000;
+  const resetAttention = () => window.resetModel.attention(state.snapshot, state.status === 'ready', state.resetFeed, Date.now());
+  function duration(delta) {
+    const minutes = Math.max(1, Math.ceil(delta / 60000)), hours = Math.floor(minutes / 60), days = Math.floor(hours / 24);
+    if (days) return t(`${days} 天 ${hours % 24} 小时`, `${days}d ${hours % 24}h`);
+    return hours ? t(`${hours} 小时 ${minutes % 60} 分钟`, `${hours}h ${minutes % 60}m`) : t(`${minutes} 分钟`, `${minutes}m`);
+  }
+  const windowLabel = minutes => minutes === 300 ? t('5 小时额度', '5-hour usage') : minutes === 10080 ? t('本周额度', 'Weekly usage') : t(`${minutes} 分钟周期`, `${minutes}-minute window`);
+  const eventDate = value => new Date(value).toLocaleString(state.settings.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  function resetPlanning(snapshot) {
+    const windows = window.resetModel.resetWindows(snapshot, Date.now());
+    const next = windows.find(w => w.delta > 0 && w.delta <= 2 * 3600000 && w.remaining >= 30) || windows.find(w => w.delta > 0) || windows[0];
+    if (!next) return '';
+    const ready = state.status === 'ready' && window.resetModel.freshQuota(snapshot, Date.now());
+    const urgent = ready && next.delta > 0 && next.delta <= 2 * 3600000 && next.remaining >= 30;
+    return `<div class="reset-planning ${urgent ? 'urgent' : ''}" role="status"><div class="reset-heading">${icon('refresh')}<strong>${t('下次周期重置', 'NEXT SCHEDULED RESET')}</strong><span>${esc(windowLabel(next.minutes))}</span></div>
+      <div class="reset-countdown">${next.delta > 0 ? t(`还有 ${duration(next.delta)}`, `In ${duration(next.delta)}`) : t('已到预计时间，等待更新', 'Scheduled time reached; awaiting update')}<span>${t(`剩余 ${Math.floor(next.remaining)}%`, `${Math.floor(next.remaining)}% remaining`)}${!ready ? t(' · 上次读数', ' · last reading') : ''}</span></div>
+      ${urgent ? `<p>${t('近期有任务可先安排，使用重置卡前先核对重置时间。', 'Plan pending work and check the reset time before using a credit.')}</p>` : ''}</div>`;
+  }
+  function newsContent() {
+    const feed = state.resetFeed;
+    if (!state.settings.resetNews) return `<div class="reset-news"><div class="news-heading">${t('临时重置与发卡', 'RESET ANNOUNCEMENTS')}</div><p>${t('消息展示已关闭，可在设置中开启。', 'Announcements are disabled. Enable them in settings.')}</p></div>`;
+    const fresh = window.resetModel.freshNews(feed, Date.now());
+    const events = window.resetModel.activeNews(feed, Date.now());
+    const upcoming = fresh && events.some(e => e.status === 'announced' && (!e.until || e.until > Date.now()));
+    const upcomingReset = upcoming && events.some(e => e.kindKnown && e.type === 'direct_reset' && e.status === 'announced' && (!e.until || e.until > Date.now()));
+    const entries = events.slice(0, newsDetails ? 3 : 1).map(e => {
+      const credit = e.type === 'reset_credit';
+      const label = e.kindKnown ? (credit ? t('重置卡发放', 'Reset credits') : t('额度重置', 'Usage reset')) : t('重置消息（形式待核对）', 'Reset event (type unspecified)');
+      const status = e.status === 'confirmed' ? (e.confirmation === 'source_post' ? t('原帖确认', 'Source confirmed') : e.confirmation === 'receipt_review' ? t('回执整理', 'Receipt review') : t('确认依据待核对', 'Basis unspecified')) : t('预告', 'Announced');
+      let timing;
+      if (e.status === 'confirmed') timing = t(`最近确认 ${eventDate(e.updatedAt)}`, `Latest confirmation ${eventDate(e.updatedAt)}`);
+      else if (!e.until) timing = t('具体时间待定', 'Timing unspecified');
+      else if (e.until <= Date.now()) timing = t('预告时间已过，等待确认', 'Announced window elapsed; awaiting confirmation');
+      else if (e.precision === 'exact' && !e.timeInferred) timing = t(`预计 ${eventDate(e.until)}，还有 ${duration(e.until - Date.now())}`, `Expected ${eventDate(e.until)}, in ${duration(e.until - Date.now())}`);
+      else if (e.precision === 'window' && e.from) timing = t(`预计 ${eventDate(e.from)} 至 ${eventDate(e.until)}`, `Expected between ${eventDate(e.from)} and ${eventDate(e.until)}`);
+      else timing = e.timeInferred ? t(`估计时段至 ${eventDate(e.until)}，以原帖为准`, `Estimated window through ${eventDate(e.until)}; check source`) : t(`预告最晚 ${eventDate(e.until)} 前，可能提前`, `Announced by ${eventDate(e.until)}; may happen earlier`);
+      const scope = e.scopeKnown ? t(e.scope || '适用范围见原帖', 'Check source for eligible accounts') : t('适用账户范围尚未明确', 'Eligible accounts unspecified');
+      return `<div class="news-event"><div class="news-event-title"><strong>${esc(label)}</strong><span>${status}</span></div><p>${esc(timing)}</p><div class="news-source"><span>${esc(scope)}</span><button class="text-button" data-action="reset-news-source" data-event="${esc(e.id)}">${e.sourceUrl ? t('原帖 ↗', 'Source ↗') : t('消息页 ↗', 'Details ↗')}</button></div></div>`;
+    }).join('');
+    const status = feed?.status === 'disabled' || feed?.status === 'connecting' || !feed ? t('正在读取消息', 'Checking announcements') : !fresh ? t('消息源暂未更新，保留上次消息', 'Source unavailable or stale; showing last information') : upcomingReset ? t('有待执行预告，请先核对用卡时机', 'Upcoming reset; check before using a credit') : upcoming ? t('有待执行的消息预告，详情见原帖', 'Announcement pending; check the source for details') : t('当前没有待执行的重置预告', 'No upcoming reset has been announced');
+    return `<section class="reset-news"><div class="news-heading"><span>${t('临时重置与发卡', 'RESET ANNOUNCEMENTS')}</span>${events.length > 1 ? `<button class="text-button" data-action="news-details">${newsDetails ? t('收起', 'Less') : t('更多', 'More')}</button>` : ''}</div><p class="${fresh ? '' : 'news-stale'}">${status}</p>${entries}<div class="news-attribution">${t('AIHOT 整理 · 账户是否生效以实际额度为准', 'Via AIHOT · Account changes require actual usage data')}${feed?.checkedAt ? `<br>${t('来源核对于 ', 'Source checked ')}${esc(eventDate(feed.checkedAt))}` : ''}</div></section>`;
+  }
   function point(angle, radius, center = 80) { const a = angle * Math.PI / 180; return [center + radius * Math.cos(a), center + radius * Math.sin(a)]; }
   function arc(radius, value, center = 80) {
     const a = point(135, radius, center), b = point(135 + 270 * Math.max(.0001, Math.min(100, value)) / 100, radius, center);
@@ -58,7 +100,7 @@
       <path d="${arc(19.5, value, 23)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
       <path d="${arc(16, weekly?.remaining ?? 0, 23)}" fill="none" stroke="var(--cool)" stroke-width="1" opacity=".7"/>
       ${[0, 25, 50, 75, 100].map(v => { const a = point(135 + v * 2.7, 20, 23), b = point(135 + v * 2.7, 22, 23); return `<path d="M${a}L${b}" stroke="var(--muted)" stroke-width=".7"/>`; }).join('')}</svg>
-      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
+      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${resetAttention() ? `<span class="reset-dot" role="img" aria-label="${esc(t('有重置提醒，展开查看', 'Reset reminder; open for details'))}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
   }
   function time(w) {
     if (!w?.resetsAt) return { time: '—', hint: t('重置时间未知', 'Reset time unavailable') };
@@ -93,7 +135,7 @@
     const s = state.snapshot;
     if (!s) return `<div class="empty">${icon(state.status === 'connecting' ? 'gauge' : 'alert')}<h1>${errors()}</h1>
       <p>${state.status === 'cli_missing' ? t('请安装官方 Codex CLI 并登录，然后点击重试。自定义安装可设置 CODEX_GAUGE_CLI。', 'Install and sign in to the official Codex CLI, then retry. Custom installs can set CODEX_GAUGE_CLI.') : t('沿用本机 Codex 登录，只读取额度。不会创建对话或自动使用重置卡。', 'Uses your local Codex sign-in. Only reads usage; never creates chats or spends reset credits.')}</p>
-      <button class="primary" data-action="refresh">${t('重新读取', 'Try again')}</button></div>${!state.host.anchored ? `<p class="notice">${t('尚未定位到个人头像。打开 Codex 后会自动跟随，也可以从托盘查看。', 'Profile anchor not found. Open Codex to attach, or use the tray to view usage.')}</p>` : ''}`;
+      <button class="primary" data-action="refresh">${t('重新读取', 'Try again')}</button></div>${newsContent()}${!state.host.anchored ? `<p class="notice">${t('尚未定位到个人头像。打开 Codex 后会自动跟随，也可以从托盘查看。', 'Profile anchor not found. Open Codex to attach, or use the tray to view usage.')}</p>` : ''}`;
     const five = s.fiveHour, week = s.weekly;
     const first = five || week || s.windows?.[0], second = five ? week : null;
     const firstLabel = first?.minutes === 10080 ? t('本周', 'THIS WEEK') : first?.minutes === 300 ? t('5 小时', '5 HOURS') : t(`${first?.minutes ?? '—'} 分钟`, `${first?.minutes ?? '—'} MIN`);
@@ -105,11 +147,13 @@
       ${unknown ? `<p class="notice">${t('当前账户返回其他周期，请等待适配。', 'This account returns a different usage window.')}</p>` : ''}
       <div class="dials">${dial(first, firstLabel)}${dial(second, secondLabel, true)}</div>
       <div class="resets"><div><div class="reset-time">${a.time}</div><div class="reset-hint">${a.hint}</div></div><div><div class="reset-time">${b.time}</div><div class="reset-hint">${b.hint}</div></div></div>
+      ${resetPlanning(s)}
       <div class="readout"><div><h2>${t('可用余量', 'AVAILABLE CAPACITY')}</h2><p>${t('以较少的周期为参考', 'Based on the more limited window')}</p></div><div class="range" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<span class="${i < Math.ceil(closest / 100 * 18) ? 'on' : ''}"></span>`).join('')}</div></div>
       <div class="credit-card"><span class="ticket-icon">${icon('ticket')}</span><div class="credit-info"><div class="credit-title"><strong>${s.creditCount ?? '—'}</strong>${t('次重置机会', 'reset credits')}</div>
       <div class="credit-caption">${s.credits.length ? creditExpiry(s.credits[0].expiresAt) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div></div>
       ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
       ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}
+      ${newsContent()}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}
       ${state.host.platform === 'darwin' ? `<div class="notice">${t('Mac 预览版：当前为自由悬浮，头像定位尚待 Mac 实机适配。', 'Mac preview: floating mode. Profile anchoring needs on-device adaptation.')}</div>` : ''}`;
   }
@@ -122,6 +166,8 @@
       ${toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized'))}
       ${toggle('autostart', state.host.platform === 'win32' ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), state.host.platform === 'win32' ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
       ${toggle('notifications', t('重置卡到期提醒', 'Credit expiry reminders'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
+      ${toggle('resetReminders', t('额度重置提醒', 'Usage reset reminders'), t('余量 ≥30% 时提前 2 / 1 小时提醒；新预告通知', 'At ≥30% remaining, remind within 2h / 1h; new announcements'))}
+      ${toggle('resetNews', t('临时重置与发卡消息', 'Public reset announcements'), t('匿名读取 AIHOT，每 5 分钟核对；仅程序运行时', 'Read AIHOT anonymously every 5 min while the app is active'))}
       <div class="settings-actions"><button class="text-button" data-action="reset-position">${t('恢复默认位置', 'Reset position')}</button><button class="text-button" data-action="check-update">${t('检查更新', 'Check for updates')}</button><button class="text-button" data-action="source">GitHub ↗</button></div>
       ${state.update.state !== 'idle' ? `<div class="notice">${updateLabel()}${state.update.state === 'available' ? `<br><button class="text-button" data-action="releases">${t('前往下载更新', 'Download update')} ↗</button>` : ''}</div>` : ''}
       <div class="about">Codex Gauge ${esc(state.version)} · MIT<br>${t('本机只读 · 无分析追踪 · 不发送模型请求', 'Local, read-only · No analytics · No model requests')}<br>${t('第三方工具，与 OpenAI 无隶属关系。', 'Independent tool, not affiliated with OpenAI.')}</div>`;
@@ -152,6 +198,7 @@
   async function action(name, value) {
     if (name === 'settings-page' || name === 'back') { screenName = name === 'back' ? 'gauge' : 'settings'; render(true); return; }
     if (name === 'credits') { details = !details; render(true); return; }
+    if (name === 'news-details') { newsDetails = !newsDetails; render(true); return; }
     if (preview) {
       if (name === 'settings') { Object.assign(state.settings, value); state.dark = state.settings.theme !== 'light'; render(true); }
       if (name === 'check-update') { state.update = { state: 'current' }; render(true); }
@@ -175,7 +222,7 @@
       if (name === 'offline') state.status = 'offline';
       if (name === 'reset') { state.status = 'ready'; state.snapshot.fiveHour.remaining = 68; state.snapshot.weekly.remaining = 34; }
       render(true);
-    } else action(target.dataset.action);
+    } else action(target.dataset.action, target.dataset.event);
   });
   document.addEventListener('change', event => { if (event.target.dataset.select) action('settings', { [event.target.dataset.select]: event.target.value }); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') action('close'); });

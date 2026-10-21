@@ -7,6 +7,8 @@ const fs = require('node:fs');
 const { Store } = require('./store.cjs');
 const { createStartup } = require('./startup.cjs');
 const { QuotaService } = require('./cli.cjs');
+const { ResetFeed, PAGE } = require('./reset-feed.cjs');
+const { resetAlerts, newsPlan } = require('./reminders.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
@@ -15,7 +17,7 @@ app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
 if (!app.requestSingleInstanceLock()) app.quit();
 else app.whenReady().then(start);
-let badge, panel, tray, store, quota, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
+let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
 let update = { state: 'idle' }, startup, startupError = false;
 const zh = () => store.settings.language === 'zh-CN';
@@ -24,7 +26,7 @@ const text = (cn, en) => zh() ? cn : en;
 function state() {
   return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
     settingsError: store.error, startupError, host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
-    update, version: app.getVersion(), demo };
+    resetFeed: resetFeed.state(), update, version: app.getVersion(), demo };
 }
 function broadcast() { for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state()); }
 function createWindow(width, height, view) {
@@ -44,6 +46,10 @@ function createWindow(width, height, view) {
   return win;
 }
 function areaFor(point) { return screen.getDisplayNearestPoint(point).workArea; }
+function panelBounds() {
+  const bounds = badge.getBounds(), area = areaFor(bounds);
+  return placePanel(bounds, area, 356, Math.min(650, area.height - 16));
+}
 function layout() {
   if (!badge || drag) return;
   const settings = store.settings;
@@ -52,7 +58,7 @@ function layout() {
     const point = process.platform === 'win32' ? screen.screenToDipPoint({ x: host.x, y: host.y }) : { x: host.x, y: host.y };
     badge.setBounds(placeBadge(point, areaFor(point), settings.offset));
   }
-  if (panel.isVisible() && !forcedPanel) panel.setBounds(placePanel(badge.getBounds(), areaFor(badge.getBounds())));
+  if (panel.isVisible() && !forcedPanel) panel.setBounds(panelBounds());
 }
 function updateVisibility() {
   if (quitting) return;
@@ -60,14 +66,17 @@ function updateVisibility() {
   if (visible) { layout(); if (!badge.isVisible()) badge.showInactive(); }
   else { badge.hide(); if (!forcedPanel) closePanel(); }
   quota.setActive(!!host.exists || forcedPanel || demo);
+  resetFeed.setActive(!demo && store.settings.resetNews && (!!host.exists || forcedPanel));
 }
 function openPanel(activate = false, force = false) {
   clearTimeout(leaveTimer); clearTimeout(hoverTimer); forcedPanel = force || forcedPanel;
   if (force) {
     const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-    panel.setBounds({ x: area.x + area.width - 380, y: area.y + area.height - 500, width: 356, height: 476 });
+    const height = Math.min(650, area.height - 16);
+    panel.setBounds({ x: area.x + area.width - 380, y: area.y + area.height - height - 12, width: 356, height });
     quota.setActive(true);
-  } else panel.setBounds(placePanel(badge.getBounds(), areaFor(badge.getBounds())));
+    resetFeed.setActive(!demo && store.settings.resetNews);
+  } else panel.setBounds(panelBounds());
   if (activate) panel.show(); else panel.showInactive();
   panel.moveTop();
   broadcast();
@@ -142,11 +151,15 @@ async function action(name, value) {
     case 'leave': clearTimeout(hoverTimer); if (!pinnedPanel && !forcedPanel && !drag) leaveTimer = setTimeout(closePanel, 450); break;
     case 'toggle': if (panel.isVisible() && pinnedPanel) closePanel(); else { pinnedPanel = true; openPanel(true); } break;
     case 'close': closePanel(); updateVisibility(); break;
-    case 'refresh': await quota.refresh(); break;
+    case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
+    case 'reset-news-source': {
+      const event = resetFeed.state().events.find(e => e.id === value);
+      await shell.openExternal(event?.sourceUrl || PAGE); break;
+    }
     case 'settings': {
       if (!value || typeof value !== 'object') return { ok: false };
       const patch = {};
-      for (const key of ['theme', 'language', 'topmost', 'notifications']) if (key in value) patch[key] = value[key];
+      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews']) if (key in value) patch[key] = value[key];
       if ('autostart' in value) {
         if (!app.isPackaged) return { ok: false, error: 'install_first' };
         patch.autostart = value.autostart === true;
@@ -188,8 +201,42 @@ async function action(name, value) {
   }
   return { ok: true };
 }
+function processResetReminders() {
+  if (demo) return;
+  const snapshot = quota.status === 'ready' ? quota.snapshot : null;
+  const plan = newsPlan(resetFeed.state(), store.newsSeen, store.ledger, snapshot);
+  const seenChanged = JSON.stringify(plan.seen) !== JSON.stringify(store.newsSeen);
+  store.newsSeen = plan.seen;
+  const alerts = store.settings.resetReminders && Notification.isSupported()
+    ? [...resetAlerts(snapshot, quota.accountKey, store.ledger), ...plan.alerts] : [];
+  if (!alerts.length && !seenChanged) return;
+  for (const alert of alerts) store.ledger[alert.key] = alert.expiresAt;
+  for (const [key, expiry] of Object.entries(store.ledger)) if (expiry < Date.now()) delete store.ledger[key];
+  try { store.save(); } catch { store.error = true; return; }
+  for (const alert of alerts) {
+    let title, body;
+    if (alert.event) {
+      const e = alert.event, credit = e.type === 'reset_credit';
+      title = e.status === 'confirmed' ? text('重置消息有更新', 'Reset announcement updated') : !e.kindKnown ? text('重置消息预告，形式待核对', 'Reset event announced; type unspecified') : text(credit ? '重置卡发放预告' : '额度重置预告', credit ? 'Reset credits announced' : 'Usage reset announced');
+      body = text('AIHOT 整理：', 'Via AIHOT: ') + (e.status === 'confirmed'
+        ? text(e.confirmation === 'source_post' ? '原帖已有确认，请查看账户实际变化。' : e.confirmation === 'receipt_review' ? '回执整理显示已确认，请核对原帖与账户。' : '消息标为已确认，确认依据仍需核对原帖与账户。', e.confirmation === 'source_post' ? 'A source post confirms the event. Check your account for actual changes.' : e.confirmation === 'receipt_review' ? 'Receipt review indicates confirmation. Check the source and your account.' : 'The event is marked confirmed; verify the basis in the source and your account.')
+        : e.until ? text(`预计时间范围至 ${new Date(e.until).toLocaleString('zh-CN')}，具体以原帖为准。`, `Announced window ends ${new Date(e.until).toLocaleString('en')}; check the source for timing.`)
+          : text('具体时间尚未明确，可查看原帖。', 'Timing has not been specified. Open the source post.'));
+      if (alert.urgent) body += text(' 近期有任务可先安排，使用重置卡前先核对。', ' Plan pending work and check before using a reset credit.');
+    } else {
+      const label = alert.window === 300 ? text('5 小时额度', '5-hour usage') : alert.window === 10080 ? text('本周额度', 'Weekly usage') : text(`${alert.window} 分钟周期`, `${alert.window}-minute window`);
+      title = text('额度即将周期重置', 'Usage window resets soon');
+      body = text(`${label}还有约 ${alert.minutes} 分钟重置，剩余 ${alert.remaining}%。可先安排待办任务，使用重置卡前先核对。`, `${label} resets in about ${alert.minutes} minutes; ${alert.remaining}% remains. Plan pending work and check before using a reset credit.`);
+    }
+    try {
+      const notification = new Notification({ title, body, silent: true });
+      notification.on('click', () => { pinnedPanel = true; openPanel(true, true); });
+      notification.show();
+    } catch { store.error = true; }
+  }
+}
 async function start() {
-  store = new Store(app.getPath('userData')); quota = new QuotaService();
+  store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
     try { await startup.set(true); } catch { startupError = true; }
@@ -200,7 +247,7 @@ async function start() {
   }
   session.defaultSession.setPermissionRequestHandler((_w, _p, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  badge = createWindow(52, 52, 'badge'); panel = createWindow(356, 476, 'panel');
+  badge = createWindow(52, 52, 'badge'); panel = createWindow(356, 650, 'panel');
   tray = new Tray(nativeImage.createFromPath(path.join(ROOT, 'assets', 'tray.png')));
   refreshTray(); tray.on('click', () => { pinnedPanel = true; openPanel(true, true); });
   ipcMain.handle('gauge:state', event => { if (![badge.webContents, panel.webContents].includes(event.sender)) throw new Error('Unauthorized'); return state(); });
@@ -219,10 +266,12 @@ async function start() {
         catch { store.error = true; }
       }
     }
+    processResetReminders();
     broadcast();
   });
+  resetFeed.on('state', () => { processResetReminders(); broadcast(); });
   nativeTheme.on('updated', broadcast);
-  powerMonitor.on('suspend', () => { quota.stop(); badge.hide(); closePanel(); });
+  powerMonitor.on('suspend', () => { quota.stop(); resetFeed.stop(); badge.hide(); closePanel(); });
   powerMonitor.on('resume', () => { updateVisibility(); quota.refresh(); });
   screen.on('display-metrics-changed', layout);
   if (demo) {
@@ -242,5 +291,5 @@ async function start() {
   app.on('second-instance', () => { pinnedPanel = true; openPanel(true, true); });
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });

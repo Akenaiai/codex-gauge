@@ -1,6 +1,14 @@
 # Verification / 验证记录
 
-Version: 0.1.2. Date: 2026-10-19. Platform: Windows x64.
+Version: 0.2.0. Date: 2026-10-21. Platform: Windows x64.
+
+## 0.2.0 reset reminders / 额度重置提醒
+
+- Twenty-four automated checks passed: the original twelve plus scheduled reminder stages, restart/account deduplication, low/expired/stale quotas, historical confirmation baselines, changed and new announcements, credit grants, unspecified event kinds/times, expired announcement windows, source staleness, URL filtering, malformed/empty responses, ETags/304 and Retry-After. Chinese and English renderer checks cover countdowns, balances and uncertainty labels.
+- Isolated Electron captures used synthetic data at 356 × 650: Chinese graphite, English porcelain and settings. Reset timing, remaining balance, announcement timing and original-post controls were visually checked. The settings view scrolls for all controls. No real quota or announcement data is included in the public source or test fixtures.
+- The live recent-announcement schema and source verification time were checked on 2026-10-21. The latest event at that check was an already-confirmed event from 2026-10-20, with unspecified reset kind and audience; no future event was fabricated. The feed is anonymous, uses its recent endpoint and makes no model calls. The old paused chat automation remains paused.
+- New usage-reset and public-news toggles default on, independently from the existing credit-expiry toggle. Notifications require the app to be running, Codex or the manual panel to be active, fresh source/account data and Windows notification support. Natural reset delivery, sleep/re-login behavior, OS focus-assist visibility and Mac remain separate field-validation gaps.
+- 24 项自动检查通过；中英文 Electron 示例图已实看。消息时间不明、形式不明、过期和断线均明确显示，临时确认不推定个人账户到账。尚未等待自然重置触发通知，不把隔离逻辑检查当作系统通知中心已实际送达。
 
 ## 0.1.2 expiry display / 到期显示
 
