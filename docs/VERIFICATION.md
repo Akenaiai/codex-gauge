@@ -1,6 +1,14 @@
 # Verification / 验证记录
 
-Version: 0.2.0. Date: 2026-10-21. Platform: Windows x64.
+Version: 0.2.1. Date: 2026-10-22. Platform: Windows x64.
+
+## 0.2.1 visual reminder priority / 提醒视觉优先级
+
+- Fresh pending announcements and imminent scheduled resets render before the dials with a stronger amber surface, border, heading and timing. Expiring available credits render first in red within 48 hours; within 24 hours the label and border become stronger. The small gauge prioritizes the red credit marker over amber reset markers. Historical/stale messages and distant/elapsed credits do not gain urgency styling.
+- All 28 automated checks passed, including 48h/24h thresholds, stale/expired exclusions, top-of-panel ordering, single rendering of each card, bilingual urgent labels and small-gauge marker priority.
+- Five synthetic Electron captures were checked: urgent Chinese graphite, urgent English porcelain, English at 320px, 36-hour expiry and a normal state. In the narrow urgent state both credit and announcement cards ended above 478px in a 650px panel; no horizontal overflow was found. The normal credit retained its neutral border. No live account data is in the captures or tests.
+- This release changes visual priority only. Notification sending, deduplication, historical activation and the known delivery gaps documented below are unchanged.
+- 28 项检查通过；中英文深浅色、320px 窄窗口、36 小时临期和普通状态已实看。红色卡片与橙金色消息位于顶部，普通卡片保持原色。本轮不把视觉改进当作通知送达缺口已修复。
 
 ## 2026-10-22 Windows notification acceptance / Windows 通知验收
 

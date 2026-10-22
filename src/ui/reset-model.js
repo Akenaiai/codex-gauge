@@ -21,5 +21,12 @@
     return quotaReady && freshQuota(snapshot, now) && resetWindows(snapshot, now).some(w => w.delta > 0 && w.delta <= 2 * HOUR && w.remaining >= 30) ||
       freshNews(feed, now) && activeNews(feed, now).some(e => e.kindKnown && e.type === 'direct_reset' && e.status === 'announced' && (!e.until || e.until > now));
   }
-  return { HOUR, freshQuota, freshNews, resetWindows, activeNews, attention };
+  function expiringCredit(snapshot, quotaReady, now = Date.now()) {
+    if (!quotaReady || !freshQuota(snapshot, now)) return null;
+    const credit = (snapshot.credits || []).filter(c => Number.isFinite(c.expiresAt) && c.expiresAt > now)
+      .sort((a, b) => a.expiresAt - b.expiresAt)[0];
+    if (!credit || credit.expiresAt - now > 48 * HOUR) return null;
+    return { ...credit, critical: credit.expiresAt - now <= 24 * HOUR };
+  }
+  return { HOUR, freshQuota, freshNews, resetWindows, activeNews, attention, expiringCredit };
 });

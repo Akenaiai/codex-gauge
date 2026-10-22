@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseFeed, ResetFeed, sourceLink } = require('../src/reset-feed.cjs');
 const { resetAlerts, newsPlan } = require('../src/reminders.cjs');
-const { attention } = require('../src/ui/reset-model.js');
+const { attention, expiringCredit } = require('../src/ui/reset-model.js');
 const { cleanSettings } = require('../src/domain.cjs');
 const NOW = 1800000000000, HOUR = 3600000;
 const quota = (delta = 1.5 * HOUR, remaining = 80) => ({ fetchedAt: NOW, windows: [{ minutes: 10080, remaining, resetsAt: NOW + delta }] });
@@ -107,4 +107,13 @@ test('new reminder preferences preserve existing choices and support independent
   const s = cleanSettings({ notifications: false, resetReminders: false, resetNews: false, autostart: true });
   assert.equal(s.notifications, false); assert.equal(s.resetReminders, false); assert.equal(s.resetNews, false); assert.equal(s.autostart, true);
   assert.equal(cleanSettings().resetReminders, true);
+});
+test('credit visual urgency uses 48h/24h boundaries and requires fresh available data', () => {
+  const snapshot = hours => ({ ...quota(), credits: [{ expiresAt: NOW + hours * HOUR }] });
+  assert.equal(expiringCredit(snapshot(48), true, NOW).critical, false);
+  assert.equal(expiringCredit(snapshot(24), true, NOW).critical, true);
+  assert.equal(expiringCredit(snapshot(49), true, NOW), null);
+  assert.equal(expiringCredit(snapshot(0), true, NOW), null);
+  assert.equal(expiringCredit(snapshot(1), false, NOW), null);
+  assert.equal(expiringCredit({ ...snapshot(1), fetchedAt: NOW - 121000 }, true, NOW), null);
 });

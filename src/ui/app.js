@@ -10,7 +10,7 @@
   let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false, resetReminders: true, resetNews: true },
     dark: true, status: 'ready', snapshot: { fiveHour: { remaining: 68, minutes: 300, resetsAt: now + 8640000 },
       weekly: { remaining: 34, minutes: 10080, resetsAt: now + 276480000 }, credits: [{ key: 'demo', expiresAt: now + 129600000 }], creditCount: 1, fetchedAt: now },
-    host: { exists: true, anchored: true, platform: 'win32' }, resetFeed: { status: 'ready', events: [], checkedAt: now, fetchedAt: now }, update: { state: 'idle' }, version: '0.2.0', demo: true };
+    host: { exists: true, anchored: true, platform: 'win32' }, resetFeed: { status: 'ready', events: [], checkedAt: now, fetchedAt: now }, update: { state: 'idle' }, version: '0.2.1', demo: true };
   const t = (cn, en) => state.settings.language === 'zh-CN' ? cn : en;
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icons = {
@@ -30,6 +30,11 @@
   const primary = () => state.snapshot?.fiveHour || state.snapshot?.weekly || state.snapshot?.windows?.[0];
   const stale = () => state.status !== 'ready' || state.snapshot && Date.now() - state.snapshot.fetchedAt > 150000;
   const resetAttention = () => window.resetModel.attention(state.snapshot, state.status === 'ready', state.resetFeed, Date.now());
+  const expiringCredit = () => window.resetModel.expiringCredit(state.snapshot, state.status === 'ready', Date.now());
+  const pendingAnnouncement = () => state.settings.resetNews && window.resetModel.freshNews(state.resetFeed, Date.now()) &&
+    window.resetModel.activeNews(state.resetFeed, Date.now()).some(e => e.status === 'announced' && (!e.until || e.until > Date.now()));
+  const urgentReset = () => state.status === 'ready' && window.resetModel.freshQuota(state.snapshot, Date.now()) &&
+    window.resetModel.resetWindows(state.snapshot, Date.now()).some(w => w.delta > 0 && w.delta <= 2 * 3600000 && w.remaining >= 30);
   function duration(delta) {
     const minutes = Math.max(1, Math.ceil(delta / 60000)), hours = Math.floor(minutes / 60), days = Math.floor(hours / 24);
     if (days) return t(`${days} 天 ${hours % 24} 小时`, `${days}d ${hours % 24}h`);
@@ -69,7 +74,7 @@
       return `<div class="news-event"><div class="news-event-title"><strong>${esc(label)}</strong><span>${status}</span></div><p>${esc(timing)}</p><div class="news-source"><span>${esc(scope)}</span><button class="text-button" data-action="reset-news-source" data-event="${esc(e.id)}">${e.sourceUrl ? t('原帖 ↗', 'Source ↗') : t('消息页 ↗', 'Details ↗')}</button></div></div>`;
     }).join('');
     const status = feed?.status === 'disabled' || feed?.status === 'connecting' || !feed ? t('正在读取消息', 'Checking announcements') : !fresh ? t('消息源暂未更新，保留上次消息', 'Source unavailable or stale; showing last information') : upcomingReset ? t('有待执行预告，请先核对用卡时机', 'Upcoming reset; check before using a credit') : upcoming ? t('有待执行的消息预告，详情见原帖', 'Announcement pending; check the source for details') : t('当前没有待执行的重置预告', 'No upcoming reset has been announced');
-    return `<section class="reset-news"><div class="news-heading"><span>${t('临时重置与发卡', 'RESET ANNOUNCEMENTS')}</span>${events.length > 1 ? `<button class="text-button" data-action="news-details">${newsDetails ? t('收起', 'Less') : t('更多', 'More')}</button>` : ''}</div><p class="${fresh ? '' : 'news-stale'}">${status}</p>${entries}<div class="news-attribution">${t('AIHOT 整理 · 账户是否生效以实际额度为准', 'Via AIHOT · Account changes require actual usage data')}${feed?.checkedAt ? `<br>${t('来源核对于 ', 'Source checked ')}${esc(eventDate(feed.checkedAt))}` : ''}</div></section>`;
+    return `<section class="reset-news ${upcoming ? 'prominent' : ''}" ${upcoming ? 'role="status"' : ''}><div class="news-heading"><span>${upcoming ? icon('alert') : ''}${upcomingReset ? t('有重置预告', 'UPCOMING RESET') : upcoming ? t('有新预告', 'NEW ANNOUNCEMENT') : t('临时重置与发卡', 'RESET ANNOUNCEMENTS')}</span>${events.length > 1 ? `<button class="text-button" data-action="news-details">${newsDetails ? t('收起', 'Less') : t('更多', 'More')}</button>` : ''}</div><p class="${fresh ? '' : 'news-stale'}">${status}</p>${entries}<div class="news-attribution">${t('AIHOT 整理 · 账户是否生效以实际额度为准', 'Via AIHOT · Account changes require actual usage data')}${feed?.checkedAt ? `<br>${t('来源核对于 ', 'Source checked ')}${esc(eventDate(feed.checkedAt))}` : ''}</div></section>`;
   }
   function point(angle, radius, center = 80) { const a = angle * Math.PI / 180; return [center + radius * Math.cos(a), center + radius * Math.sin(a)]; }
   function arc(radius, value, center = 80) {
@@ -95,12 +100,14 @@
   function mini() {
     const p = primary(), value = p?.remaining ?? 0, weekly = state.snapshot?.weekly;
     const color = p && value <= 10 ? 'var(--danger)' : 'var(--accent)';
-    return `<button class="micro ${stale() ? 'stale' : ''}" data-action="toggle" aria-label="${esc(t('查看 Codex 额度', 'View Codex usage'))}" title="${esc(t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
+    const expiry = expiringCredit(), reminder = resetAttention() || pendingAnnouncement();
+    const reminderLabel = expiry ? t('重置卡即将到期，展开查看', 'Reset credit expiring; open for details') : t('有重置提醒，展开查看', 'Reset reminder; open for details');
+    return `<button class="micro ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(expiry || reminder ? reminderLabel : t('查看 Codex 额度', 'View Codex usage'))}" title="${esc((expiry || reminder ? reminderLabel + ' · ' : '') + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
       <svg viewBox="0 0 46 46" aria-hidden="true"><path d="${arc(19.5, 100, 23)}" fill="none" stroke="var(--line)" stroke-width="1.5"/>
       <path d="${arc(19.5, value, 23)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
       <path d="${arc(16, weekly?.remaining ?? 0, 23)}" fill="none" stroke="var(--cool)" stroke-width="1" opacity=".7"/>
       ${[0, 25, 50, 75, 100].map(v => { const a = point(135 + v * 2.7, 20, 23), b = point(135 + v * 2.7, 22, 23); return `<path d="M${a}L${b}" stroke="var(--muted)" stroke-width=".7"/>`; }).join('')}</svg>
-      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${resetAttention() ? `<span class="reset-dot" role="img" aria-label="${esc(t('有重置提醒，展开查看', 'Reset reminder; open for details'))}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
+      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${expiry || reminder ? `<span class="reset-dot ${expiry ? 'credit-dot' : ''}" role="img" aria-label="${esc(reminderLabel)}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
   }
   function time(w) {
     if (!w?.resetsAt) return { time: '—', hint: t('重置时间未知', 'Reset time unavailable') };
@@ -120,6 +127,16 @@
     const days = Math.floor(totalHours / 24), hours = totalHours % 24;
     return days > 0 ? t(`最近一张还有约 ${days} 天 ${hours} 小时到期`, `Next expires in ~${days}d ${hours}h`)
       : t(`最近一张还有约 ${hours} 小时到期`, `Next expires in ~${hours}h`);
+  }
+  function creditCard(s) {
+    const expiry = expiringCredit();
+    return `<div class="credit-card ${expiry ? 'expiring' : ''} ${expiry?.critical ? 'critical' : ''}" ${expiry ? 'role="status"' : ''}><span class="ticket-icon">${icon(expiry ? 'alert' : 'ticket')}</span><div class="credit-info">
+      ${expiry ? `<div class="expiry-label">${expiry.critical ? t('重置卡即将失效', 'RESET CREDIT EXPIRES SOON') : t('重置卡临期提醒', 'RESET CREDIT EXPIRING')}<span>${expiry.critical ? t('24 小时内', 'WITHIN 24H') : t('48 小时内', 'WITHIN 48H')}</span></div>` : ''}
+      <div class="credit-title"><strong>${s.creditCount ?? '—'}</strong>${t('次重置机会', 'reset credits')}</div>
+      <div class="credit-caption">${s.credits.length ? creditExpiry(expiry?.expiresAt || s.credits[0].expiresAt) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div>
+      ${expiry ? `<p class="expiry-guidance">${t('请结合额度重置时间，尽快安排使用。', 'Plan its use soon, taking the usage reset time into account.')}</p>` : ''}</div>
+      ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
+      ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}`;
   }
   function errors() {
     const pair = {
@@ -143,17 +160,15 @@
     const a = time(first), b = time(second);
     const closest = Math.min(...[five, week].filter(Boolean).map(w => w.remaining));
     const unknown = !five && !week;
+    const priorityCredit = !!expiringCredit(), priorityNews = pendingAnnouncement(), priorityReset = urgentReset();
     return `<div class="eyebrow"><span>${t('剩余额度', 'REMAINING USAGE')}</span><span class="status ${stale() ? 'warn' : ''}"><i></i>${state.demo ? t('示例数据', 'DEMO DATA') : stale() ? t('上次读数', 'LAST READING') : t('已同步', 'LIVE')}</span></div>
+      ${priorityCredit ? creditCard(s) : ''}${priorityNews ? newsContent() : ''}${priorityReset ? resetPlanning(s) : ''}
       ${unknown ? `<p class="notice">${t('当前账户返回其他周期，请等待适配。', 'This account returns a different usage window.')}</p>` : ''}
       <div class="dials">${dial(first, firstLabel)}${dial(second, secondLabel, true)}</div>
       <div class="resets"><div><div class="reset-time">${a.time}</div><div class="reset-hint">${a.hint}</div></div><div><div class="reset-time">${b.time}</div><div class="reset-hint">${b.hint}</div></div></div>
-      ${resetPlanning(s)}
+      ${!priorityReset ? resetPlanning(s) : ''}
       <div class="readout"><div><h2>${t('可用余量', 'AVAILABLE CAPACITY')}</h2><p>${t('以较少的周期为参考', 'Based on the more limited window')}</p></div><div class="range" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<span class="${i < Math.ceil(closest / 100 * 18) ? 'on' : ''}"></span>`).join('')}</div></div>
-      <div class="credit-card"><span class="ticket-icon">${icon('ticket')}</span><div class="credit-info"><div class="credit-title"><strong>${s.creditCount ?? '—'}</strong>${t('次重置机会', 'reset credits')}</div>
-      <div class="credit-caption">${s.credits.length ? creditExpiry(s.credits[0].expiresAt) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div></div>
-      ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
-      ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}
-      ${newsContent()}
+      ${!priorityCredit ? creditCard(s) : ''}${!priorityNews ? newsContent() : ''}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}
       ${state.host.platform === 'darwin' ? `<div class="notice">${t('Mac 预览版：当前为自由悬浮，头像定位尚待 Mac 实机适配。', 'Mac preview: floating mode. Profile anchoring needs on-device adaptation.')}</div>` : ''}`;
   }
