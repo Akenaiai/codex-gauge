@@ -9,7 +9,7 @@ function resetAlerts(snapshot, accountKey, ledger, now = Date.now()) {
     return ledger[key] ? [] : [{ key, expiresAt: w.resetsAt, minutes: Math.ceil(w.delta / 60000), window: w.minutes, remaining: Math.floor(w.remaining) }];
   });
 }
-function newsPlan(feed, previous, ledger, snapshot, now = Date.now()) {
+function newsPlan(feed, previous, ledger, snapshot, now = Date.now(), deliveries = {}) {
   if (!freshNews(feed, now)) return { seen: previous, alerts: [] };
   const seen = { ...previous }, alerts = [];
   const initialized = Object.keys(previous).length > 0;
@@ -25,7 +25,8 @@ function newsPlan(feed, previous, ledger, snapshot, now = Date.now()) {
       freshQuota(snapshot, now) && resetWindows(snapshot, now).some(w => w.remaining >= 30);
     if (urgent) stage = e.until - now <= HOUR ? '1h' : '2h';
     const key = `news:${e.id}:${e.signature}:${stage}`;
-    if ((announce || urgent) && !ledger[key]) alerts.push({ key, expiresAt: now + 7 * 86400000, event: e, urgent });
+    const retry = deliveries[key] && (upcoming || e.status === 'confirmed' && now - e.updatedAt <= 86400000);
+    if ((announce || urgent || retry) && !ledger[key]) alerts.push({ key, expiresAt: now + 7 * 86400000, event: e, urgent });
   }
   for (const [key, value] of Object.entries(seen)) if (!Number.isFinite(value?.at) || now - value.at > 7 * 86400000) delete seen[key];
   return { seen, alerts };

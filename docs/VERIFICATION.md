@@ -1,6 +1,6 @@
 # Verification / 验证记录
 
-Version: 0.2.1. Date: 2026-10-22. Platform: Windows x64.
+Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
 
 ## 2026-10-23 badge window-order repair / 小仪表窗口层级修复
 
@@ -9,6 +9,17 @@ Version: 0.2.1. Date: 2026-10-22. Platform: Windows x64.
 - After a temporary live-process repair, a local 0.2.1 hotfix installer was built from `abc4427` and installed successfully (exit 0). The updated application was restarted, and its installed main matched the fixed source byte for byte. Native ordering and the point hit test then identified the new badge above Codex, with Codex still in the foreground. Keep on top remained disabled, runtime preferences matched the saved file, and the settings-file SHA-256 was unchanged through installation. The install was launched from the original application's environment after checking the settings hash, so MSIX-redirection did not substitute the Codex-launched process's other settings view. The original installer and settings backup were retained locally.
 - Both Windows CI runs for `abc4427` passed. Source work is isolated on `codex/badge-window-order` ([draft PR #2](https://github.com/Akenaiai/codex-gauge/pull/2)), separately from the notification repair branch. This is a locally installed hotfix with the same runtime version, not a newly published GitHub release; the existing public 0.2.1 release assets remain unchanged. No model requests or quota-spending operations were used.
 - 中文结论：已确认小仪表被压到 Codex 后面。已更新本机 0.2.1 修复版并重启验证，原生顺序与命中检查均确认仪表在上、Codex 保持焦点；设置文件哈希未变，非置顶偏好保留。32 项检查和 Windows CI 通过。源码在独立草稿 PR #2，GitHub 正式发行附件尚未更新。
+
+## 2026-10-23 notification repair candidate / 通知修复候选
+
+- Work is isolated on `codex/notification-reliability`, based on `9077a6a`. Released 0.2.1 binaries and the daily installation have not been replaced. Runtime version remains 0.2.1 until a reviewed release is prepared.
+- Fixed Windows global historical activation, stable CLSID registration, early-start panel opening and the credit-expiry click path. All three reminder types use the same acknowledgement-based delivery mechanism. Only native `show` commits success; synchronous/native asynchronous failures persist a maximum three-attempt budget with 30s/120s minimum backoff. Missing acknowledgements and interrupted sends remain unknown and are not automatically replayed. Existing preferences, historical baselines and legacy success ledger entries are preserved.
+- **Code checks:** 41 automated checks passed, including the existing 28 and 13 targeted notification/integration/renderer checks. The native helper build passed. The real local read-only smoke check returned ready and quota/credit capabilities; it made no model requests and reported no private readings. Fault injection against the original 0.2.1 main independently reproduced both reported failure paths; no real OS failure is inferred from that injection.
+- **Windows installed acceptance identity:** the separate instrumented NSIS installer exited 0. Installed main, delivery, reminder, store and renderer modules matched this checkout byte for byte. Synthetic account/feed/host inputs and an independent AppID/CLSID/profile isolated the daily application. A real native `show` was emitted and WinRT history contained exactly the expected test tag. After a clean process restart, the same ledger loaded with zero new sends. The COM cold-launch target resolves to the installed acceptance executable. Production settings hashes were unchanged on test exit.
+- **Actual retained-notification click:** the user clicked the old test schedule notification after sender restart and confirmed that the panel opened. The log records Windows launching a second executable instance; the primary panel was subsequently visible. That click used the single-instance activation route, not an observed global callback. The later snapshot was not focused after the user had returned to this chat, so it does not independently establish focus at click time.
+- **Pending:** full cold-launch click (the user chose to leave it pending), direct native global-callback/focus evidence, all-reminder-switches-off field activation, and the unchanged production-AppID environment. Code tests cover queued activation and explicit presenter initialization even when no notification is sent; demo previews skip native activation registration. Natural 2h/1h quota events, actual replenishment, real Windows sleep/sign-in/Focus Assist and Mac remain separate field checks.
+- Runnable handoff, retry semantics and evidence boundaries: [Notification acceptance](NOTIFICATIONS.md). The acceptance script is included only in its separate test build, not production packages. No quota was deliberately consumed, no real quota data was changed and no new release was published.
+- 中文结论：两个代码缺口已修复，41 项检查及只读连接通过。独立身份的 Windows 安装版已确认真实通知发送、系统历史留存和重启不重复，用户实点旧通知打开面板，正式配置哈希未变。冷启动点击按用户选择保留待验，正式 AppID 场景也未原样复验，不能写成全部 Windows 验收通过。
 
 ## 0.2.1 visual reminder priority / 提醒视觉优先级
 
