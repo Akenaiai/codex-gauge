@@ -71,6 +71,8 @@ npm run build:win    # Windows setup executable + portable ZIP
 
 `npm start -- --demo` opens an isolated native preview with sample data; it never starts Codex or sends notifications. Icons are checked in; regenerating them with `python scripts/generate-icons.py` optionally needs Pillow.
 
+For notification changes, use the [isolated Windows acceptance instructions](docs/NOTIFICATIONS.md). They distinguish automated failure/retry checks, installed synthetic tests and the unchanged production installation. The test installer uses a separate identity and configuration.
+
 ## Data and limitations
 
 Settings and reminder deduplication records stay in the application's per-user data folder. Account identities are hashed in reminder keys. No quota history, email address, auth file, chat content or raw app-server output is saved by Gauge. Settings are written after changes; corrupt existing files are preserved and reported instead of silently overwritten.
