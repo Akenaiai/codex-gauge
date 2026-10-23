@@ -103,12 +103,12 @@ test('failed announcement stays eligible after newsSeen persists, but outages an
   assert.equal(newsPlan(confirmed, {}, {}, null, NOW).alerts.length, 0);
 });
 test('global activation queues cold-start and early second-instance events until the panel exists', async () => {
-  const app = new EventEmitter(); let clsid, handler, opens = 0;
+  const app = new EventEmitter(); let clsid, handler, opens = 0, initialized = 0;
   app.setToastActivatorCLSID = value => { clsid = value; }; app.whenReady = () => Promise.resolve();
-  const Notification = { handleActivation: fn => { handler = fn; fn({ type: 'click' }); } };
+  const Notification = { handleActivation: fn => { handler = fn; fn({ type: 'click' }); }, isSupported: () => { initialized++; return true; } };
   const activation = configureActivation({ app, Notification, platform: 'win32', open: () => opens++ });
   assert.equal(clsid, TOAST_CLSID); assert.match(clsid, /^\{[a-f0-9-]{36}\}$/i);
-  app.emit('second-instance'); await Promise.resolve(); assert.equal(opens, 0);
+  app.emit('second-instance'); await Promise.resolve(); assert.equal(opens, 0); assert.equal(initialized, 1);
   activation.ready(); assert.equal(opens, 1);
   handler({ type: 'click' }); assert.equal(opens, 2);
   app.emit('second-instance'); assert.equal(opens, 3);

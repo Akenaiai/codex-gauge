@@ -83,6 +83,9 @@ log('start', { packaged: E.app.isPackaged, electron: process.versions.electron, 
 const main = new Module(filename, module); main.filename = filename; main.paths = Module._nodeModulePaths(path.dirname(filename));
 main._compile(fs.readFileSync(filename, 'utf8') + '\nmodule.exports = { action, get panel() { return panel; }, get store() { return store; } };', filename);
 access = main.exports;
+E.app.on('second-instance', () => {
+  log('second_instance'); setTimeout(() => log('panel_after_second_instance', panelState()), 500);
+});
 let busy = false;
 const commandFile = path.join(directory, 'command.json');
 const control = setInterval(async () => {

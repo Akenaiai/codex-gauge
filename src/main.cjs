@@ -18,7 +18,7 @@ app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
 const openNotificationPanel = () => { pinnedPanel = true; openPanel(true, true); panel.focus(); };
 const primary = app.requestSingleInstanceLock();
-const activation = primary ? configureActivation({ app, Notification, open: openNotificationPanel }) : null;
+const activation = primary ? configureActivation({ app, Notification, open: openNotificationPanel, platform: demo ? 'preview' : process.platform }) : null;
 if (!primary) app.quit();
 else app.whenReady().then(start);
 let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;

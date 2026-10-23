@@ -9,7 +9,12 @@ function configureActivation({ app, Notification, open, platform = process.platf
   app.on('second-instance', activate);
   if (platform === 'win32') {
     app.setToastActivatorCLSID(TOAST_CLSID);
-    app.whenReady().then(() => Notification.handleActivation(activate));
+    app.whenReady().then(() => {
+      Notification.handleActivation(activate);
+      // Electron 44 initializes the COM presenter lazily. Historical clicks must
+      // work even when every reminder switch is off and no new toast is created.
+      Notification.isSupported();
+    });
   }
   return { ready() { ready = true; if (pending) { pending = false; open(); } } };
 }
