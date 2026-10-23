@@ -194,9 +194,19 @@
   function panelMarkup() {
     return `<section class="panel"><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
       ${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
-      <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
+      <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
       ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
+  }
+  function notificationNotice() {
+    const d = state.notificationDelivery;
+    if (!d) return '';
+    const messages = [];
+    if (d.failed > d.exhausted) messages.push(t('系统通知发送失败，将在提醒仍有效时有限重试。', 'A system notification failed. Limited retries continue while the reminder is eligible.'));
+    if (d.exhausted) messages.push(t('有系统通知连续发送失败，已达到 3 次上限。请检查 Windows 通知设置，并在面板查看提醒。', 'A system notification reached the three-attempt limit. Check Windows notification settings and view reminders in the panel.'));
+    if (d.unknown) messages.push(t('有系统通知的送达结果未知，自动重发已暂停。请在面板查看提醒。', 'Delivery of a system notification is unknown. Automatic resend is paused. View reminders in the panel.'));
+    if (d.storageError) messages.push(t('通知状态未能保存，请检查本机存储。', 'Notification status could not be saved. Check local storage.'));
+    return messages.map(message => `<p class="notice warn" role="status">${message}</p>`).join('');
   }
   function render(force = false) {
     const key = JSON.stringify([state, screenName, details, toast, Math.floor(Date.now() / 60000)]);

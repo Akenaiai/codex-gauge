@@ -9,23 +9,27 @@ const { createStartup } = require('./startup.cjs');
 const { QuotaService } = require('./cli.cjs');
 const { ResetFeed, PAGE } = require('./reset-feed.cjs');
 const { resetAlerts, newsPlan } = require('./reminders.cjs');
+const { NotificationDelivery, configureActivation } = require('./notifications.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
 app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
-if (!app.requestSingleInstanceLock()) app.quit();
+const openNotificationPanel = () => { pinnedPanel = true; openPanel(true, true); panel.focus(); };
+const primary = app.requestSingleInstanceLock();
+const activation = primary ? configureActivation({ app, Notification, open: openNotificationPanel }) : null;
+if (!primary) app.quit();
 else app.whenReady().then(start);
 let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
-let update = { state: 'idle' }, startup, startupError = false;
+let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
 function state() {
   return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
-    settingsError: store.error, startupError, host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
+    settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
     resetFeed: resetFeed.state(), update, version: app.getVersion(), demo };
 }
 function broadcast() { for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state()); }
@@ -202,17 +206,24 @@ async function action(name, value) {
   return { ok: true };
 }
 function processResetReminders() {
-  if (demo) return;
+  if (demo || quitting || !quota.active) return;
   const snapshot = quota.status === 'ready' ? quota.snapshot : null;
-  const plan = newsPlan(resetFeed.state(), store.newsSeen, store.ledger, snapshot);
+  const plan = newsPlan(resetFeed.state(), store.newsSeen, store.ledger, snapshot, Date.now(), store.deliveries);
   const seenChanged = JSON.stringify(plan.seen) !== JSON.stringify(store.newsSeen);
-  store.newsSeen = plan.seen;
   const alerts = store.settings.resetReminders && Notification.isSupported()
     ? [...resetAlerts(snapshot, quota.accountKey, store.ledger), ...plan.alerts] : [];
   if (!alerts.length && !seenChanged) return;
-  for (const alert of alerts) store.ledger[alert.key] = alert.expiresAt;
-  for (const [key, expiry] of Object.entries(store.ledger)) if (expiry < Date.now()) delete store.ledger[key];
-  try { store.save(); } catch { store.error = true; return; }
+  const previousSeen = store.newsSeen, added = [];
+  store.newsSeen = plan.seen;
+  // Persist discovery together with the baseline so a failed first submission is retryable.
+  for (const alert of alerts) if (!store.deliveries[alert.key]) {
+    store.deliveries[alert.key] = { status: 'queued', attempts: 0, expiresAt: alert.expiresAt, nextAt: 0 };
+    added.push(alert.key);
+  }
+  try { if (seenChanged || added.length) store.save(); } catch {
+    store.newsSeen = previousSeen; for (const key of added) delete store.deliveries[key];
+    store.error = true; return;
+  }
   for (const alert of alerts) {
     let title, body;
     if (alert.event) {
@@ -228,15 +239,19 @@ function processResetReminders() {
       title = text('额度即将周期重置', 'Usage window resets soon');
       body = text(`${label}还有约 ${alert.minutes} 分钟重置，剩余 ${alert.remaining}%。可先安排待办任务，使用重置卡前先核对。`, `${label} resets in about ${alert.minutes} minutes; ${alert.remaining}% remains. Plan pending work and check before using a reset credit.`);
     }
-    try {
-      const notification = new Notification({ title, body, silent: true });
-      notification.on('click', () => { pinnedPanel = true; openPanel(true, true); });
-      notification.show();
-    } catch { store.error = true; }
+    delivery.send(alert, { title, body, silent: true });
+  }
+}
+function processCreditReminders() {
+  if (demo || quitting || !quota.active || !store.settings.notifications || quota.status !== 'ready') return;
+  for (const alert of creditAlerts(quota.snapshot, quota.accountKey, store.ledger)) {
+    delivery.send(alert, { title: text('重置机会即将到期', 'Reset credit expiring'),
+      body: text(`有一张重置卡将在约 ${alert.hours} 小时内到期。`, `A reset credit expires in about ${alert.hours} hours.`), silent: true });
   }
 }
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
+  delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
     try { await startup.set(true); } catch { startupError = true; }
@@ -256,16 +271,7 @@ async function start() {
     return action(name, value);
   });
   quota.on('state', () => {
-    if (!demo && store.settings.notifications && quota.status === 'ready' && Notification.isSupported()) {
-      for (const alert of creditAlerts(quota.snapshot, quota.accountKey, store.ledger)) {
-        // Persist before sending, so restarting never repeats a successfully recorded reminder.
-        store.ledger[alert.key] = alert.expiresAt;
-        for (const [key, expiry] of Object.entries(store.ledger)) if (expiry < Date.now()) delete store.ledger[key];
-        try { store.save(); new Notification({ title: text('重置机会即将到期', 'Reset credit expiring'),
-          body: text(`有一张重置卡将在约 ${alert.hours} 小时内到期。`, `A reset credit expires in about ${alert.hours} hours.`), silent: true }).show(); }
-        catch { store.error = true; }
-      }
-    }
+    processCreditReminders();
     processResetReminders();
     broadcast();
   });
@@ -288,8 +294,9 @@ async function start() {
       broadcast();
     }, 2000);
   }
-  app.on('second-instance', () => { pinnedPanel = true; openPanel(true, true); });
+  reminderTimer = setInterval(() => { processCreditReminders(); processResetReminders(); }, 30000);
+  activation.ready();
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });

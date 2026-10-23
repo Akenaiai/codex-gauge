@@ -4,10 +4,10 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const resetModel = require('../src/ui/reset-model.js');
 const NOW = 1800000000000;
-async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400000, newsStatus = 'announced', kind = 'direct_reset', precision = 'deadline', sourceStatus = 'ready', creditHours = null, view = 'panel' } = {}) {
+async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400000, newsStatus = 'announced', kind = 'direct_reset', precision = 'deadline', sourceStatus = 'ready', creditHours = null, view = 'panel', notificationDelivery } = {}) {
   const app = { innerHTML: '' };
   const weekly = { remaining: 80, minutes: 10080, resetsAt: NOW + 5400000 };
-  const state = { settings: { language, resetNews: true, resetReminders: true }, dark: true, status,
+  const state = { settings: { language, resetNews: true, resetReminders: true }, dark: true, status, notificationDelivery,
     snapshot: { windows: [weekly], weekly, credits: creditHours == null ? [] : [{ expiresAt: NOW + creditHours * 3600000 }], creditCount: creditHours == null ? 0 : 1, fetchedAt: NOW }, host: { platform: 'win32', anchored: true },
     update: { state: 'idle' }, version: '0.2.0', resetFeed: { status: sourceStatus, fetchedAt: NOW, checkedAt: NOW,
       events: [{ id: 'demo', type: kind, status: newsStatus, kindKnown: true, scopeKnown: false, precision, until, updatedAt: NOW, confirmation: 'source_post', sourceUrl: 'https://x.com/example/status/123' }] } };
@@ -20,6 +20,12 @@ async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400
   await Promise.resolve();
   return app.innerHTML;
 }
+test('notification failure, exhaustion and uncertain delivery have distinct bilingual notices', async () => {
+  const notificationDelivery = { failed: 2, exhausted: 1, unknown: 1, storageError: true };
+  const cn = await render({ notificationDelivery }), en = await render({ language: 'en', notificationDelivery });
+  for (const text of ['有限重试', '3 次上限', '送达结果未知', '通知状态未能保存']) assert.ok(cn.includes(text));
+  for (const text of ['Limited retries', 'three-attempt limit', 'notification is unknown', 'could not be saved']) assert.ok(en.includes(text));
+});
 test('Chinese and English show countdown, balance and eligibility uncertainty together', async () => {
   const cn = await render();
   for (const text of ['还有 1 小时 30 分钟', '剩余 80%', '预告最晚', '适用账户范围尚未明确', 'AIHOT 整理']) assert.ok(cn.includes(text), text);
