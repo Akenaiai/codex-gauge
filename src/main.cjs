@@ -23,6 +23,7 @@ if (!primary) app.quit();
 else app.whenReady().then(start);
 let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
+let badgeRaisedAt = 0;
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
@@ -67,8 +68,18 @@ function layout() {
 function updateVisibility() {
   if (quitting) return;
   const visible = demo || host.exists && (store.settings.topmost ? (host.anchored || hadAnchor || store.settings.floating) : host.anchored && !host.minimized && host.foreground);
-  if (visible) { layout(); if (!badge.isVisible()) badge.showInactive(); }
-  else { badge.hide(); if (!forcedPanel) closePanel(); }
+  if (visible) {
+    layout();
+    const wasVisible = badge.isVisible();
+    if (!wasVisible) badge.showInactive();
+    // Windows can leave a visible, topmost-marked badge behind the host.
+    // Repair actual order without activating the badge or changing preferences.
+    if (!wasVisible || Date.now() - badgeRaisedAt >= 2000) {
+      badge.moveTop();
+      if (panel.isVisible()) panel.moveTop();
+      badgeRaisedAt = Date.now();
+    }
+  } else { badgeRaisedAt = 0; badge.hide(); if (!forcedPanel) closePanel(); }
   quota.setActive(!!host.exists || forcedPanel || demo);
   resetFeed.setActive(!demo && store.settings.resetNews && (!!host.exists || forcedPanel));
 }

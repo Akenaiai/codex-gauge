@@ -1,6 +1,22 @@
 # Verification / 验证记录
 
-Version: 0.2.1. Date: 2026-10-22. Platform: Windows x64.
+Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
+
+## 0.2.2 combined repairs / 通知与窗口层级合并修复
+
+- Combines the notification delivery/activation repair and badge window-order recovery. All 45 automated checks passed, including acknowledgement-based persistence, synchronous/asynchronous failures, bounded restart-persistent retries, unknown delivery, baseline recovery, early activation, bilingual notices and the original 0.2.1 quota/urgency presentation. The native build and real read-only quota smoke passed; no model requests were made.
+- The separate Windows field evidence below remains valid within its recorded scope: real test notification delivery and retained-notification opening after restart, and the daily installation's badge ordering/focus recovery. These observations are not a claim that every final-release notification interaction was re-tested.
+- Full cold-launch clicking, native global-callback/focus evidence, all-reminder-switches-off field clicking, naturally eligible 2h/1h events, actual replenishment, sleep/sign-in/Focus Assist and Mac remain pending. The user chose to defer cold-launch clicking; release preparation does not change that decision.
+- Production packaging excludes the acceptance entry point, its installer hooks, temporary profiles and personal settings. Release artifacts carry the source commit and SHA-256 checksums. The existing unsigned-Windows distribution and macOS limitations remain unchanged.
+- 中文：本轮将两项修复合并至 0.2.2，45 项自动检查及只读连接通过；真实通知和窗口显示的既有实测证据按各自范围保留。冷启动通知点击与自然事件等仍待现场验证，不合并写成全部验收通过。
+
+## 2026-10-23 badge window-order repair / 小仪表窗口层级修复
+
+- A real Windows failure was captured with Codex in the foreground, the avatar anchored, and Keep on top disabled. Electron reported the badge visible and always-on-top, and its renderer produced valid pixels, but native window ordering placed it behind Codex. The window at the badge's center was Codex. Calling `moveTop()` restored the badge to the actual foreground layer while Codex retained keyboard focus; no preference changed. This establishes a window-order failure, not an account-reading or avatar-location failure.
+- The repair raises the badge immediately on showing it and refreshes order at most once every two seconds while the existing visibility rule permits it. It leaves an open usage panel above the badge, keeps normal-mode hiding when Codex loses the foreground, and does not activate or focus the badge. All 32 checks passed: the existing 28 plus four targeted visibility/order cases. These four checks failed on the original implementation before the fix.
+- After a temporary live-process repair, a local 0.2.1 hotfix installer was built from `abc4427` and installed successfully (exit 0). The updated application was restarted, and its installed main matched the fixed source byte for byte. Native ordering and the point hit test then identified the new badge above Codex, with Codex still in the foreground. Keep on top remained disabled, runtime preferences matched the saved file, and the settings-file SHA-256 was unchanged through installation. The install was launched from the original application's environment after checking the settings hash, so MSIX-redirection did not substitute the Codex-launched process's other settings view. The original installer and settings backup were retained locally.
+- Both Windows CI runs for `abc4427` passed. Source work is isolated on `codex/badge-window-order` ([draft PR #2](https://github.com/Akenaiai/codex-gauge/pull/2)), separately from the notification repair branch. This is a locally installed hotfix with the same runtime version, not a newly published GitHub release; the existing public 0.2.1 release assets remain unchanged. No model requests or quota-spending operations were used.
+- 中文结论：已确认小仪表被压到 Codex 后面。已更新本机 0.2.1 修复版并重启验证，原生顺序与命中检查均确认仪表在上、Codex 保持焦点；设置文件哈希未变，非置顶偏好保留。32 项检查和 Windows CI 通过。源码在独立草稿 PR #2，GitHub 正式发行附件尚未更新。
 
 ## 2026-10-23 notification repair candidate / 通知修复候选
 

@@ -1,6 +1,6 @@
 # Notification repair and Windows acceptance / 通知修复与 Windows 验收
 
-This branch follows the 0.2.1 baseline. It does not change quota data, spend credits or publish a new release.
+Version 0.2.2 combines the notification and badge window-order repairs. It preserves account data and preferences and makes no model requests.
 
 ## Delivery and activation
 
@@ -30,7 +30,7 @@ Build a separate acceptance-only NSIS application:
 ```powershell
 npm run build:native
 node node_modules/electron-builder/cli.js --config scripts/notification-acceptance.build.cjs --win nsis --x64
-$qaSetup = Join-Path (Get-Location) '.local/notification-acceptance-build/Codex Gauge Acceptance Setup 0.2.1.exe'
+$qaSetup = Join-Path (Get-Location) '.local/notification-acceptance-build/Codex Gauge Acceptance Setup 0.2.2.exe'
 $qaInstall = Join-Path $env:LOCALAPPDATA 'Programs/Codex Gauge Acceptance'
 $qaResult = Start-Process -FilePath $qaSetup -ArgumentList '/S', "/D=$qaInstall" -WindowStyle Hidden -Wait -PassThru
 if ($qaResult.ExitCode -ne 0) { throw 'Acceptance installer failed' }
