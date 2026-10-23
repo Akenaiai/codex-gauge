@@ -2,6 +2,14 @@
 
 Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
 
+## 0.2.2 combined repairs / 通知与窗口层级合并修复
+
+- Combines the notification delivery/activation repair and badge window-order recovery. All 45 automated checks passed, including acknowledgement-based persistence, synchronous/asynchronous failures, bounded restart-persistent retries, unknown delivery, baseline recovery, early activation, bilingual notices and the original 0.2.1 quota/urgency presentation. The native build and real read-only quota smoke passed; no model requests were made.
+- The separate Windows field evidence below remains valid within its recorded scope: real test notification delivery and retained-notification opening after restart, and the daily installation's badge ordering/focus recovery. These observations are not a claim that every final-release notification interaction was re-tested.
+- Full cold-launch clicking, native global-callback/focus evidence, all-reminder-switches-off field clicking, naturally eligible 2h/1h events, actual replenishment, sleep/sign-in/Focus Assist and Mac remain pending. The user chose to defer cold-launch clicking; release preparation does not change that decision.
+- Production packaging excludes the acceptance entry point, its installer hooks, temporary profiles and personal settings. Release artifacts carry the source commit and SHA-256 checksums. The existing unsigned-Windows distribution and macOS limitations remain unchanged.
+- 中文：本轮将两项修复合并至 0.2.2，45 项自动检查及只读连接通过；真实通知和窗口显示的既有实测证据按各自范围保留。冷启动通知点击与自然事件等仍待现场验证，不合并写成全部验收通过。
+
 ## 2026-10-23 badge window-order repair / 小仪表窗口层级修复
 
 - A real Windows failure was captured with Codex in the foreground, the avatar anchored, and Keep on top disabled. Electron reported the badge visible and always-on-top, and its renderer produced valid pixels, but native window ordering placed it behind Codex. The window at the badge's center was Codex. Calling `moveTop()` restored the badge to the actual foreground layer while Codex retained keyboard focus; no preference changed. This establishes a window-order failure, not an account-reading or avatar-location failure.
