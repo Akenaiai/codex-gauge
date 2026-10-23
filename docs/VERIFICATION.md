@@ -2,6 +2,13 @@
 
 Version: 0.2.1. Date: 2026-10-22. Platform: Windows x64.
 
+## 2026-10-23 badge window-order repair / 小仪表窗口层级修复
+
+- A real Windows failure was captured with Codex in the foreground, the avatar anchored, and Keep on top disabled. Electron reported the badge visible and always-on-top, and its renderer produced valid pixels, but native window ordering placed it behind Codex. The window at the badge's center was Codex. Calling `moveTop()` restored the badge to the actual foreground layer while Codex retained keyboard focus; no preference changed. This establishes a window-order failure, not an account-reading or avatar-location failure.
+- The repair raises the badge immediately on showing it and refreshes order at most once every two seconds while the existing visibility rule permits it. It leaves an open usage panel above the badge, keeps normal-mode hiding when Codex loses the foreground, and does not activate or focus the badge. All 32 checks passed: the existing 28 plus four targeted visibility/order cases. These four checks failed on the original implementation before the fix.
+- The same visibility repair was applied to the existing running process without restarting it; the settings-file hash was unchanged and Keep on top remained off. This live-process repair lasts for that process. The installed 0.2.1 package has not been replaced; restarting it loads the old packaged implementation until a fixed installer is adopted. Source work is isolated on `codex/badge-window-order`, separately from the notification repair branch.
+- 中文结论：已实测确认是小仪表被压到 Codex 后面，抬回窗口层级后显示恢复且 Codex 保持焦点。当前实例已补自动恢复，原偏好未改；32 项检查通过。安装包仍为原 0.2.1，持久安装更新与当前进程修复分别记录。
+
 ## 0.2.1 visual reminder priority / 提醒视觉优先级
 
 - Fresh pending announcements and imminent scheduled resets render before the dials with a stronger amber surface, border, heading and timing. Expiring available credits render first in red within 48 hours; within 24 hours the label and border become stronger. The small gauge prioritizes the red credit marker over amber reset markers. Historical/stale messages and distant/elapsed credits do not gain urgency styling.
