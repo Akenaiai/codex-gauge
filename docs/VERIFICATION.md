@@ -86,3 +86,10 @@ Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
 - Update checking is manual and opens the release download page. Automatic installation is not implemented in this version.
 
 中文说明：原版额度读取、头像定位、双语、保存、拖动和归位的验证保留。0.1.1 新增独立 Windows 启动助手，已真实查明 MSIX 设置目录重定向导致的读取差异，验证首次迁移、Windows 后台任务拉起刻度及意外退出后的恢复。12 项自动检查通过。尚未通过重新登录 Windows 或再次更新 Codex 做完整现场验证，也不把配置成功当作这些场景已通过。Mac 尚未实测；安装包未代码签名；构建期依赖告警及其他限制如上。
+
+## 0.2.3 offline credit-expiry display / 断连临期显示
+
+- Disconnects and stale ready readings retain red credit-expiry indicators and the priority card for the last known unexpired credit. Both languages label the observation time and state that current availability awaits refresh. The badge tooltip also identifies the last reading.
+- Fresh observations clear the last-reading label; used or missing credits disappear after refresh, expired deadlines cease to be upcoming, and account-switch snapshot clearing remains in place. No stale snapshot can trigger a new expiry notification.
+- 47 automated checks pass, including offline/timeout/aged-ready panel and badge renderings in both languages, time boundaries, missing credits and existing account-switch isolation. macOS and naturally occurring system notification delivery retain their existing field-test limits.
+- 断连或读数变旧时保留未到期卡片的红色提醒，显示上次数据时间及可用情况待确认；恢复刷新后以新数据为准。47 项检查通过，覆盖中英文界面、到期边界及原有账号切换隔离。自然系统通知与 Mac 保留原待验边界。

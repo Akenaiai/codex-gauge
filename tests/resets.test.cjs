@@ -108,12 +108,17 @@ test('new reminder preferences preserve existing choices and support independent
   assert.equal(s.notifications, false); assert.equal(s.resetReminders, false); assert.equal(s.resetNews, false); assert.equal(s.autostart, true);
   assert.equal(cleanSettings().resetReminders, true);
 });
-test('credit visual urgency uses 48h/24h boundaries and requires fresh available data', () => {
+test('credit visual urgency uses 48h/24h boundaries and retains last known expiry while distinguishing stale data', () => {
   const snapshot = hours => ({ ...quota(), credits: [{ expiresAt: NOW + hours * HOUR }] });
   assert.equal(expiringCredit(snapshot(48), true, NOW).critical, false);
   assert.equal(expiringCredit(snapshot(24), true, NOW).critical, true);
   assert.equal(expiringCredit(snapshot(49), true, NOW), null);
   assert.equal(expiringCredit(snapshot(0), true, NOW), null);
-  assert.equal(expiringCredit(snapshot(1), false, NOW), null);
-  assert.equal(expiringCredit({ ...snapshot(1), fetchedAt: NOW - 121000 }, true, NOW), null);
+  assert.equal(expiringCredit(snapshot(1), false, NOW).stale, true);
+  assert.equal(expiringCredit({ ...snapshot(1), fetchedAt: NOW - 121000 }, true, NOW).stale, true);
+  assert.equal(expiringCredit(snapshot(1), true, NOW).stale, false);
+  assert.equal(expiringCredit(null, false, NOW), null);
+  assert.equal(expiringCredit({ ...snapshot(1), credits: [] }, true, NOW), null);
+  assert.equal(expiringCredit({ ...snapshot(1), fetchedAt: NaN }, false, NOW), null);
+  assert.equal(expiringCredit({ ...snapshot(1), fetchedAt: NOW + 1 }, false, NOW), null);
 });

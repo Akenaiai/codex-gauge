@@ -101,7 +101,7 @@
     const p = primary(), value = p?.remaining ?? 0, weekly = state.snapshot?.weekly;
     const color = p && value <= 10 ? 'var(--danger)' : 'var(--accent)';
     const expiry = expiringCredit(), reminder = resetAttention() || pendingAnnouncement();
-    const reminderLabel = expiry ? t('重置卡即将到期，展开查看', 'Reset credit expiring; open for details') : t('有重置提醒，展开查看', 'Reset reminder; open for details');
+    const reminderLabel = expiry ? (expiry.stale ? t('重置卡即将到期（上次数据），展开查看', 'Reset credit expiring (last reading); open for details') : t('重置卡即将到期，展开查看', 'Reset credit expiring; open for details')) : t('有重置提醒，展开查看', 'Reset reminder; open for details');
     return `<button class="micro ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(expiry || reminder ? reminderLabel : t('查看 Codex 额度', 'View Codex usage'))}" title="${esc((expiry || reminder ? reminderLabel + ' · ' : '') + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
       <svg viewBox="0 0 46 46" aria-hidden="true"><path d="${arc(19.5, 100, 23)}" fill="none" stroke="var(--line)" stroke-width="1.5"/>
       <path d="${arc(19.5, value, 23)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
@@ -130,11 +130,14 @@
   }
   function creditCard(s) {
     const expiry = expiringCredit();
+    const lastReading = state.status !== 'ready' || !window.resetModel.freshQuota(s, Date.now());
+    const recordedAt = Number.isFinite(s.fetchedAt) ? new Date(s.fetchedAt).toLocaleString(state.settings.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
     return `<div class="credit-card ${expiry ? 'expiring' : ''} ${expiry?.critical ? 'critical' : ''}" ${expiry ? 'role="status"' : ''}><span class="ticket-icon">${icon(expiry ? 'alert' : 'ticket')}</span><div class="credit-info">
       ${expiry ? `<div class="expiry-label">${expiry.critical ? t('重置卡即将失效', 'RESET CREDIT EXPIRES SOON') : t('重置卡临期提醒', 'RESET CREDIT EXPIRING')}<span>${expiry.critical ? t('24 小时内', 'WITHIN 24H') : t('48 小时内', 'WITHIN 48H')}</span></div>` : ''}
+      ${lastReading ? `<p class="credit-last-reading">${esc(t(`上次数据 · ${recordedAt}，实际可用情况待刷新确认`, `Last reading · ${recordedAt}; availability awaiting refresh`))}</p>` : ''}
       <div class="credit-title"><strong>${s.creditCount ?? '—'}</strong>${t('次重置机会', 'reset credits')}</div>
       <div class="credit-caption">${s.credits.length ? creditExpiry(expiry?.expiresAt || s.credits[0].expiresAt) : s.creditCount == null ? t('接口尚未提供此信息', 'Not provided by the service') : t('仅查看，不自动使用', 'Read-only. Never used automatically.')}</div>
-      ${expiry ? `<p class="expiry-guidance">${t('请结合额度重置时间，尽快安排使用。', 'Plan its use soon, taking the usage reset time into account.')}</p>` : ''}</div>
+      ${expiry ? `<p class="expiry-guidance">${expiry.stale ? t('上次记录的到期时间仍在倒计时，连接恢复后会重新核对。', 'The last recorded expiry keeps counting down and will be checked when reconnected.') : t('请结合额度重置时间，尽快安排使用。', 'Plan its use soon, taking the usage reset time into account.')}</p>` : ''}</div>
       ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
       ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}`;
   }
