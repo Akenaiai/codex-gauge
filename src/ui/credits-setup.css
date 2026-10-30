@@ -6,4 +6,3 @@
 .setup-tools{margin:0 -8px;padding:0 8px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.setup-tool{padding:12px 4px;border-bottom-color:color-mix(in srgb,var(--line) 80%,transparent);font-size:12px}.setup-tool small,.user-date-row small{font-size:10px}.setup-tool button{border-radius:7px;font-size:11px}
 #setup-dialog input[type=checkbox],#date-entry-dialog input[type=checkbox]{flex-shrink:0}.date-entry-grid{padding:2px 0}.date-entry-grid label{min-width:0}.date-entry-grid input,.date-entry-grid select{min-height:40px;background:var(--bg)}.user-date-section{border-top-color:var(--line)}.user-date-row{padding:13px 0}.user-date-row button{flex-shrink:0}
 @media(max-width:600px){.setup-counts{gap:7px}.setup-counts>span{padding:9px}.setup-counts strong{font-size:23px}.setup-heading,.user-date-heading{gap:10px}}
-

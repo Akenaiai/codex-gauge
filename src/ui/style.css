@@ -41,4 +41,3 @@ body.light .micro{background:radial-gradient(circle at 42% 35%,#fff 0,var(--bg) 
 .setting{padding:12px 0}.toggle{width:32px;height:18px}.toggle:after{width:12px;height:12px}.toggle[aria-checked=true]:after{transform:translateX(14px)}
 .toast{box-shadow:0 8px 24px #0005;border:1px solid color-mix(in srgb,var(--bg) 15%,transparent)}
 @media(prefers-reduced-motion:no-preference){.micro{transition:border-color .16s,box-shadow .16s}.dial .dial-value{transition:color .16s}}
-

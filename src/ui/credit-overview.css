@@ -135,4 +135,3 @@
 @media(max-width:760px){.glance-shell{display:block}.glance-shell .sidebar{width:auto;padding:10px 16px;gap:18px}.glance-shell .brand{padding-left:31px;font-size:20px}.glance-shell .brand:before{left:0;top:0;width:19px;height:19px}.glance-shell .nav button{min-height:36px;padding:9px}.glance-shell .main{padding:18px 16px}.overview-header h1{font-size:23px}.summary-tile{min-height:68px}.overview-row{min-height:66px}}
 @media(max-width:580px){.summary-tile{min-height:70px}.summary-tile:before{top:10px;bottom:10px}.summary-tile>strong{font-size:25px}.overview-columns,.overview-row{grid-template-columns:minmax(75px,1fr) minmax(84px,1fr) minmax(110px,1.4fr) 42px}.overview-row{padding-left:8px}.state-pill{font-size:9px}.detail-button{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.summary-tile,.overview-row{transition:none}}
-

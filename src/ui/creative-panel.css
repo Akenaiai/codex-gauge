@@ -19,4 +19,3 @@
 .creative-row.is-expiring{margin:0;padding:11px;border-left-width:3px;border-radius:12px;background:linear-gradient(120deg,var(--expiry-bg),color-mix(in srgb,var(--expiry-bg) 75%,var(--surface)))}.creative-row.is-expiring .creative-deadline{background:color-mix(in srgb,var(--expiry-bg) 65%,#0000)}.creative-row.is-expiring.is-critical{border-width:1px;border-left-width:4px}.creative-row.is-expiring .creative-status{background:color-mix(in srgb,var(--expiry-ink) 8%,transparent)}
 .creative-row.is-empty{background:transparent;box-shadow:none}.creative-row.is-empty .creative-amount{font-size:26px}.creative-row.is-empty .creative-deadline{background:transparent;padding-left:0;padding-right:0}
 .creative-panel .footer{min-height:42px}.creative-panel .footer>span{font-size:8px;text-align:center}.creative-panel .empty{min-height:260px}
-
