@@ -30,13 +30,13 @@
   function deadlines(records,rules,now){
     const out=[];
     for(const r of records)for(const original of r.pools||[]){
-      const p=effective(r,original,rules);
-      if(finite(p.amount)&&p.amount>0&&p.expiresAt>now)out.push({kind:'expiry',at:p.expiresAt,label:p.label,labelEn:p.labelEn,recordId:r.id,poolId:p.id,account:r.account,card:card(p),stale:!fresh(r,now),near:p.expiresAt-now<=7*DAY,dateOnly:false});
+      const p=effective(r,original,rules),rule=rules?.[r.id+'/'+p.id]||r.rules?.[r.id+'/'+p.id];
+      if(finite(p.amount)&&p.amount>0&&p.expiresAt>now)out.push({kind:'expiry',at:p.expiresAt,label:p.label,labelEn:p.labelEn,amount:p.amount,unit:p.unit,recordId:r.id,poolId:p.id,account:r.account,card:card(p),stale:!fresh(r,now),near:p.expiresAt-now<=7*DAY,dateOnly:false,source:rule?.expiresAt?'user':'upstream'});
       if(card(p)||p.entitlement==='not_in_plan'||toolsPool(p))continue;
-      if(p.resetsAt>now)out.push({kind:'reset',at:p.resetsAt,label:p.resetLabel||p.label,labelEn:p.resetLabelEn||p.labelEn,recordId:r.id,poolId:p.id,account:r.account,stale:!fresh(r,now),near:p.resetsAt-now<=2*DAY,dateOnly:false,policy:p.resetSource==='policy'});
+      if(p.resetsAt>now)out.push({kind:'reset',at:p.resetsAt,label:p.resetLabel||p.label,labelEn:p.resetLabelEn||p.labelEn,recordId:r.id,poolId:p.id,account:r.account,stale:!fresh(r,now),near:p.resetsAt-now<=2*DAY,dateOnly:false,policy:!rule?.resetsAt&&p.resetSource==='policy',source:rule?.resetsAt?'user':p.resetSource==='policy'?'policy':'upstream'});
       else if(!p.resetsAt&&/^\d{4}-\d{2}-\d{2}$/.test(p.resetDate||'')){
         const today=new Date(now),local=Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()),anchor=Date.parse(p.resetDate+'T12:00:00Z');
-        if(anchor>=local)out.push({kind:'reset',at:anchor,onDate:p.resetDate,dateOnly:true,label:p.label,labelEn:p.labelEn,recordId:r.id,poolId:p.id,account:r.account,stale:!fresh(r,now),near:anchor-local<=2.5*DAY,policy:true});
+        if(anchor>=local)out.push({kind:'reset',at:anchor,onDate:p.resetDate,dateOnly:true,label:p.label,labelEn:p.labelEn,recordId:r.id,poolId:p.id,account:r.account,stale:!fresh(r,now),near:anchor-local<=2.5*DAY,policy:p.resetSource==='policy',source:p.resetSource==='policy'?'policy':'upstream'});
       }
     }
     return out.sort((a,b)=>a.at-b.at);

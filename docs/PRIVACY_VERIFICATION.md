@@ -1,5 +1,13 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.3.7 follow-up / 倒计时升级复核（2026-10-30）
+
+The installer application payload matches the tested unpacked build; ZIP ASAR/MCP resources match. ASAR remains restricted to the existing source/assets/license allowlist, with no user settings, balances, imports, dates, credentials or browser profiles. Updated public images come from synthetic native fixtures. Countdown state is calculated locally from existing observations; no login, credential copying or increased upstream polling is added.
+
+152 package/source/document/image files are compared locally against existing account markers and credentials, including DPAPI sources, with no matches or plaintext output. Production installer-ASAR code also passes 18 isolated empty-profile checks. This targeted follow-up retains the stub/native-user and historical full-history limits below; it is not a new full-history or separate-Windows-account audit.
+
+中文：0.3.7包内容按原允许清单核对，未夹带个人设置、余额、日期、凭据或浏览器资料。152个包 / 源码 / 文档 / 合成图文件仅在本机与账号标记及在用凭据比对，无匹配且不回显秘密。实际安装器ASAR空白环境18项隔离通过；没有新建真实Windows账号，也没有重做历史全量审计。新增倒计时只用既有日期，未增加登录或上游查询。
+
 ## 0.3.6 follow-up / 创作翻面升级复核（2026-10-30）
 
 The actual installer contains 84 application-payload files and 49 ASAR paths. Its payload matches the tested unpacked build; ZIP ASAR/MCP resources match. Allowlist and private-data filename checks find no saved settings, balance/date imports, credentials or browser profiles. The public creative-face images are synthetic native-window fixtures, not personal screenshots. The new face preference and Suno readings remain per-user runtime data; Suno authentication stays with the existing MCP client.

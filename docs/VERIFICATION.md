@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.7 expiry priority and countdowns / 临期与倒计时（2026-10-30）
+
+- 145 automated checks pass. New cases cover seven-day boundaries, empty-last sorting, independent expiry/renewal selection, simultaneous countdowns, day-only precision, overdue forecasts, stale verification, source isolation for manual overrides, preservation of exact dates in the full center, and partial-pool vs. total highlighting.
+- 31 native packaged-window checks pass with isolated synthetic sources, including red expiry order, today-only precision, dual countdowns, consistent gray used-up rows, scoped bonus amounts, primary amount color, clock repaint without upstream queries, English/Chinese, a 320-pixel layout, flip/back, persistence, reduced motion and empty/error states. Dark Chinese and light English captures were inspected; public pictures remain synthetic.
+- Runtime source comparison, installer/ZIP inspection and an 18-check empty-profile run accompany the distribution. These isolated tests stub upstream connections, startup, host observation and notifications. Actual installation, existing preferences and live balances are checked separately; natural future notification delivery and Mac retain their field-test limits.
+
+145项自动检查、31项包内原生操作验证红色置顶、双倒计时、灰色用尽及日期精度。倒计时走动不增加查询频率，手填日期不冒充接口日期，分项到期不暗示总额失效。截图均为合成示例，真实安装和原偏好另行核对。
+
 ## 0.3.6 creative flip and Suno / 创作翻面与Suno（2026-10-30）
 
 - 134 automated checks pass, including creative-only filtering, coding/media date isolation, pool-named expiry, stale readings, separate Suno generation/download balances, public-identity changes, fixed read-only MCP calls and face preference validation. The existing original-gauge checks remain in the suite.

@@ -8,7 +8,7 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**当前版本 0.3.6：** 原小仪表展开后可翻到 **创作积分** 背面，快速查看生图、生视频、生音乐余量、读取时间和分项日期。编程额度保留在原面。Suno沿用已有MCP自动查询，生成积分与下载额度分开。[版本说明](docs/releases/0.3.6.md) · [额度中心进阶说明](docs/CREDIT_CENTER.md)。
+**当前版本 0.3.7：** 创作背面把临期积分标红置顶，同时显示到期与预计恢复倒计时，已用尽置灰排后。分项、账号和日期精度继续保留，原Codex仪表与Suno查询保持。[版本说明](docs/releases/0.3.7.md) · [进阶说明](docs/CREDIT_CENTER.md)。
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)
 
@@ -35,7 +35,7 @@
 
 从[发布页](https://github.com/Akenaiai/codex-gauge/releases)下载安装程序或绿色 ZIP。当前程序**没有 Windows 代码签名**，请核对来源和 SHA-256，不关闭系统保护。
 
-安装版选 `Codex.Gauge.Setup.0.3.6.exe`；免安装版选 `Codex.Gauge-0.3.6-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
+安装版选 `Codex.Gauge.Setup.0.3.7.exe`；免安装版选 `Codex.Gauge-0.3.7-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
 
 需要 Windows 10/11 x64。原 Codex 小仪表还需要 Codex 桌面客户端，以及已经安装并登录的[官方 Codex CLI](https://github.com/openai/codex)，由 CLI 提供本机登录和 Codex 额度数据。打开 Codex 后，仪表会定位到个人头像上方；其他已支持平台可通过自己的连接独立使用额度中心，暂时无法定位头像时仍可从托盘打开。
 

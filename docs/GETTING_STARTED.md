@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-For Windows 0.3.6. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+For Windows 0.3.7. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.6.exe`. For an installation-free launch, download `Codex.Gauge-0.3.6-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.7.exe`. For an installation-free launch, download `Codex.Gauge-0.3.7-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
@@ -31,6 +31,8 @@ Open **Details → Dates & source** for all pools and timestamps, or **Calendar*
 ### Preview only creative credits
 
 Hover over the small Codex badge to expand it, then click **Creative credits**. The card rotates to image, video and music balances with each source's read time and available dates. **Flip back** restores the original coding gauge. The selected face survives reopening; reduced-motion settings disable rotation. Used up and unread/stale stay distinct. Coding windows, search quotas, reset cards and download credits are excluded. The back's refresh queries creative sources; the credit center remains available for full details and date entry.
+
+Expiries within seven days move first in red; within 24 hours, or due today with date-only precision, the border is stronger. Used-up tools are gray at the end. Expiry and expected-renewal countdowns appear together. A date-only record uses days/today, with no invented clock time; hover for the full date and source. Reached forecasts require verification. A bonus expiry names its own amount; it does not mean the total balance expires. Stale/unmatched dates stay unconfirmed.
 
 ## 3. Which local connections are read
 

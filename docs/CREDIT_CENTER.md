@@ -2,6 +2,14 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.7: Expiry priority / 临期优先
+
+The creative preview uses a seven-day expiry threshold, independent of renewal proximity. Eligible positive/unknown expiry pools sort first by deadline; confirmed empty tools remain gray at the end. Stale or independent observations retain verification wording, not a current-availability claim. Primary amount highlighting requires both record ID and pool ID to match; a bonus expiry shows that pool and amount separately.
+
+The shared timing model preserves precision: exact epoch timestamps use minute-level countdowns, while `dateOnly` uses local calendar-day differences and never the internal ordering anchor as a provider instant. Expiry and renewal are selected independently, so both can be displayed even when many earlier expiry entries exist. Recent overdue forecasts remain bounded verification prompts. Absolute dates/source/account remain available in tooltips. Manual overrides annotate each date kind separately; a user expiry cannot relabel the upstream renewal or discard the exact time in the full center. Countdown repainting uses the existing UI clock and does not introduce upstream polling.
+
+中文：背面按7天内到期置顶并标红，恢复临近不当作到期，用尽置灰排后。到期和预计恢复分别选择、同时倒计时；准确时间按分钟，只有日期按日历天，不使用内部排序锚点编造时刻。过日预计仍需核实。主金额标红须同时匹配所示记录和积分池，部分赠金不代表全额到期；手填到期 / 恢复各自标注来源，原精确日期不丢失。倒计时不新增上游查询。
+
 ## 0.3.6: Creative flip face and Suno / 创作翻面与 Suno
 
 The expanded badge panel flips between the original Codex view and **Creative credits**. The latter filters to known image/video/music providers and explicit media-only entitlements. Coding windows, search quotas, cash balances, reset cards and downloads are excluded. Each row preserves its own reading timestamp and uncertainty; neither separate accounts nor generation/download pools are summed. Dates must belong to retained media pools; independent dates on a mixed coding/video provider require an explicit video label. Sub-pool dates name that pool. The 52-pixel badge behavior is preserved. `panelFace` is a validated local preference, and the hidden face is inert for keyboard/accessibility navigation. Reduced motion disables rotation.
