@@ -2,6 +2,14 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.8: Daily expiry suppression / 每日赠送到期静音
+
+Same-day daily gifts remain balances and date facts, but do not produce expiry notifications or priority/countdowns in compact overviews. Explicit `poolType` / `creditCadence` is normalized before persistence and propagated into events. `daily` denotes the daily same-day gift bucket; `monthly` normalizes to `subscription`. Explicit subscription/purchased/permanent metadata and stated multi-day validity prevent legacy daily-name misclassification. The current date alone is never sufficient for suppression.
+
+Unclassified user dates bound to a verified pool inherit that pool's type. The editor preselects known cadence and explains disabled daily expiry reminders; Calendar and MCP keep factual events with `daily: true`, `notify: false`. Explicit renewal reminders remain independent. The packaged MCP sidecar includes the shared cadence helper, so standalone reads preserve the same semantics. Historical dates and reminder receipts are not removed.
+
+中文：每日赠送、当天清零的类型不作到期提醒或临期排序，余额及日期不删。类型在清洗、绑定日期、界面和只读MCP中统一传播；月度、购买积分今天到期仍提醒。明确非每日类型、多日有效期优先，不靠“今天”判断。默认未分类的已核实绑定日期继承真实池类型，界面解释每日到期静音；恢复提醒独立保留。
+
 ## 0.3.7: Expiry priority / 临期优先
 
 The creative preview uses a seven-day expiry threshold, independent of renewal proximity. Eligible positive/unknown expiry pools sort first by deadline; confirmed empty tools remain gray at the end. Stale or independent observations retain verification wording, not a current-availability claim. Primary amount highlighting requires both record ID and pool ID to match; a bonus expiry shows that pool and amount separately.

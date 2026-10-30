@@ -1,6 +1,6 @@
 {
   "name": "codex-gauge",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "A desktop AI credit center with the original precision-styled Codex usage badge.",
   "main": "src/main.cjs",
   "author": "Aken",
@@ -35,6 +35,10 @@
       "THIRD_PARTY_NOTICES.md"
     ],
     "extraResources": [
+      {
+        "from": "src/ui/credit-cadence.js",
+        "to": "mcp/src/ui/credit-cadence.js"
+      },
       {
         "from": "src/credit-user-dates.cjs",
         "to": "mcp/src/credit-user-dates.cjs"

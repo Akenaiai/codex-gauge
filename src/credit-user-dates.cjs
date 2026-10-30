@@ -3,6 +3,7 @@
 const {forecastDates}=require('./credit-date-observations.cjs');
 const {hash}=require('./catalog.cjs');
 const {fresh}=require('./credit-model.cjs');
+const {effectiveType,isDailyCredit,suppressExpiry}=require('./ui/credit-cadence.js');
 const DAY=86400000;
 function calendarDate(value){return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&value>='2000-01-01'&&value<='2199-12-31'&&new Date(value+'T12:00:00Z').toISOString().slice(0,10)===value?value:null;}
 const label=value=>typeof value==='string'&&value.trim()&&value.trim().length<=80?value.trim():null;
@@ -27,7 +28,7 @@ function cleanUserDates(rows,now=Date.now()){
   return[...result.values()];
 }
 function activeUserDates(rows,records,now=Date.now()){
-  return cleanUserDates(rows,now).filter(row=>!row.recordId||records.some(r=>r.id===row.recordId&&r.provider===row.provider&&r.status!=='account_changed'&&r.identityVerified&&r.pools.some(p=>p.id===row.poolId)));
+  return cleanUserDates(rows,now).filter(row=>!row.recordId||records.some(r=>r.id===row.recordId&&r.provider===row.provider&&r.status!=='account_changed'&&r.identityVerified&&r.pools.some(p=>p.id===row.poolId))).map(row=>{const pool=records.find(r=>r.id===row.recordId)?.pools.find(p=>p.id===row.poolId);return{...row,poolType:effectiveType(row,pool)||row.poolType};});
 }
 function userDateEvents(rows,records=[],now=Date.now()){
   const d=new Date(now),today=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate());
@@ -37,11 +38,11 @@ function userDateEvents(rows,records=[],now=Date.now()){
     return dates.map(value=>{const days=Math.round((Date.parse(value.onDate+'T00:00:00Z')-today)/DAY);return{
       ...value,id:`user:${row.id}/${row.recordId?hash(row.recordId+'/'+row.poolId):'independent'}/${value.kind}/${value.onDate}`,userDateId:row.id,recordId:row.recordId||'user:'+row.id,poolId:row.poolId||row.id,
       provider:row.provider,label:row.label,labelEn:row.label,account:row.account,amount:value.estimated||!fresh(record,now)?null:pool?.amount??null,unit:pool?.unit||'credits',
-      at:Date.parse(value.onDate+'T12:00:00Z'),dateOnly:true,days,elapsed:days<0,stale:true,source:value.estimated?'user_schedule':'user',observedAt:row.updatedAt,notify:row.notify};});
+      at:Date.parse(value.onDate+'T12:00:00Z'),dateOnly:true,days,elapsed:days<0,stale:true,poolType:row.poolType,daily:isDailyCredit(row),source:value.estimated?'user_schedule':'user',observedAt:row.updatedAt,notify:row.notify&&!(value.kind==='expiry'&&isDailyCredit(row))};});
   });
 }
 function userDateAlerts(rows,records,now=Date.now()){
-  return userDateEvents(rows,records,now).filter(e=>e.notify&&e.days>=(e.estimated?-7:0)&&e.days<=(e.kind==='expiry'?7:2)&&(e.kind==='reset'||e.amount==null||e.amount>0)).map(e=>({...e,kind:'check_schedule',scheduleKind:e.kind,
+  return userDateEvents(rows,records,now).filter(e=>e.notify&&!suppressExpiry(e)&&e.days>=(e.estimated?-7:0)&&e.days<=(e.kind==='expiry'?7:2)&&(e.kind==='reset'||e.amount==null||e.amount>0)).map(e=>({...e,kind:'check_schedule',scheduleKind:e.kind,
     key:'center:user-date:'+hash(e.id)+':'+(e.days<0?'overdue':e.days===0?'on-date':e.days<=1?'1d':e.days<=3?'3d':'7d'),expiresAt:e.at+(e.estimated?8:2)*DAY}));
 }
 module.exports={calendarDate,validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts};

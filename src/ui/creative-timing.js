@@ -15,7 +15,7 @@
   }
   function selectDates(dates=[],now=Date.now()){
     const select=kind=>{
-      const entries=dates.filter(d=>d.kind===kind&&(kind!=='expiry'||d.amount==null||d.amount>0)).map(date=>({date,time:timing(date,now)})).filter(x=>x.time);
+      const entries=dates.filter(d=>d.kind===kind&&(kind!=='expiry'||!d.daily&&(d.amount==null||d.amount>0))).map(date=>({date,time:timing(date,now)})).filter(x=>x.time);
       // Retain a recent missed forecast as a verification prompt, never a grant.
       const overdue=kind==='reset'?entries.filter(x=>(x.date.estimated||x.date.policy)&&x.time.elapsed&&(x.time.dateOnly?x.time.days>=-7:x.time.remaining>=-7*DAY)):[];
       if(overdue.length)return overdue.sort((a,b)=>b.time.order-a.time.order)[0].date;
@@ -26,7 +26,7 @@
   }
   function priorityExpiry(dates=[],status,now=Date.now()){
     if(status==='empty')return null;
-    return dates.filter(d=>d.kind==='expiry'&&(d.amount==null||d.amount>0)&&timing(d,now)?.near).sort((a,b)=>timing(a,now).order-timing(b,now).order)[0]||null;
+    return dates.filter(d=>d.kind==='expiry'&&!d.daily&&(d.amount==null||d.amount>0)&&timing(d,now)?.near).sort((a,b)=>timing(a,now).order-timing(b,now).order)[0]||null;
   }
   return{timing,selectDates,priorityExpiry};
 });

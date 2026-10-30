@@ -20,7 +20,7 @@ function snapshot() {
 const tools=[
   {name:'gauge_inventory',description:'Read discovered AI tools and connection evidence. Configuration/cache is not proof of a working connection.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
   {name:'gauge_balances',description:'Read timestamped balances from Gauge. This does not refresh upstream. Unknown/stale values are explicit; different platforms are not added together.',inputSchema:{type:'object',properties:{provider:{type:'string',maxLength:80}},additionalProperties:false}},
-  {name:'gauge_events',description:'Read known credit expiry and renewal dates. Billing boundaries and expected renewal are not proof of account changes.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+  {name:'gauge_events',description:'Read known credit expiry and renewal dates. Billing boundaries and expected renewal are not proof of account changes. Daily-credit expiry facts have notify=false and are not expiry reminders.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
 ];
 async function handle(message){
   if(!message||message.jsonrpc!=='2.0'||message.id==null)return null;

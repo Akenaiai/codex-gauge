@@ -1,4 +1,4 @@
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.creditOverview=api;})(typeof window!=='undefined'?window:this,function(){
+(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./credit-cadence.js'):root.creditCadence);if(typeof module==='object'&&module.exports)module.exports=api;else root.creditOverview=api;})(typeof window!=='undefined'?window:this,function(cadence){
   'use strict';
   const DAY=86400000,FRESH=5*60000;
   const finite=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
@@ -31,7 +31,7 @@
     const out=[];
     for(const r of records)for(const original of r.pools||[]){
       const p=effective(r,original,rules),rule=rules?.[r.id+'/'+p.id]||r.rules?.[r.id+'/'+p.id];
-      if(finite(p.amount)&&p.amount>0&&p.expiresAt>now)out.push({kind:'expiry',at:p.expiresAt,label:p.label,labelEn:p.labelEn,amount:p.amount,unit:p.unit,recordId:r.id,poolId:p.id,account:r.account,card:card(p),stale:!fresh(r,now),near:p.expiresAt-now<=7*DAY,dateOnly:false,source:rule?.expiresAt?'user':'upstream'});
+      if(!cadence.isDailyCredit(p)&&finite(p.amount)&&p.amount>0&&p.expiresAt>now)out.push({kind:'expiry',at:p.expiresAt,label:p.label,labelEn:p.labelEn,amount:p.amount,unit:p.unit,recordId:r.id,poolId:p.id,account:r.account,card:card(p),stale:!fresh(r,now),near:p.expiresAt-now<=7*DAY,dateOnly:false,source:rule?.expiresAt?'user':'upstream'});
       if(card(p)||p.entitlement==='not_in_plan'||toolsPool(p))continue;
       if(p.resetsAt>now)out.push({kind:'reset',at:p.resetsAt,label:p.resetLabel||p.label,labelEn:p.resetLabelEn||p.labelEn,recordId:r.id,poolId:p.id,account:r.account,stale:!fresh(r,now),near:p.resetsAt-now<=2*DAY,dateOnly:false,policy:!rule?.resetsAt&&p.resetSource==='policy',source:rule?.resetsAt?'user':p.resetSource==='policy'?'policy':'upstream'});
       else if(!p.resetsAt&&/^\d{4}-\d{2}-\d{2}$/.test(p.resetDate||'')){
@@ -45,7 +45,7 @@
     const records=(tool.records||[]).filter(r=>r.status!=='account_changed'),summaries=records.map(r=>summarizeRecord(r,tool.id,rules,now));
     const ranked=summaries.slice().sort((a,b)=>({available:0,empty:1,unknown:2}[a.status]-{available:0,empty:1,unknown:2}[b.status])||Number(b.fresh)-Number(a.fresh));
     const selected=ranked[0],status=summaries.some(s=>s.status==='available')?'available':summaries.length&&summaries.every(s=>s.status==='empty')?'empty':'unknown';
-    const webDates=[...(tool.webDates||[]),...(tool.recordedDates||[])].filter(d=>['web','user','user_schedule'].includes(d.source)&&['expiry','reset'].includes(d.kind)&&d.days>=-7).map(d=>({...d,near:d.days>=(d.estimated?-1:0)&&d.days<=(d.kind==='expiry'?7:2)&&(d.kind==='reset'||d.amount==null||d.amount>0)}));
+    const webDates=[...(tool.webDates||[]),...(tool.recordedDates||[])].filter(d=>!cadence.suppressExpiry(d)&&['web','user','user_schedule'].includes(d.source)&&['expiry','reset'].includes(d.kind)&&d.days>=-7).map(d=>({...d,near:d.days>=(d.estimated?-1:0)&&d.days<=(d.kind==='expiry'?7:2)&&(d.kind==='reset'||d.amount==null||d.amount>0)}));
     const dates=[...deadlines(records,rules,now),...webDates].sort((a,b)=>a.at-b.at),near=dates.filter(d=>d.near),priority=near.find(d=>d.kind==='expiry')||near[0];
     return{tool,id:tool.id,name:tool.name,status,metric:selected?.metric||null,meter:selected?.meter??null,record:selected?.record||null,reason:selected?.reason??'missing',accountCount:records.length,availableAccounts:summaries.filter(s=>s.status==='available').length,dates,deadline:priority||dates[0]||null,urgent:near.length>0,urgentKind:priority?.kind||null,hasReading:records.length>0};
   }

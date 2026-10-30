@@ -1,5 +1,13 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.3.8 follow-up / 每日赠送静音复核（2026-10-30）
+
+The installer payload matches the tested unpacked build, and ZIP ASAR/MCP resources match. The new cadence helper is packaged as source and as a narrow MCP dependency, without user data. Allowlist/private-filename checks find no account settings, balances, private date imports, encrypted keys or browser profiles. Updated images are synthetic native fixtures.
+
+156 package/source/document/image files are compared locally against account markers and API/DPAPI credential sources, with no matches or plaintext output. Production installer-ASAR empty-profile execution passes 18 isolation checks; native startup, host and notifications remain stubbed. This is a targeted follow-up, retaining the historical full-history and separate-Windows-account limits below.
+
+中文：0.3.8增加的类型识别仅为源码与MCP依赖，未包含个人数据。156个包 / 源码 / 文档 / 合成图文件在本机与账号标记及在用凭据比对，无匹配、不回显秘密。安装器ASAR空白用户18项隔离通过；没有重做历史全量审计或新建真实Windows账号。
+
 ## 0.3.7 follow-up / 倒计时升级复核（2026-10-30）
 
 The installer application payload matches the tested unpacked build; ZIP ASAR/MCP resources match. ASAR remains restricted to the existing source/assets/license allowlist, with no user settings, balances, imports, dates, credentials or browser profiles. Updated public images come from synthetic native fixtures. Countdown state is calculated locally from existing observations; no login, credential copying or increased upstream polling is added.

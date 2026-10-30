@@ -1,5 +1,6 @@
 'use strict';
 const { hash } = require('./catalog.cjs');
+const {creditType,isDailyCredit,suppressExpiry}=require('./ui/credit-cadence.js');
 const FRESH_MS = 5 * 60000;
 const numeric = n => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 function time(v) { return Number.isSafeInteger(v) && v > 0 ? v : null; }
@@ -19,6 +20,7 @@ function cleanRecord(input, now = Date.now()) {
     return { id: p.id, label: String(p.label || p.id).slice(0, 100), labelEn: String(p.labelEn || p.label || p.id).slice(0, 100),
       unit: p.unit, amount, limit, expiresAt: time(p.expiresAt), resetsAt: time(p.resetsAt), periodStart: time(p.periodStart), periodEnd: time(p.periodEnd),
       resource:['image','video','music','downloads','tools'].includes(p.resource)?p.resource:null,
+      poolType:creditType(p),
       resetDate:calendarDate(p.resetDate),resetSource:p.resetSource==='policy'&&input.source==='api'?'policy':'upstream',
       resetLabel:typeof p.resetLabel==='string'?p.resetLabel.slice(0,100):null,resetLabelEn:typeof p.resetLabelEn==='string'?p.resetLabelEn.slice(0,100):null,
       dateSource: p.dateSource === 'user' ? 'user' : 'upstream', entitlement: ['available','exhausted','not_in_plan','unknown'].includes(p.entitlement) ? p.entitlement : null };
@@ -51,14 +53,14 @@ function events(records, rules = {}, now = Date.now()) {
       const at = kind === 'expiry' ? p.expiresAt : kind === 'reset' ? p.resetsAt||dateOnly&&Date.parse(p.resetDate+'T12:00:00Z') : p.periodEnd;
       if (!at || at < now - 7 * 86400000 || at > now + 366 * 86400000) continue;
       result.push({ id: `${record.id}/${p.id}/${kind}/${at}`, recordId: record.id, provider: record.provider, poolId: p.id,
-        label:kind==='reset'&&p.resetLabel||p.label,labelEn:kind==='reset'&&p.resetLabelEn||p.labelEn, amount: p.amount, unit: p.unit, kind, at, stale, elapsed:dateOnly?localDate(now)>p.resetDate:at<=now,dateOnly,onDate:dateOnly?p.resetDate:null,
-        source: kind==='expiry'&&p.rule?.expiresAt||kind==='reset'&&p.rule?.resetsAt?'user':kind==='reset'?p.resetSource:'upstream', recordSource:record.source, identityVerified:record.identityVerified, notify: p.rule?.notify !== false });
+        label:kind==='reset'&&p.resetLabel||p.label,labelEn:kind==='reset'&&p.resetLabelEn||p.labelEn, amount: p.amount, unit: p.unit, kind, at, stale,poolType:p.poolType,daily:isDailyCredit(p), elapsed:dateOnly?localDate(now)>p.resetDate:at<=now,dateOnly,onDate:dateOnly?p.resetDate:null,
+        source: kind==='expiry'&&p.rule?.expiresAt||kind==='reset'&&p.rule?.resetsAt?'user':kind==='reset'?p.resetSource:'upstream', recordSource:record.source, identityVerified:record.identityVerified, notify: p.rule?.notify !== false&&!(kind==='expiry'&&isDailyCredit(p)) });
     }
   }
   return result.sort((a,b) => a.at - b.at);
 }
 function expiryAlerts(records, rules = {}, now = Date.now()) {
-  return events(records, rules, now).filter(e => e.kind === 'expiry' && e.notify && (!e.stale || ['manual','host'].includes(e.recordSource) && e.source === 'user') &&
+  return events(records, rules, now).filter(e => e.kind === 'expiry' && !suppressExpiry(e) && e.notify && (!e.stale || ['manual','host'].includes(e.recordSource) && e.source === 'user') &&
     (!['relay','cli','mcp'].includes(e.recordSource) || e.identityVerified) && !e.elapsed && e.amount > 0 && e.at - now <= 7 * 86400000).map(e => {
     const hours = (e.at - now) / 3600000; const stage = hours <= 24 ? '1d' : hours <= 72 ? '3d' : '7d';
     return { ...e, key: 'center:' + hash(e.id) + ':' + stage, expiresAt: e.at, stage, hours: Math.ceil(hours) };

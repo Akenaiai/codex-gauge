@@ -1,5 +1,6 @@
 'use strict';
 const {hash}=require('./catalog.cjs');
+const {creditType,isDailyCredit,suppressExpiry}=require('./ui/credit-cadence.js');
 const DAY=86400000;
 const origins={lovart:['https://www.lovart.ai'],xyq:['https://xyq.jianying.com','https://www.xiaoyunque.com'],jimeng:['https://jimeng.jianying.com'],deepseek:['https://platform.deepseek.com']};
 const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v?v:null;
@@ -13,7 +14,7 @@ function cleanObservation(input,now=Date.now()){
     if(p.timeText!=null&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(p.timeText))throw Error('invalid_observation');
     const grantDate=p.grantDate?date(p.grantDate):null,rule=p.monthlyRule;
     const monthlyRule=rule&&['lovart','xyq','jimeng'].includes(input.provider)&&['monthly','subscription'].includes(p.id)&&p.kind!=='never'?validateMonthlyRule(rule):null;
-    ids.add(p.id);return{id:p.id,kind:p.kind,label:p.label,labelEn:p.labelEn,onDate:['never','unknown'].includes(p.kind)?null:p.onDate,timeText:p.timeText||null,ruleDerived:p.ruleDerived===true,grantDate,monthlyRule,amount:p.amount??null,unit:['credits','CNY','USD','requests'].includes(p.unit)?p.unit:'credits'};
+    ids.add(p.id);return{id:p.id,kind:p.kind,label:p.label,labelEn:p.labelEn,poolType:creditType(p),onDate:['never','unknown'].includes(p.kind)?null:p.onDate,timeText:p.timeText||null,ruleDerived:p.ruleDerived===true,grantDate,monthlyRule,amount:p.amount??null,unit:['credits','CNY','USD','requests'].includes(p.unit)?p.unit:'credits'};
   });
   if(typeof input.accountRef!=='string'||!/^[a-f0-9]{20}$/.test(input.accountRef))throw Error('invalid_observation');
   return{id:hash(input.provider+'|'+input.accountRef),provider:input.provider,accountRef:input.accountRef,account,observedAt:input.observedAt,sourceUrl:url.href,items};
@@ -33,11 +34,11 @@ function observationEvents(rows,now=Date.now(),rules={}){
     const items=[...r.items.filter(p=>!['never','unknown'].includes(p.kind)),...r.items.filter(p=>p.monthlyRule).flatMap(p=>forecastDates(p.monthlyRule,now).map(onDate=>({...p,id:p.id+'.monthly-forecast',kind:'reset',label:'月度发放 · '+p.label,labelEn:'Monthly grant · '+p.labelEn,amount:null,onDate,timeText:null,estimated:true,ruleDerived:true})))];
     return items.map(p=>{
     const at=Date.parse(p.onDate+'T12:00:00Z'),days=Math.round((Date.parse(p.onDate+'T00:00:00Z')-local)/DAY);
-    return{id:`web:${r.id}/${p.id}/${p.kind}/${p.onDate}`,recordId:'web:'+r.id,provider:r.provider,poolId:p.id,label:p.label,labelEn:p.labelEn,amount:p.amount,unit:p.unit,kind:p.kind,at,onDate:p.onDate,timeText:p.timeText,ruleDerived:p.ruleDerived,estimated:p.estimated===true,dateOnly:true,elapsed:days<0,days,stale:true,source:p.estimated?'user_schedule':'web',account:r.account,observedAt:r.observedAt,sourceUrl:r.sourceUrl,notify:p.estimated?p.monthlyRule.notify!==false:true};
+    return{id:`web:${r.id}/${p.id}/${p.kind}/${p.onDate}`,recordId:'web:'+r.id,provider:r.provider,poolId:p.id,label:p.label,labelEn:p.labelEn,amount:p.amount,unit:p.unit,kind:p.kind,at,onDate:p.onDate,timeText:p.timeText,ruleDerived:p.ruleDerived,estimated:p.estimated===true,poolType:p.poolType,daily:isDailyCredit(p),dateOnly:true,elapsed:days<0,days,stale:true,source:p.estimated?'user_schedule':'web',account:r.account,observedAt:r.observedAt,sourceUrl:r.sourceUrl,notify:p.estimated?p.monthlyRule.notify!==false:!suppressExpiry(p)};
     });});
 }
 function observationAlerts(rows,now=Date.now(),rules={}){
-  return observationEvents(rows,now,rules).filter(e=>e.notify&&e.kind!=='billing'&&e.days>=(e.estimated?-7:0)&&e.days<=(e.kind==='expiry'?7:2)&&(e.kind==='reset'||e.amount==null||e.amount>0)).map(e=>({...e,kind:'check_schedule',scheduleKind:e.kind,key:'center:web:'+hash(e.id)+':'+(e.days<0?'overdue':e.days===0?'on-date':e.days<=1?'1d':e.days<=3?'3d':'7d'),expiresAt:e.at+(e.estimated?8:2)*DAY}));
+  return observationEvents(rows,now,rules).filter(e=>e.notify&&!suppressExpiry(e)&&e.kind!=='billing'&&e.days>=(e.estimated?-7:0)&&e.days<=(e.kind==='expiry'?7:2)&&(e.kind==='reset'||e.amount==null||e.amount>0)).map(e=>({...e,kind:'check_schedule',scheduleKind:e.kind,key:'center:web:'+hash(e.id)+':'+(e.days<0?'overdue':e.days===0?'on-date':e.days<=1?'1d':e.days<=3?'3d':'7d'),expiresAt:e.at+(e.estimated?8:2)*DAY}));
 }
 function observationNotice(alert,providerName,language){
   if(alert.kind!=='check_schedule')return null;

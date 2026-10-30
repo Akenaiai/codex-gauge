@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.8 daily expiry suppression / 每日赠送静音（2026-10-30）
+
+- 154 automated checks pass. New cases exercise daily-vs-today distinction, explicit daily/purchased cadence normalization, website/live/user-date paths, bound-pool inheritance, retained balances/date facts and daily renewal independence. Same-day subscription and purchased expiries remain eligible.
+- 37 native packaged-window checks pass with synthetic sources, including quiet daily rows, preserved balances, a still-red ordinary expiry, a same-day monthly expiry emitting while daily expiry stays silent, date-editor type inheritance/disabled daily-expiry control, Calendar wording and existing flip/countdown/gray/layout behavior. Public images remain synthetic.
+- The standalone packaged MCP sidecar loads its new shared cadence dependency and retains daily facts with `notify: false`, `at: null`. Actual installer-ASAR code passes 18 empty-profile checks. Upstream connections, startup/host observation and system notifications are stubbed in these isolated checks; actual installation and existing account data are checked separately. Mac and natural future notification delivery retain their field-test limits.
+
+154项自动检查、37项包内原生操作通过。每天清零的赠送积分到期静音，不删除余额或日期；月度/购买积分今天到期仍正常。独立包内MCP读到同样的notify=false语义，空白用户18项隔离检查保持。
+
 ## 0.3.7 expiry priority and countdowns / 临期与倒计时（2026-10-30）
 
 - 145 automated checks pass. New cases cover seven-day boundaries, empty-last sorting, independent expiry/renewal selection, simultaneous countdowns, day-only precision, overdue forecasts, stale verification, source isolation for manual overrides, preservation of exact dates in the full center, and partial-pool vs. total highlighting.
