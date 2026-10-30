@@ -12,7 +12,7 @@ function verifyPackage(resources, platform) {
   }
   for (const file of names) {
     if (!file.endsWith('.cjs')) continue;
-    const source = asar.extractFile(archive, file).toString();
+    const source = asar.extractFile(archive, path.normalize(file)).toString();
     for (const match of source.matchAll(/require\(\s*['"](\.[^'"]+)['"]\s*\)/g)) {
       const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), match[1]));
       if (![target, target + '.cjs', target + '.js', target + '/index.js'].some(name => names.has(name))) missing.push(file + ' -> ' + target);
