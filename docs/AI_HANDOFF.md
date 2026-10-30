@@ -1,6 +1,6 @@
 # Windows 0.3.4 与 Mac 适配合并候选
 
-2026-10-30；分支 codex/merge-windows-mac-034。基于 origin/main 的 55afebb（0.3.4），将本机基于4a3833f/0.2.3的Mac改动三方合并。冲突集中于 package.json、src/main.cjs、src/ui/app.js，均保留双方功能。
+2026-10-30；分支 codex/merge-windows-mac-034。基于 origin/main 的 55afebb（0.3.4），将本机基于4a3833f/0.2.3的Mac改动三方合并。冲突集中于 package.json、src/main.cjs、src/ui/app.js，均保留双方功能。随后并入主线98a438c的首次使用与隐私说明更新。集成评审入口为[PR #3](https://github.com/Akenaiai/codex-gauge/pull/3)。
 
 ## 合并内容
 
