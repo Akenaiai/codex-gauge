@@ -16,6 +16,8 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
 
+[Visual refresh validation and screenshots](docs/VISUAL_REFRESH.md) · CSS-only implementation in this branch; installer availability follows the release page.
+
 ## What it does
 
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
