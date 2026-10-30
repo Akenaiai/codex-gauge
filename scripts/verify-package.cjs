@@ -5,7 +5,7 @@ const asar = require('@electron/asar');
 
 function verifyPackage(resources, platform) {
   const archive = path.join(resources, 'app.asar');
-  const names = new Set(asar.listPackage(archive).map(name => name.replace(/^\//, '')));
+  const names = new Set(asar.listPackage(archive).map(name => name.replace(/\\/g, '/').replace(/^\//, '')));
   const missing = [];
   for (const file of ['src/main.cjs', 'src/preload.cjs', 'src/ui/index.html', 'src/ui/credits.html', 'src/ui/credits.js']) {
     if (!names.has(file)) missing.push(file);
