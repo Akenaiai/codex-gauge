@@ -18,6 +18,8 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
 
+[Distribution privacy verification](docs/PRIVACY_VERIFICATION.md): public history, actual v0.3.4 artifacts and an isolated first-start run were checked for developer account data.
+
 ## What it does
 
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.

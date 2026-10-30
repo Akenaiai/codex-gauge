@@ -3,6 +3,12 @@ dist/
 native/bin/*.exe
 .local/
 credit-date-observations.json
+credit-center.json
+credit-imports.json
+credit-host-tools.json
+credit-secrets.json
+settings.json
+*.dpapi
 .agent/
 .DS_Store
 *.log
