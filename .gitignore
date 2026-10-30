@@ -2,6 +2,7 @@ node_modules/
 dist/
 native/bin/*.exe
 .local/
+credit-date-observations.json
 .agent/
 .DS_Store
 *.log

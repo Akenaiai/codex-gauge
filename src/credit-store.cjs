@@ -24,5 +24,6 @@ class CreditStore {
   }
   imports() { const data=this.read('credit-imports.json', { records: [] });return data&&Array.isArray(data.records)?data:{records:[]}; }
   hostInventory() { const data=this.read('credit-host-tools.json', []);return Array.isArray(data)?data:[]; }
+  dateObservations(){const data=this.read('credit-date-observations.json',{observations:[]});return Array.isArray(data?.observations)?data.observations:[];}
 }
 module.exports = { CreditStore };

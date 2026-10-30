@@ -12,6 +12,7 @@ const { resetAlerts, newsPlan } = require('./reminders.cjs');
 const { NotificationDelivery, configureActivation } = require('./notifications.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
 const { CreditCenter } = require('./credit-center.cjs');
+const {observationNotice}=require('./credit-date-observations.cjs');
 const {CreditSecrets}=require('./credit-credentials.cjs');
 const {policyFor}=require('./credit-policies.cjs');
 const ROOT = path.resolve(__dirname, '..');
@@ -326,6 +327,7 @@ async function start() {
         if(!Object.hasOwn(urls,value?.provider))return{ok:false};await shell.openExternal(urls[value.provider]);
       }
       else if(name==='policy-source'){const policy=policyFor(value?.provider);if(!policy)return{ok:false};await shell.openExternal(policy.url);}
+      else if(name==='web-date-source'){const note=center.dateObservations.find(o=>o.id===value?.id);if(!note)return{ok:false};await shell.openExternal(note.sourceUrl);}
       else if (name === 'manual') center.addManual(value);
       else if (name === 'preferences') { if (typeof value?.enabled !== 'boolean' || typeof value?.reminders !== 'boolean') return { ok: false }; center.setPreferences(value); }
       else if (name === 'language') { if (!['zh-CN','en'].includes(value?.language)) return { ok: false }; return save({ language: value.language }); }
@@ -338,8 +340,9 @@ async function start() {
   center.on('alert', alert => {
     if (demo || quitting || !center.enabled || !center.reminders) return;
     const providerName = center.inventory.tools.find(t => t.id === alert.provider)?.name || alert.provider;
-    delivery.send(alert, { title: alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text('到了平台公布的恢复日期','Scheduled renewal date reached'):text('到了预计恢复时间','Expected renewal time reached'):text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
-      body: alert.kind === 'recovered' ? text(`${providerName} 的${alert.label}已核实恢复。可打开额度中心安排任务。`, `${providerName}: ${alert.labelEn} renewal verified. Open the credit center to plan work.`)
+    const observedNotice=observationNotice(alert,providerName,store.settings.language);
+    delivery.send(alert, { title: observedNotice ? observedNotice.title : alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text('到了平台公布的恢复日期','Scheduled renewal date reached'):text('到了预计恢复时间','Expected renewal time reached'):text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
+      body: observedNotice ? observedNotice.body : alert.kind === 'recovered' ? text(`${providerName} 的${alert.label}已核实恢复。可打开额度中心安排任务。`, `${providerName}: ${alert.labelEn} renewal verified. Open the credit center to plan work.`)
         : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text(`${providerName} 按本机日历已到平台公布的恢复日期。官方未说明具体时刻和时区，请刷新核实实际额度。`,`${providerName}: the published renewal date is today in your local calendar. The provider specifies no time or timezone; refresh to verify.`):text(`${providerName} 记录的账期时间为 ${new Date(alert.at).toLocaleString('zh-CN')}。请核实套餐积分是否到账；合计余额变化不单独证明恢复。`,`${providerName}: the recorded billing boundary is ${new Date(alert.at).toLocaleString('en')}. Verify the plan grant; a total balance change alone does not prove renewal.`):text(`${providerName} 已到你记录的恢复时间。请刷新核实实际到账，刻度尚未确认恢复。`, `${providerName}: your recorded renewal time has arrived. Refresh to verify the actual balance; renewal is not confirmed.`)
         : alert.kind === 'reset_soon' ? text(`${providerName} 的${alert.label}约 ${alert.minutes} 分钟后周期重置，可先安排待办任务。`, `${providerName}: ${alert.labelEn} resets in about ${alert.minutes} minutes. Plan pending work.`)
         : alert.stale ? text(`${providerName} 本人记录的到期时间在约 ${alert.hours} 小时后，请核实当前余额。`, `${providerName}: your recorded expiry is in about ${alert.hours} hours. Verify the current balance.`)

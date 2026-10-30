@@ -8,6 +8,8 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 **0.3.2:** a compact quota overview shows one row per queried tool, with direct filters for Available, Used up, Expiring / resetting, and Unconfirmed. Near-term expiries come first; complete pools and connection controls open in Details. Original badge and automatic queries remain available. [Release notes](docs/releases/0.3.2.md).
 
+**0.3.3:** account-page date observations supplement automatic balances without inventing account matches, timezones or confirmed grants. Permanent funds, expiry, renewal and billing dates stay distinct; omitted dates have a reason. [Release notes](docs/releases/0.3.3.md).
+
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)

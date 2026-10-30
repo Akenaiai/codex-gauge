@@ -8,6 +8,7 @@ const { cleanRecord, fresh, validateRule, events, expiryAlerts, recoveryAlerts, 
 const adapters = require('./credit-adapters.cjs');
 const {configuredKey}=require('./credit-credentials.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
+const {cleanObservations,observationEvents,observationAlerts}=require('./credit-date-observations.cjs');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
@@ -16,6 +17,7 @@ class CreditCenter extends EventEmitter {
     this.providerEpoch=new Map();this.queryRuns=new Map();this.connectRuns=new Map();this.connecting=new Set();
     const data = this.store.data;
     this.records = [];
+    this.dateObservations=cleanObservations(data.dateObservations);
     for (const r of Array.isArray(data.records) ? data.records : []) try {
       if (r.id !== r.provider + ':' + r.scope || !/^[a-f0-9]{20}$/.test(r.scope)) continue;
       const clean = cleanRecord({ ...r, scope: r.scope });
@@ -28,19 +30,20 @@ class CreditCenter extends EventEmitter {
     for (const [key, rule] of Object.entries(data.rules || {})) if (this.records.some(r => r.pools.some(p => key === r.id + '/' + p.id))) try { this.rules[key] = validateRule(rule); } catch { }
     this.notices = Array.isArray(data.notices) ? data.notices.filter(e => (e?.kind === 'recovered'||e?.kind==='check_renewal'&&e.source==='policy') && Number.isFinite(e.at) && e.at > Date.now() - 7 * 86400000).slice(-100) : [];
     this.inventory = data.inventory && Array.isArray(data.inventory.tools) && data.inventory.tools.every(t=>t&&typeof t.id==='string'&&typeof t.name==='string'&&Array.isArray(t.connections)&&t.connections.every(c=>c&&typeof c.kind==='string'&&typeof c.source==='string'&&typeof c.label==='string')) ? data.inventory : { tools: [], sources: [], issues: [], scannedAt: null };
+    for(const r of this.dateObservations)this.ensureObservationTool(r.provider);
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
   }
   persist() {
-    Object.assign(this.store.data, { records: this.records, rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
+    Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
     const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
+      dateObservations:this.dateObservations.filter(o=>o.provider===t.id),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id)),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
     return { ...this.inventory, tools, enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
-      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules), ...this.notices].sort((a,b) => a.at-b.at),
+      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations), ...this.notices].sort((a,b) => a.at-b.at),
       storageError: this.store.error, revision: this.store.data.revision };
   }
   rescan() {
@@ -53,6 +56,10 @@ class CreditCenter extends EventEmitter {
     if (!this.inventory.tools.some(t => t.id === id)) { const p = providers[id]; this.inventory.tools.push({ id, name: this.customTools[id]?.name || p?.name || id, category: p?.category || '其他工具', categoryEn: p?.categoryEn || 'Other tools', connections: [{ kind: 'api', source: 'Credit source', label: id, enabled: true, evidence: 'observed' }] }); }
   }
   loadImports() {
+    const previous=JSON.stringify(this.dateObservations);
+    this.dateObservations=cleanObservations([...this.dateObservations,...this.store.dateObservations()]);
+    for(const r of this.dateObservations)this.ensureObservationTool(r.provider);
+    if(previous!==JSON.stringify(this.dateObservations))this.persist();
     for (const input of this.store.imports().records || []) try {
       const r = cleanRecord({ ...input, source: 'host' });
       if(this.snapshotBindings[r.id]&&this.records.some(v=>v.id===this.snapshotBindings[r.id]&&v.status!=='account_changed'))continue;
@@ -61,6 +68,7 @@ class CreditCenter extends EventEmitter {
       this.put(r, false); this.ensureTool(r.provider);
     } catch { }
   }
+  ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});}
   put(record, notify = true) {
     record=enrichSchedules(record);
     const previous = this.records.find(r => r.id === record.id);
@@ -196,6 +204,7 @@ class CreditCenter extends EventEmitter {
     this.loadImports();
     if (this.reminders) for (const alert of expiryAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
     if (this.reminders) for (const alert of renewalAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
+    if(this.reminders)for(const alert of observationAlerts(this.dateObservations))this.emit('alert',alert);
     if(this.reminders)for(const notice of this.notices)if(notice.expiresAt>Date.now()&&this.rules[notice.recordId+'/'+notice.poolId]?.notify!==false&&this.records.some(r=>r.id===notice.recordId&&r.status!=='account_changed'))this.emit('alert',notice);
     this.emit('state');
   }

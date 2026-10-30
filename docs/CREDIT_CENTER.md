@@ -64,6 +64,16 @@ Lovart reuses Codex's existing authenticated MCP connection through the locally 
 
 ## Local files and read-only MCP
 
+### Account-page date observations
+
+Some balance sources return only a total. The center can import a one-time website check from a private `credit-date-observations.json` file in its actual user-data directory. Each `observations` entry identifies a provider, a display-only `account`, an independent opaque 20-hex `accountRef`, `observedAt` in epoch milliseconds, an allowlisted vendor `sourceUrl` without credentials/query/fragment, and `items`. Do not put this file in the repository or a package.
+
+Items have a unique `id`, bilingual `label`/`labelEn`, optional nonnegative `amount` and `unit`, and `kind`: `expiry`, `reset`, `billing`, `never`, or `unknown`. Dated items use `onDate: "YYYY-MM-DD"`. Optional `timeText: "HH:mm"` preserves website clock text **without assuming a timezone or creating an exact instant**. `ruleDerived: true` marks dates inferred from an explicit official rule. Conditions such as signing in to claim a daily gift must remain in both labels. Do not create an automatic recurring date from a one-time observation.
+
+The same account reference replaces its prior observation at an equal or later `observedAt`; correcting a transcription does not require falsifying the observation time. Different account references remain distinct even when display names match. Imports supplement the overview/calendar and a separate Details section. They never enter a live record's pools, change its availability, sum its balance, or confirm that the web and API accounts match. Refreshing an API does not update these website observations.
+
+Website reminders are verification prompts for the named account. Expiry and renewal have different wording, and the due-date receipt is separate from advance notices. Zero-balance expiry does not create use-priority styling; zero-balance renewal can still prompt a due-date check. Billing/membership dates do not become credit expiry or renewal. `gauge_events` exposes observed dates with `source: "web"`, `dateOnly: true`, and `at: null`; clock text and unknown-timezone precision remain explicit.
+
 The app's current-user data directory stores `credit-center.json` (inventory, readings, dates, preferences and notice receipts), optional `credit-host-tools.json`, and optional `credit-imports.json`. None belongs in Git or public screenshots. The old `settings.json` stays separate. Malformed center storage is preserved and shown as a storage error; it cannot replace the original badge's settings.
 
 `credit-imports.json` contains a `records` array. Each record declares `provider`, an opaque `scope`, `source: "host"`, `identityVerified`, `fetchedAt` in epoch milliseconds, and `pools`. A pool has a unique lowercase `id`, a bilingual label, a numeric `amount` or null, `unit` (`credits`, `percent`, `CNY`, `USD`, `requests` or `tokens`), and optional epoch-millisecond `expiresAt`, `resetsAt`, `periodStart`, `periodEnd`. Imports are validated and never refreshed just by rereading their file. Only submit results from actual authorized queries.
@@ -89,3 +99,7 @@ Sources checked 2026-10-30: [Pippit CLI](https://github.com/Pippit-dev/cli), [De
 原 Codex 提醒继续由原仪表设置控制。新平台提醒有独立开关，复用既有通知确认、去重和有限重试机制。已有 Windows 历史通知点击入口打开原仪表，可再进入额度中心；暂未实现旧通知精确跳转到某个平台。程序退出、电脑休眠或关机期间停止查询，重新运行后补查；原“随 Codex 启动”行为保留，不新增云端或跨夜监控。
 
 个人余额、工具清单与日期保存在本机用户数据目录，和旧 settings.json 分开；损坏文件保留并提示。API Key 从现有环境变量或本机当前用户 DPAPI 加密文件读取，密钥不进入界面、日志或刻度数据。只读 MCP 入口提供同一份本地快照，不自动更改全局 Codex 配置。源码与安装包不包含本人账号、积分和私人配置。
+
+0.3.3 可通过用户数据目录的私人 `credit-date-observations.json` 导入一次网页核对。独立账户引用、名称、记录时间、分项和官方网页来源保留；到期、恢复、会员/账单、永久有效、日期未展示分别记录。只有日期就保持日期；页面有钟表时间但没说时区时保留原文，不编造精确时间。依规则推导及需登录领取的条件要注明，不从一次记录自动生成永久循环计划。
+
+网页记录不并入自动查询账户的余额，也不确认两种来源是同一账号；自动刷新不会更新它。日历和主行明确标注网页账户与非实时，详情可打开原网页核实。网页提醒只要求核对对应账户的分项有效期或是否到账，不宣称已恢复；提醒开关沿用原额度中心。DeepSeek 充值余额按官方帮助标永久有效，赠金到期与固定恢复时间仍以实际提供为准。

@@ -54,6 +54,17 @@
 .deadline.near.expiry,.deadline.near.expiry strong{color:var(--red)}
 .deadline.near.reset,.deadline.near.reset strong{color:var(--gold)}
 .unknown-date{color:var(--muted);font-size:11px}
+.lasting-date{color:var(--accent);font-size:11px}
+.overview-deadlines>small{color:var(--muted);font-size:10px}
+.web-deadline .deadline-kind{max-width:100%;white-space:normal}
+.web-deadline small{flex-basis:100%}
+.web-observations{border-top:1px solid var(--line);margin-top:22px;padding-top:18px}
+.web-observations h3{font-size:15px;margin:0 0 10px}
+.web-observations p{font-size:11px;line-height:1.8}
+.web-account{padding:13px;border:1px solid var(--line);border-radius:8px;margin-top:12px}
+.web-account>small{display:block;color:var(--muted);font-size:10px;margin:5px 0 13px}
+.web-fact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:11px;line-height:1.8;margin:8px 0}
+.web-fact strong{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
 .overview-status{display:grid;gap:5px;justify-items:start;min-width:0}
 .state-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;font-size:11px;line-height:1.2;border-radius:5px;background:var(--bg);white-space:nowrap}
 .state-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}

@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.3 account-page date observations / 网页日期核对（2026-10-30）
+
+- 100 automated checks pass, including independent account references, same-observation corrections, zero-balance renewal, separate due-date deduplication, zero-balance expiry, untrusted nickname escaping, website time text, expiry/renewal notification wording, non-expiring DeepSeek purchased pools and date-only MCP output.
+- 27 native packaged-window checks include account-page observations beside live balances, permanent pools in Details, literal rendering of a markup-like account nickname in overview/calendar, clock text with unknown timezone, bilingual labels and retained original overview/form/navigation controls. Real private account readings are not used in public screenshots or release materials.
+- Website observations are not an unattended browser connection. Their reminders ask the user to verify the named web account. Existing query refreshes cannot confirm these observations or manufacture a grant. Original badge/configuration verification, natural future notification limits and untested macOS scope remain distinct.
+
+100项自动检查、27项发行资源原生窗口操作覆盖日期精度、独立账户、纠错、余额边界、到期/恢复文案、昵称转义、中英文及原入口。网页记录是一次核对，不是持续网页自动查询；提醒要求核实，不宣称已到账。真实账户资料留在私有层，原小仪表、自然未来通知及Mac的验证边界保留。
+
 ## 0.3.2 glanceable overview / 额度总览（2026-10-30）
 
 - 90 automated checks cover existing readers/reminders and overview classification: zero grants with purchased funds, independent video/tool entitlements, reset credits, stale/elapsed readings, disjoint accounts and deadline attribution. Independent review findings were fixed before packaging.
