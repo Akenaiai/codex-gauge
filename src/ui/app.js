@@ -141,6 +141,11 @@
       ${s.credits.length ? `<button class="text-button" data-action="credits">${details ? t('收起', 'Hide') : t('查看', 'Details')}</button>` : ''}</div>
       ${details ? `<div class="credit-list">${s.credits.map((c, i) => `${i + 1}. ${new Date(c.expiresAt).toLocaleString(state.settings.language)} ${t('到期', 'expiry')}`).join('<br>')}</div>` : ''}`;
   }
+  function anchorNotice() {
+    if (state.host.platform !== 'darwin' || state.host.anchored) return '';
+    const reason = ({ observer_failed: t('头像定位模块未能载入，请重新打开刻度。', 'The profile module could not load. Restart Gauge.'), background: t('窗口回到前台后，仪表会重新贴在头像上方。', 'The gauge reattaches when the window returns to the foreground.'), window_unavailable: t('尚未取得 Codex 主窗口，请先打开主窗口。', 'The Codex main window is unavailable. Open the main window.'), minimized: t('Codex 已最小化，还原后恢复跟随。', 'Restore Codex to resume anchoring.'), profile_unavailable: t('尚未找到头像控件，请确认 Codex 侧边栏已展开。', 'Profile control not found. Make sure the Codex sidebar is expanded.') })[state.host.reason] || t('正在连接头像定位模块。', 'Connecting to the profile observer.');
+    return `<div class="notice">${state.host.accessibilityRequired ? `${t('开启辅助功能后，仪表会自动贴在 Codex 头像上方并跟随窗口。只读取控件名称和位置，不读取聊天内容。', 'Enable Accessibility to attach above the Codex profile and follow its window. Only control labels and geometry are read, never chat text.')}<button data-action="accessibility">${t('开启头像跟随', 'Enable profile anchoring')}</button>` : reason}</div>`;
+  }
   function errors() {
     const pair = {
       connecting: ['正在连接本机 Codex', 'Connecting to local Codex'],
@@ -173,7 +178,7 @@
       <div class="readout"><div><h2>${t('可用余量', 'AVAILABLE CAPACITY')}</h2><p>${t('以较少的周期为参考', 'Based on the more limited window')}</p></div><div class="range" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<span class="${i < Math.ceil(closest / 100 * 18) ? 'on' : ''}"></span>`).join('')}</div></div>
       ${!priorityCredit ? creditCard(s) : ''}${!priorityNews ? newsContent() : ''}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}
-      ${state.host.platform === 'darwin' ? `<div class="notice">${t('Mac 预览版：当前为自由悬浮，头像定位尚待 Mac 实机适配。', 'Mac preview: floating mode. Profile anchoring needs on-device adaptation.')}</div>` : ''}`;
+`;
   }
   const toggle = (key, label, detail) => `<div class="setting"><div><div class="label">${label}</div><div class="detail">${detail}</div></div><button class="toggle" role="switch" data-setting="${key}" aria-label="${label}" aria-checked="${!!state.settings[key]}"></button></div>`;
   function settingsContent() {
@@ -181,8 +186,8 @@
     return `<h1 class="settings-title">${t('仪表设置', 'Gauge settings')}</h1><p class="settings-sub">${t('按你的工作习惯，安静地待在手边。', 'A quiet companion, set up your way.')}</p>
       <div class="setting"><label class="label" for="theme">${t('外观', 'Appearance')}</label><select id="theme" data-select="theme">${[['system', t('跟随系统', 'System')], ['dark', t('石墨黑', 'Graphite')], ['light', t('瓷白', 'Porcelain')]].map(([v, label]) => `<option value="${v}" ${v === s.theme ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
       <div class="setting"><label class="label" for="language">${t('语言', 'Language')}</label><select id="language" data-select="language"><option value="zh-CN" ${s.language === 'zh-CN' ? 'selected' : ''}>简体中文</option><option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option></select></div>
-      ${toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized'))}
-      ${toggle('autostart', state.host.platform === 'win32' ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), state.host.platform === 'win32' ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
+      ${state.host.platform !== 'darwin' ? toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized')) : ''}
+      ${toggle('autostart', ['win32', 'darwin'].includes(state.host.platform) ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), ['win32', 'darwin'].includes(state.host.platform) ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
       ${toggle('notifications', t('重置卡到期提醒', 'Credit expiry reminders'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
       ${toggle('resetReminders', t('额度重置提醒', 'Usage reset reminders'), t('余量 ≥30% 时提前 2 / 1 小时提醒；新预告通知', 'At ≥30% remaining, remind within 2h / 1h; new announcements'))}
       ${toggle('resetNews', t('临时重置与发卡消息', 'Public reset announcements'), t('匿名读取 AIHOT，每 5 分钟核对；仅程序运行时', 'Read AIHOT anonymously every 5 min while the app is active'))}
@@ -197,7 +202,7 @@
   function panelMarkup() {
     return `<section class="panel"><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
       ${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
-      <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
+      <div class="content">${anchorNotice()}${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
       ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
   }

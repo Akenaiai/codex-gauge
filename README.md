@@ -16,7 +16,7 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)
 
-**Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
+**Windows first.** Windows profile anchoring is implemented. The local macOS source now includes an Accessibility-based profile anchor; real Mac window acceptance is pending. See docs/MAC.md.
 
 [Distribution privacy verification](docs/PRIVACY_VERIFICATION.md): public history, actual v0.3.4 artifacts and an isolated first-start run were checked for developer account data.
 
@@ -66,9 +66,11 @@ npm start
 
 Windows automatically compiles the small UI Automation observer using the system .NET Framework compiler. It only reads window geometry and the named profile control, and exits when Gauge exits.
 
-### macOS preview
+### macOS integration
 
-The same Git commands run the experimental floating gauge on Mac. This version does **not** yet attach above the Mac Codex profile or follow its window lifecycle. It does not request Accessibility permissions. It has not been verified on a Mac; source compatibility is not a claim of completed Mac support. CLI discovery searches PATH, common Homebrew paths and standard npm locations; use `CODEX_GAUGE_CLI` for custom installations.
+The integration candidate bundles its own native start-with-Codex companion. Enable it in an installed build to register a per-user LaunchAgent. It starts and stops Gauge with Codex; manual quit pauses the current host session. It defaults off, preserves recoverable configurations and rolls back failed registration. This lifecycle helper makes no model calls and does not replace the separate Accessibility permission for profile anchoring.
+
+Mac source includes a native Accessibility-based profile anchor. Enable profile following in the panel and grant permission in System Settings. The badge follows detected controls and hides when the anchor is missing, the window is minimized or another app is foreground. Update controls above the profile are kept clear. Native geometry checks and local packaging passed; real Codex movement, multiple displays and sleep still require target-window acceptance. CLI discovery searches PATH, common Homebrew paths and standard npm locations; use `CODEX_GAUGE_CLI` for custom installations.
 
 On a Mac, `npm run build:mac` builds a local DMG/ZIP. No Apple signing or notarization is configured. Do not treat a Windows executable as a Mac installer. See [the Mac handoff](docs/MAC.md) for remaining work.
 
