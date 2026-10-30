@@ -34,7 +34,7 @@ async function handle(message){
     const data=snapshot(); const records=(data.records||[]).filter(r=>r.status!=='account_changed');
     const value=name==='gauge_inventory'?{scannedAt:data.inventory?.scannedAt,tools:(data.inventory?.tools||[]).map(t=>({...t,policy:policyFor(t.id)})),issues:data.inventory?.issues||[]}:
       name==='gauge_balances'?records.filter(r=>!args.provider||r.provider===args.provider).map(r=>({...r,stale:!fresh(r)})):
-      [...events(records,data.rules||{}),...observationEvents(data.dateObservations)].sort((a,b)=>a.at-b.at).map(e=>e.dateOnly?{...e,at:null}:e);
+      [...events(records,data.rules||{}),...observationEvents(data.dateObservations,Date.now(),data.monthlySchedules)].sort((a,b)=>a.at-b.at).map(e=>e.dateOnly?{...e,at:null}:e);
     return reply({content:[{type:'text',text:JSON.stringify(value)}]});
   }catch{return reply({isError:true,content:[{type:'text',text:'No readable Gauge snapshot. Open the credit center first.'}]});}
 }

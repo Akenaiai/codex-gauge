@@ -10,6 +10,8 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 **0.3.3:** account-page date observations supplement automatic balances without inventing account matches, timezones or confirmed grants. Permanent funds, expiry, renewal and billing dates stay distinct; omitted dates have a reason. [Release notes](docs/releases/0.3.3.md).
 
+**0.3.4:** monthly grants can be forecast on the same day from a known grant/expiry date, with explicit estimated labels and verification reminders. No additional provider browser sign-in or cookie access is introduced. Existing local connections continue to supply balances. [Release notes](docs/releases/0.3.4.md).
+
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)
@@ -37,7 +39,7 @@ You need Windows 10/11 x64, the Codex desktop app, and an installed, signed-in [
 
 Normal mode hides when Codex is minimized or another app is foreground. Keep-on-top mode remains visible while Codex is minimized; both modes hide the attached gauge when Codex closes. You can still open the panel from the tray.
 
-No extra API key is required. If CLI discovery fails, set `CODEX_GAUGE_CLI` to the **native Codex executable**, not a `.cmd` or `.ps1` wrapper. Restart Gauge after changing the environment.
+The original Codex badge needs no extra API key. Other providers reuse existing local connections or optional API credentials. If Codex CLI discovery fails, set `CODEX_GAUGE_CLI` to the **native Codex executable**, not a `.cmd` or `.ps1` wrapper. Restart Gauge after changing the environment.
 
 ### Show automatically with Codex
 
@@ -83,7 +85,7 @@ For notification changes, use the [isolated Windows acceptance instructions](doc
 
 ## Data and limitations
 
-Settings and reminder deduplication records stay in the application's per-user data folder. Account identities are hashed in reminder keys. No quota history, email address, auth file, chat content or raw app-server output is saved by Gauge. Settings are written after changes; corrupt existing files are preserved and reported instead of silently overwritten.
+Settings, balance snapshots, user-supplied account aliases/dates and reminder receipts stay in the application's per-user data folder. Account identities are hashed in reminder keys. Gauge introduces no provider browser-login flow and does not read browser cookies, copy client auth files, or save chat content/raw app-server output. Optional API connections are verified and encrypted locally. Settings are written after changes; corrupt existing files are preserved and reported instead of silently overwritten.
 
 Usage reset reminders and public announcements are enabled by default and have separate settings switches. Credit-expiry notifications keep their existing separate setting. Notifications open the usage panel when clicked. New public confirmations form a historical baseline on the first fetch, rather than replaying old news; new announcements and subsequent material changes can notify. Reminder fingerprints persist across restarts. Naturally occurring reset notifications and Windows notification-center delivery still require field verification.
 

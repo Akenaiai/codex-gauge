@@ -8,7 +8,7 @@ const { cleanRecord, fresh, validateRule, events, expiryAlerts, recoveryAlerts, 
 const adapters = require('./credit-adapters.cjs');
 const {configuredKey}=require('./credit-credentials.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
-const {cleanObservations,observationEvents,observationAlerts}=require('./credit-date-observations.cjs');
+const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
@@ -18,6 +18,8 @@ class CreditCenter extends EventEmitter {
     const data = this.store.data;
     this.records = [];
     this.dateObservations=cleanObservations(data.dateObservations);
+    this.monthlySchedules={};
+    for(const [key,rule]of Object.entries(data.monthlySchedules||{}))if(this.dateObservations.some(o=>['lovart','xyq','jimeng'].includes(o.provider)&&o.items.some(p=>key===o.id+'/'+p.id&&['monthly','subscription'].includes(p.id)&&p.kind!=='never')))try{this.monthlySchedules[key]=validateMonthlyRule(rule);}catch{}
     for (const r of Array.isArray(data.records) ? data.records : []) try {
       if (r.id !== r.provider + ':' + r.scope || !/^[a-f0-9]{20}$/.test(r.scope)) continue;
       const clean = cleanRecord({ ...r, scope: r.scope });
@@ -34,16 +36,16 @@ class CreditCenter extends EventEmitter {
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
   }
   persist() {
-    Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
+    Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
     const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      dateObservations:this.dateObservations.filter(o=>o.provider===t.id),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id)),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
+      dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
     return { ...this.inventory, tools, enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
-      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations), ...this.notices].sort((a,b) => a.at-b.at),
+      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules), ...this.notices].sort((a,b) => a.at-b.at),
       storageError: this.store.error, revision: this.store.data.revision };
   }
   rescan() {
@@ -69,6 +71,12 @@ class CreditCenter extends EventEmitter {
     } catch { }
   }
   ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});}
+  setMonthlyRule(observationId,itemId,rule){
+    const o=this.dateObservations.find(o=>o.id===observationId),p=o?.items.find(p=>p.id===itemId);
+    if(!o||!['lovart','xyq','jimeng'].includes(o.provider)||!p||!['monthly','subscription'].includes(p.id)||p.kind==='never')throw Error('invalid_monthly_rule');
+    const key=o.id+'/'+p.id,previous={...this.monthlySchedules};this.monthlySchedules[key]=validateMonthlyRule(rule);this.persist();
+    if(this.store.error){this.monthlySchedules=previous;this.emit('state');throw Error('storage_failed');}this.emit('state');
+  }
   put(record, notify = true) {
     record=enrichSchedules(record);
     const previous = this.records.find(r => r.id === record.id);
@@ -204,7 +212,7 @@ class CreditCenter extends EventEmitter {
     this.loadImports();
     if (this.reminders) for (const alert of expiryAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
     if (this.reminders) for (const alert of renewalAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
-    if(this.reminders)for(const alert of observationAlerts(this.dateObservations))this.emit('alert',alert);
+    if(this.reminders)for(const alert of observationAlerts(this.dateObservations,Date.now(),this.monthlySchedules))this.emit('alert',alert);
     if(this.reminders)for(const notice of this.notices)if(notice.expiresAt>Date.now()&&this.rules[notice.recordId+'/'+notice.poolId]?.notify!==false&&this.records.some(r=>r.id===notice.recordId&&r.status!=='account_changed'))this.emit('alert',notice);
     this.emit('state');
   }

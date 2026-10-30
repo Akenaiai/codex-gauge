@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.4 monthly forecasts / 月度预计（2026-10-30）
+
+- 109 automated checks include short/leap months, year changes, original-day preservation, separate expiry clock precision, zero-balance forecasts, due/overdue receipts, bounded overdue retention, account-specific overrides, disable/import/restart behavior, failed-save rollback and estimated MCP events with `at: null`.
+- 33 native packaged-window checks include forecast labels, editing and saving monthly reminder preferences through IPC, the existing date/connection/manual dialogs, both languages, no browser/login window and prior layout/isolation checks. Public source/package allowlists contain no provider-login component; account-specific schedules remain private.
+- Website observations stay historical. A forecast advances by its calendar rule, not by inventing a new website reading or claiming a grant. Existing local balance readers and original badge behavior remain in scope; natural future notification delivery and macOS still need separate field verification.
+
+109项自动检查、33项包内原生操作验证规则、日期精度、提醒边界、持久化与原入口。未新增平台网页登录或浏览器会话读取；月度预计不更新原网页读取时间，也不宣称实际到账。原小仪表保留，自然未来通知和Mac仍待验。
+
 ## 0.3.3 account-page date observations / 网页日期核对（2026-10-30）
 
 - 100 automated checks pass, including independent account references, same-observation corrections, zero-balance renewal, separate due-date deduplication, zero-balance expiry, untrusted nickname escaping, website time text, expiry/renewal notification wording, non-expiring DeepSeek purchased pools and date-only MCP output.

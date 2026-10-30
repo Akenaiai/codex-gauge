@@ -45,7 +45,7 @@ The displayed percentage is the tightest coding-model window, excluding separate
 | Firecrawl | Official `GET /v2/team/credit-usage` | Billing-period end is not asserted to be expiry or renewal |
 | Other connectors | Timestamped host snapshots or manual readings | Explicitly not autonomous live queries |
 
-API credentials are taken from `FIRECRAWL_API_KEY` or `DEEPSEEK_API_KEY`. On Windows, existing current-user DPAPI files at `~/.codex/private/credentials/<provider>-api-key.dpapi` can be used by the corresponding adapter. No key is entered into the renderer, copied into Gauge data, or logged. DPAPI decryption and the authenticated HTTP request stay in the PowerShell child; only a fingerprint and balance response return. No purchase, generation, account switch, card redemption or model request is performed.
+API credentials may be taken from existing matching MCP configuration, provider environment variables or the app's optional encrypted API connection. On Windows, existing current-user DPAPI files at `~/.codex/private/credentials/<provider>-api-key.dpapi` can also be used. Automatic queries do not send keys to renderer state, balance records or logs. The optional connection dialog temporarily accepts the user's API key in a masked field and passes it to the main process for verification/encryption; it clears the field afterward. For the DPAPI fallback, decryption and the authenticated request stay in the PowerShell child. No provider password, verification code or browser cookie is collected, and no purchase, generation, account switch, card redemption or model request is performed.
 
 The Agent Relay bridge is optional. It queries existing logins; it does not start Relay's task scheduler or dispatch work. ZCode uses a conservative whole-credential-source fingerprint: token rotation can create a new source and suppress a renewal notification rather than risk carrying another account's dates forward. An unverified source cannot inherit account-specific reminder rules. A package update can change the companion interface; failed reads stay failed, never zero.
 
@@ -64,11 +64,19 @@ Lovart reuses Codex's existing authenticated MCP connection through the locally 
 
 ## Local files and read-only MCP
 
+### Monthly grant forecasts without another login
+
+Gauge does not introduce a provider browser-login flow or read browser cookies. Existing CLI/MCP authentication stays with those clients. A named website observation can provide an anchor for a user-configured monthly rule; the anchor remains a historical observation. In Details, **Set monthly grant day** / **Edit** selects either a known grant date or an expiry date, the usual day of the month, and reminder preferences.
+
+Grant-date rules start in the next month; expiry-date rules can forecast the grant on that same date. Short months use the last available day while preserving the original day for later months. Forecasts advance by calendar, retain a recent overdue verification entry for at most seven days, and never inherit an expiry's clock text or claim that credits arrived. They use `source: "user_schedule"`, `estimated: true`, `dateOnly: true`; MCP returns `at: null` and no grant time.
+
+Rules are stored locally as `monthlySchedules`, keyed by observation and pool ID. A disabled rule overrides imported anchor metadata and survives restart. Rules for another account are independent; permanent, purchased and daily pools cannot acquire this monthly rule. Balances continue to refresh through the existing sources. A larger total alone is still not proof of a monthly grant. Reminders distinguish approaching, due and bounded overdue dates, with stable deduplication receipts.
+
 ### Account-page date observations
 
 Some balance sources return only a total. The center can import a one-time website check from a private `credit-date-observations.json` file in its actual user-data directory. Each `observations` entry identifies a provider, a display-only `account`, an independent opaque 20-hex `accountRef`, `observedAt` in epoch milliseconds, an allowlisted vendor `sourceUrl` without credentials/query/fragment, and `items`. Do not put this file in the repository or a package.
 
-Items have a unique `id`, bilingual `label`/`labelEn`, optional nonnegative `amount` and `unit`, and `kind`: `expiry`, `reset`, `billing`, `never`, or `unknown`. Dated items use `onDate: "YYYY-MM-DD"`. Optional `timeText: "HH:mm"` preserves website clock text **without assuming a timezone or creating an exact instant**. `ruleDerived: true` marks dates inferred from an explicit official rule. Conditions such as signing in to claim a daily gift must remain in both labels. Do not create an automatic recurring date from a one-time observation.
+Items have a unique `id`, bilingual `label`/`labelEn`, optional nonnegative `amount` and `unit`, and `kind`: `expiry`, `reset`, `billing`, `never`, or `unknown`. Dated items use `onDate: "YYYY-MM-DD"`. Optional `timeText: "HH:mm"` preserves website clock text **without assuming a timezone or creating an exact instant**. `ruleDerived: true` marks dates inferred from an explicit official rule. Conditions such as signing in to claim a daily gift must remain in both labels. Recurrence requires an explicit monthly rule; a one-time observation alone does not create one.
 
 The same account reference replaces its prior observation at an equal or later `observedAt`; correcting a transcription does not require falsifying the observation time. Different account references remain distinct even when display names match. Imports supplement the overview/calendar and a separate Details section. They never enter a live record's pools, change its availability, sum its balance, or confirm that the web and API accounts match. Refreshing an API does not update these website observations.
 
@@ -98,7 +106,9 @@ Sources checked 2026-10-30: [Pippit CLI](https://github.com/Pippit-dev/cli), [De
 
 原 Codex 提醒继续由原仪表设置控制。新平台提醒有独立开关，复用既有通知确认、去重和有限重试机制。已有 Windows 历史通知点击入口打开原仪表，可再进入额度中心；暂未实现旧通知精确跳转到某个平台。程序退出、电脑休眠或关机期间停止查询，重新运行后补查；原“随 Codex 启动”行为保留，不新增云端或跨夜监控。
 
-个人余额、工具清单与日期保存在本机用户数据目录，和旧 settings.json 分开；损坏文件保留并提示。API Key 从现有环境变量或本机当前用户 DPAPI 加密文件读取，密钥不进入界面、日志或刻度数据。只读 MCP 入口提供同一份本地快照，不自动更改全局 Codex 配置。源码与安装包不包含本人账号、积分和私人配置。
+个人余额、工具清单与日期保存在本机用户数据目录，和旧 settings.json 分开；损坏文件保留并提示。凭据优先沿用已配置的对应连接；可选 API 连接仅接受本人主动填入的 Key，验证后系统加密保存，输入框随后清空。自动查询不把 Key 发送到界面状态、余额记录或日志，也不收集平台密码、验证码和浏览器 Cookie。只读 MCP 提供本地快照，不自动更改全局 Codex 配置。源码与安装包不包含本人账号、积分和私人配置。
+
+0.3.4 不新增平台网页登录，原有客户端自行管理其登录。可在详情设置月度同日预计：从上次发放日推下月同日，或把失效日作为当期预计发放日；短月取月底，后月恢复原日号。规则按账户与积分池分别保留，支持关闭和独立提醒开关；预计不会继承失效钟表时刻，也不会把余额增加直接认成到账。预计项在 MCP 中为 source=user_schedule、estimated=true、at=null。
 
 0.3.3 可通过用户数据目录的私人 `credit-date-observations.json` 导入一次网页核对。独立账户引用、名称、记录时间、分项和官方网页来源保留；到期、恢复、会员/账单、永久有效、日期未展示分别记录。只有日期就保持日期；页面有钟表时间但没说时区时保留原文，不编造精确时间。依规则推导及需登录领取的条件要注明，不从一次记录自动生成永久循环计划。
 
