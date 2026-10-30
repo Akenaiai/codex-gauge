@@ -34,38 +34,12 @@
       "LICENSE",
       "THIRD_PARTY_NOTICES.md"
     ],
+    "beforePack": "./scripts/prepare-package.cjs",
+    "afterPack": "./scripts/verify-package.cjs",
     "extraResources": [
-      {
-        "from": "src/credit-date-observations.cjs",
-        "to": "mcp/src/credit-date-observations.cjs"
-      },
-      {
-        "from": "native/bin",
-        "to": "native",
-        "filter": [
-          "*.exe"
-        ]
-      },
-      {
-        "from": "scripts/gauge-mcp.cjs",
-        "to": "mcp/scripts/gauge-mcp.cjs"
-      },
-      {
-        "from": "src/credit-model.cjs",
-        "to": "mcp/src/credit-model.cjs"
-      },
-      {
-        "from": "src/catalog.cjs",
-        "to": "mcp/src/catalog.cjs"
-      },
-      {
-        "from": "src/relay-credit-bridge.py",
-        "to": "adapters/relay-credit-bridge.py"
-      },
-      {
-        "from": "src/credit-policies.cjs",
-        "to": "mcp/src/credit-policies.cjs"
-      }
+      { "from": ".local/package-resources/mcp", "to": "mcp" },
+      { "from": "native/bin", "to": "native", "filter": ["*.exe"] },
+      { "from": ".local/package-resources/adapters", "to": "adapters" }
     ],
     "win": {
       "icon": "assets/icon.ico",

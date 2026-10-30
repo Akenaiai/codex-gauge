@@ -66,7 +66,7 @@ function createMacStartup(app, root, run = execFile, options = {}) {
         throw error;
       }
     },
-    async pause() {
+    pause() {
       let pids = [];
       try { pids = JSON.parse(fs.readFileSync(status, 'utf8')).hostPids.filter(n => Number.isInteger(n) && n > 0); } catch { }
       if (!pids.length) throw new Error('startup_state_unavailable');

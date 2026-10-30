@@ -416,5 +416,11 @@ async function start() {
     fs.writeFileSync(path.join(app.getPath('userData'), 'acceptance-state.json'), JSON.stringify(report, null, 2));
   }
 }
-app.on('before-quit', () => { quitting = true; center?.stop(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => {
+  // Keyboard/menu quits bypass the tray action. Mac pause is synchronous so the
+  // session marker is durable before teardown, without cancelling native quit.
+  if (process.platform === 'darwin' && store?.settings.autostart && startup) {
+    try { startup.pause(); } catch { }
+  }
+  quitting = true; center?.stop(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });
