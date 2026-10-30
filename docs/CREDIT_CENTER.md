@@ -1,5 +1,7 @@
 # Credit center / 额度中心
 
+For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
+
 ## 0.3.1 additions / 新增接入与日期依据
 
 Tavily uses `GET https://api.tavily.com/usage` and shows the remaining **account plan** quota, distinct from pay-as-you-go charges. Existing credentials may be read from the matching enabled provider's MCP environment in Codex, Cursor, Claude Code/Desktop, Gemini or Qwen configuration; disabled entries do not automatically become enabled. Credentials never enter inventory or renderer state.
@@ -43,9 +45,10 @@ The displayed percentage is the tightest coding-model window, excluding separate
 | Kimi, MiniMax, ZCode | Installed Agent Relay quota implementation via a narrow Python bridge | Requires the separate companion and Python; before/after account or credential-source fingerprints prevent cross-account reuse |
 | DeepSeek | Official `GET /user/balance` | Granted and purchased balances are separate; no inferred expiration |
 | Firecrawl | Official `GET /v2/team/credit-usage` | Billing-period end is not asserted to be expiry or renewal |
+| Tavily | Official `GET /usage` | Plan allowance is separate from pay-as-you-go; first-of-month renewal is policy-derived, with no invented time/timezone |
 | Other connectors | Timestamped host snapshots or manual readings | Explicitly not autonomous live queries |
 
-API credentials may be taken from existing matching MCP configuration, provider environment variables or the app's optional encrypted API connection. On Windows, existing current-user DPAPI files at `~/.codex/private/credentials/<provider>-api-key.dpapi` can also be used. Automatic queries do not send keys to renderer state, balance records or logs. The optional connection dialog temporarily accepts the user's API key in a masked field and passes it to the main process for verification/encryption; it clears the field afterward. For the DPAPI fallback, decryption and the authenticated request stay in the PowerShell child. No provider password, verification code or browser cookie is collected, and no purchase, generation, account switch, card redemption or model request is performed.
+API credentials may be taken from existing matching MCP configuration, provider environment variables or the app's optional encrypted API connection. On Windows, Firecrawl and DeepSeek queries can also use existing current-user DPAPI files at `~/.codex/private/credentials/<provider>-api-key.dpapi`; Tavily does not support this fallback. Automatic queries do not send keys to renderer state, balance records or logs. The optional connection dialog temporarily accepts the user's API key in a masked field and passes it to the main process for verification/encryption; it clears the field afterward. For the DPAPI fallback, decryption and the authenticated request stay in the PowerShell child. No provider password, verification code or browser cookie is collected, and no purchase, generation, account switch, card redemption or model request is performed.
 
 The Agent Relay bridge is optional. It queries existing logins; it does not start Relay's task scheduler or dispatch work. ZCode uses a conservative whole-credential-source fingerprint: token rotation can create a new source and suppress a renewal notification rather than risk carrying another account's dates forward. An unverified source cannot inherit account-specific reminder rules. A package update can change the companion interface; failed reads stay failed, never zero.
 
@@ -66,7 +69,7 @@ Lovart reuses Codex's existing authenticated MCP connection through the locally 
 
 ### Monthly grant forecasts without another login
 
-Gauge does not introduce a provider browser-login flow or read browser cookies. Existing CLI/MCP authentication stays with those clients. A named website observation can provide an anchor for a user-configured monthly rule; the anchor remains a historical observation. In Details, **Set monthly grant day** / **Edit** selects either a known grant date or an expiry date, the usual day of the month, and reminder preferences.
+Gauge does not introduce a provider browser-login flow or read browser cookies. Existing CLI/MCP authentication stays with those clients. A named website observation can provide an anchor for a user-configured monthly rule; the anchor remains a historical observation. In 0.3.4 this control is available only for eligible monthly/subscription website observations for Lovart, Pippit and Dreamina. New installations have none. Create one through the private-file import below; there is no general graphical website-record creation form. In Details, **Set monthly grant day** / **Edit** selects either a known grant date or an expiry date, the usual day of the month, and reminder preferences. Other existing pools can use **Set dates** for a one-time confirmed date.
 
 Grant-date rules start in the next month; expiry-date rules can forecast the grant on that same date. Short months use the last available day while preserving the original day for later months. Forecasts advance by calendar, retain a recent overdue verification entry for at most seven days, and never inherit an expiry's clock text or claim that credits arrived. They use `source: "user_schedule"`, `estimated: true`, `dateOnly: true`; MCP returns `at: null` and no grant time.
 
@@ -108,7 +111,7 @@ Sources checked 2026-10-30: [Pippit CLI](https://github.com/Pippit-dev/cli), [De
 
 个人余额、工具清单与日期保存在本机用户数据目录，和旧 settings.json 分开；损坏文件保留并提示。凭据优先沿用已配置的对应连接；可选 API 连接仅接受本人主动填入的 Key，验证后系统加密保存，输入框随后清空。自动查询不把 Key 发送到界面状态、余额记录或日志，也不收集平台密码、验证码和浏览器 Cookie。只读 MCP 提供本地快照，不自动更改全局 Codex 配置。源码与安装包不包含本人账号、积分和私人配置。
 
-0.3.4 不新增平台网页登录，原有客户端自行管理其登录。可在详情设置月度同日预计：从上次发放日推下月同日，或把失效日作为当期预计发放日；短月取月底，后月恢复原日号。规则按账户与积分池分别保留，支持关闭和独立提醒开关；预计不会继承失效钟表时刻，也不会把余额增加直接认成到账。预计项在 MCP 中为 source=user_schedule、estimated=true、at=null。
+0.3.4 不新增平台网页登录，原有客户端自行管理其登录。月度同日预计入口目前仅对 Lovart、小云雀、即梦合格的月度 / 订阅网页日期记录显示，新安装默认没有记录，需通过下述私人文件导入；当前没有通用图形化网页记录创建入口。其他已有积分池可以先用“补充日期”保存一次确认。月度预计从上次发放日推下月同日，或把失效日作为当期预计发放日；短月取月底，后月恢复原日号。规则按账户与积分池分别保留，支持关闭和独立提醒开关；预计不会继承失效钟表时刻，也不会把余额增加直接认成到账。预计项在 MCP 中为 source=user_schedule、estimated=true、at=null。
 
 0.3.3 可通过用户数据目录的私人 `credit-date-observations.json` 导入一次网页核对。独立账户引用、名称、记录时间、分项和官方网页来源保留；到期、恢复、会员/账单、永久有效、日期未展示分别记录。只有日期就保持日期；页面有钟表时间但没说时区时保留原文，不编造精确时间。依规则推导及需登录领取的条件要注明，不从一次记录自动生成永久循环计划。
 
