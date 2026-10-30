@@ -6,40 +6,46 @@ const { scan, providers, canonical, hash } = require('./catalog.cjs');
 const { CreditStore } = require('./credit-store.cjs');
 const { cleanRecord, fresh, validateRule, events, expiryAlerts, recoveryAlerts, renewalAlerts } = require('./credit-model.cjs');
 const adapters = require('./credit-adapters.cjs');
-const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed'];
+const {configuredKey}=require('./credit-credentials.cjs');
+const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
+const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
   constructor(directory, options = {}) {
     super(); this.store = new CreditStore(directory); this.options = options; this.busy = new Set(); this.statuses = {}; this.stopped = false; this.generation = 0;
+    this.providerEpoch=new Map();this.queryRuns=new Map();this.connectRuns=new Map();this.connecting=new Set();
     const data = this.store.data;
     this.records = [];
     for (const r of Array.isArray(data.records) ? data.records : []) try {
       if (r.id !== r.provider + ':' + r.scope || !/^[a-f0-9]{20}$/.test(r.scope)) continue;
       const clean = cleanRecord({ ...r, scope: r.scope });
-      this.records.push({ ...clean, id: r.id, scope: r.scope, status: ['ready','offline','account_changed','stale'].includes(r.status) ? r.status : 'offline', error: r.error ? 'query_failed' : null });
+      this.records.push(enrichSchedules({ ...clean, id: r.id, scope: r.scope, status: ['ready','offline','account_changed','stale'].includes(r.status) ? r.status : 'offline', error: r.error ? 'query_failed' : null }));
     } catch { }
     this.customTools = data.customTools && typeof data.customTools === 'object' && !Array.isArray(data.customTools) ? data.customTools : {};
     this.rules = {};
+    this.snapshotBindings={};
+    for(const [hostId,apiId]of Object.entries(data.snapshotBindings||{}))if(this.records.some(r=>r.id===hostId&&r.source==='host')&&this.records.some(r=>r.id===apiId&&r.source==='api'))this.snapshotBindings[hostId]=apiId;
     for (const [key, rule] of Object.entries(data.rules || {})) if (this.records.some(r => r.pools.some(p => key === r.id + '/' + p.id))) try { this.rules[key] = validateRule(rule); } catch { }
-    this.notices = Array.isArray(data.notices) ? data.notices.filter(e => e?.kind === 'recovered' && Number.isFinite(e.at) && e.at > Date.now() - 7 * 86400000).slice(-100) : [];
+    this.notices = Array.isArray(data.notices) ? data.notices.filter(e => (e?.kind === 'recovered'||e?.kind==='check_renewal'&&e.source==='policy') && Number.isFinite(e.at) && e.at > Date.now() - 7 * 86400000).slice(-100) : [];
     this.inventory = data.inventory && Array.isArray(data.inventory.tools) && data.inventory.tools.every(t=>t&&typeof t.id==='string'&&typeof t.name==='string'&&Array.isArray(t.connections)&&t.connections.every(c=>c&&typeof c.kind==='string'&&typeof c.source==='string'&&typeof c.label==='string')) ? data.inventory : { tools: [], sources: [], issues: [], scannedAt: null };
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
   }
   persist() {
-    Object.assign(this.store.data, { records: this.records, rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools, enabled: this.enabled, reminders: this.reminders });
+    Object.assign(this.store.data, { records: this.records, rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart'].includes(t.id),
-      querying: this.busy.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
+    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
-    return { ...this.inventory, tools, enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0,
+    return { ...this.inventory, tools, enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
       events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules), ...this.notices].sort((a,b) => a.at-b.at),
       storageError: this.store.error, revision: this.store.data.revision };
   }
   rescan() {
     this.inventory = scan({ ...this.options, hostTools: this.store.hostInventory() });
+    for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
     for (const row of this.records) this.ensureTool(row.provider);
     this.loadImports(); this.persist(); this.emit('state'); return this.state();
   }
@@ -49,12 +55,14 @@ class CreditCenter extends EventEmitter {
   loadImports() {
     for (const input of this.store.imports().records || []) try {
       const r = cleanRecord({ ...input, source: 'host' });
+      if(this.snapshotBindings[r.id]&&this.records.some(v=>v.id===this.snapshotBindings[r.id]&&v.status!=='account_changed'))continue;
       const old = this.records.find(v => v.id === r.id);
       if (old && old.fetchedAt >= r.fetchedAt) continue;
       this.put(r, false); this.ensureTool(r.provider);
     } catch { }
   }
   put(record, notify = true) {
+    record=enrichSchedules(record);
     const previous = this.records.find(r => r.id === record.id);
     if (previous && previous.fetchedAt > record.fetchedAt) return;
     // Local CLI adapters represent one current login. Never remind for its old account.
@@ -85,7 +93,7 @@ class CreditCenter extends EventEmitter {
   }
   async query(id) {
     if (this.stopped || this.busy.has(id)) return;
-    const generation=this.generation;
+    const generation=this.generation,epoch=this.providerEpoch.get(id)||0,run=Symbol();this.queryRuns.set(id,run);
     this.busy.add(id); this.statuses[id] = 'querying'; this.emit('state');
     try {
       let rows;
@@ -93,9 +101,9 @@ class CreditCenter extends EventEmitter {
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
       else if (id === 'jimeng') rows = await adapters.jimeng(this.options);
       else if (id === 'relay') rows = await adapters.relay(this.options);
-      else if (['firecrawl','deepseek'].includes(id)) rows = await adapters.securedApiBalance(id, this.options);
+      else if (['firecrawl','deepseek','tavily'].includes(id)) rows = await adapters.securedApiBalance(id, this.options);
       else return;
-      if (this.stopped || generation!==this.generation) return;
+      if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
       for (const input of rows) {
         this.ensureTool(input.provider);
         if (!input.pools.length) { this.statuses[input.provider] = 'query_failed'; for(const old of this.records)if(old.provider===input.provider&&old.source==='relay'){old.status='offline';old.error='query_failed';} continue; }
@@ -105,18 +113,18 @@ class CreditCenter extends EventEmitter {
       }
       this.statuses[id] = 'ready';
     } catch (e) {
-      if (this.stopped || generation!==this.generation) return;
+      if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
       const error = safeError(e); this.statuses[id] = error;
       for (const r of this.records) if ((r.provider === id || id === 'relay' && r.source === 'relay') && r.source !== 'host') {
         r.status = ['login_required','account_changed'].includes(error) ? 'account_changed' : 'offline'; r.error = error;
       }
-    } finally { if(generation===this.generation){this.busy.delete(id); this.persist(); this.emit('state');} }
+    } finally { if(generation===this.generation&&this.queryRuns.get(id)===run){this.queryRuns.delete(id);this.busy.delete(id); this.persist(); this.emit('state');} }
   }
   async refresh(id, { manual=false } = {}) {
     if(this.stopped || !manual&&!this.enabled)return;
     const generation=this.generation;
     this.loadImports();
-    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart'].filter(x => {
+    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','tavily'].filter(x => {
       if(x==='relay')return this.inventory.tools.some(t=>t.id==='agent-relay');
       return this.inventory.tools.some(t=>t.id===x && t.connections.some(c=> c.enabled &&
         (['installed','credential_reference'].includes(c.evidence) || x==='lovart' && c.kind==='mcp' && c.evidence==='configured')));
@@ -136,6 +144,32 @@ class CreditCenter extends EventEmitter {
     const rule = validateRule(input), old = this.rules[key]; this.rules[key] = rule; this.persist();
     if (this.store.error) { if(old)this.rules[key]=old;else delete this.rules[key];this.emit('state');throw new Error('storage_failed'); }
     this.emit('state');
+  }
+  async connect(provider,key,{replaceRecordId=null}={}){
+    if(!['firecrawl','tavily','deepseek'].includes(provider)||typeof key!=='string')throw new Error('invalid_credential');
+    if(replaceRecordId&&!this.records.some(r=>r.id===replaceRecordId&&r.provider===provider&&r.source==='host'))throw new Error('invalid_account');
+    if(this.store.error)throw new Error('storage_failed');
+    const generation=this.generation,attempt=Symbol();this.connectRuns.set(provider,attempt);this.connecting.add(provider);this.emit('state');
+    try{
+      const rows=await adapters.apiBalance(provider,key.trim()),verified=rows.map(row=>cleanRecord(row));
+      if(this.stopped||generation!==this.generation||this.connectRuns.get(provider)!==attempt)throw new Error('query_failed');
+      if(!this.options.saveCredential)throw new Error('credential_storage_failed');
+      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),notices:structuredClone(this.notices),bindings:structuredClone(this.snapshotBindings),data:structuredClone(this.store.data),status:this.statuses[provider]};
+      let undo,saved=false;
+      try{
+        undo=this.options.saveCredential(provider,key.trim());saved=true;
+        this.providerEpoch.set(provider,(this.providerEpoch.get(provider)||0)+1);this.queryRuns.delete(provider);this.busy.delete(provider);
+        for(const r of verified)this.put(r,false);this.ensureTool(provider);this.statuses[provider]='ready';
+        if(replaceRecordId){this.snapshotBindings[replaceRecordId]=verified[0].id;const replaced=this.records.find(r=>r.id===replaceRecordId);if(replaced)replaced.status='account_changed';}
+        const tool=this.inventory.tools.find(t=>t.id===provider);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Encrypted local credential',label:provider,enabled:true,evidence:'credential_reference'});
+        this.persist();if(this.store.error)throw new Error('storage_failed');
+      }catch(error){
+        if(saved){try{if(typeof undo!=='function')throw Error();undo();}catch{this.emit('state');throw new Error('credential_commit_partial');}}
+        this.records=old.records;this.inventory=old.inventory;this.notices=old.notices;this.snapshotBindings=old.bindings;this.store.data=old.data;
+        if(old.status===undefined)delete this.statuses[provider];else this.statuses[provider]=old.status;
+        this.emit('state');throw error;
+      }
+    }finally{if(this.connectRuns.get(provider)===attempt){this.connectRuns.delete(provider);this.connecting.delete(provider);this.emit('state');}}
   }
   setPreferences({ enabled = this.enabled, reminders = this.reminders }) {
     const oldEnabled=this.enabled,oldReminders=this.reminders;
@@ -172,6 +206,6 @@ class CreditCenter extends EventEmitter {
     this.timer = setInterval(() => { if (this.enabled) this.refresh(); }, 5*60000);
     this.ticks = setInterval(() => this.tick(), 30000);
   }
-  stop() { this.stopped = true; this.generation++; this.busy.clear(); clearInterval(this.timer); clearInterval(this.ticks); }
+  stop() { this.stopped = true; this.generation++; this.busy.clear();this.queryRuns.clear();this.connectRuns.clear();this.connecting.clear(); clearInterval(this.timer); clearInterval(this.ticks); }
 }
 module.exports = { CreditCenter };

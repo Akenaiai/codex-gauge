@@ -5,6 +5,8 @@ const os = require('node:os');
 const { spawn } = require('node:child_process');
 const { findExecutable, findPippitBinary, hash } = require('./catalog.cjs');
 const { value } = require('./credit-model.cjs');
+const {configuredKey}=require('./credit-credentials.cjs');
+const {nextMonthlyDate,firecrawlCycle}=require('./credit-policies.cjs');
 
 function nativePippit(options = {}) {
   return findPippitBinary(options);
@@ -60,7 +62,8 @@ async function apiBalance(provider, key, request = jsonRequest) {
   if (provider === 'firecrawl') {
     const raw = await request('https://api.firecrawl.dev/v2/team/credit-usage', { headers });
     if (raw.success !== true || raw.data?.remainingCredits == null) throw new Error('invalid_response');
-    return [{ ...base, fetchedAt: Date.now(), pools: [{ id: 'team', label: '团队可用积分', labelEn: 'Team credits', amount: value(raw.data.remainingCredits), limit: value(raw.data.planCredits), unit: 'credits',
+    return [{ ...base, identityVerified:true, fetchedAt: Date.now(), pools: [{ id: 'team', label: '团队可用积分', labelEn: 'Team credits', amount: value(raw.data.remainingCredits), limit: value(raw.data.planCredits), unit: 'credits',
+      resetsAt:firecrawlCycle(raw.data),resetSource:'policy',resetLabel:'套餐月度积分',resetLabelEn:'Monthly plan credits',
       periodStart: Date.parse(raw.data.billingPeriodStart) || null, periodEnd: Date.parse(raw.data.billingPeriodEnd) || null }] }];
   }
   if (provider === 'deepseek') {
@@ -71,10 +74,15 @@ async function apiBalance(provider, key, request = jsonRequest) {
       { id: String(p.currency).toLowerCase() + '.purchased', label: '充值余额', labelEn: 'Purchased balance', amount: value(p.topped_up_balance), unit: p.currency },
     ]) }];
   }
+  if(provider==='tavily'){
+    const raw=await request('https://api.tavily.com/usage',{headers});const a=raw.account;
+    if(!a||typeof a.plan_usage!=='number'||typeof a.plan_limit!=='number'||a.plan_usage<0||a.plan_limit<0)throw new Error('invalid_response');
+    return[{...base,identityVerified:true,account:'API · '+String(a.current_plan||'Tavily').slice(0,60),fetchedAt:Date.now(),pools:[{id:'monthly_plan',label:'套餐剩余额度',labelEn:'Remaining plan quota',amount:Math.max(0,a.plan_limit-a.plan_usage),limit:a.plan_limit,unit:'credits',resetDate:nextMonthlyDate(),resetSource:'policy'}]}];
+  }
   throw new Error('unsupported');
 }
 async function securedApiBalance(provider, options = {}) {
-  const env = options.env || process.env, key = env[provider === 'firecrawl' ? 'FIRECRAWL_API_KEY' : 'DEEPSEEK_API_KEY'];
+  const env = options.env || process.env, key = options.credentialProvider?.(provider) || configuredKey(provider,options)?.key;
   if (key) return apiBalance(provider,key);
   const file = path.join(options.home || os.homedir(),'.codex','private','credentials',provider+'-api-key.dpapi');
   if (process.platform !== 'win32' || !fs.existsSync(file) || !['firecrawl','deepseek'].includes(provider)) throw new Error('login_required');

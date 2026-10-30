@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage } = require('electron');
 const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const path = require('node:path');
@@ -12,6 +12,8 @@ const { resetAlerts, newsPlan } = require('./reminders.cjs');
 const { NotificationDelivery, configureActivation } = require('./notifications.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
 const { CreditCenter } = require('./credit-center.cjs');
+const {CreditSecrets}=require('./credit-credentials.cjs');
+const {policyFor}=require('./credit-policies.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
@@ -28,7 +30,7 @@ let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, 
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
 let badgeRaisedAt = 0;
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
-let center, centerWindow;
+let center, centerWindow, creditSecrets;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
@@ -285,7 +287,8 @@ function processCreditReminders() {
 }
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
-  center = new CreditCenter(app.getPath('userData'));
+  creditSecrets=new CreditSecrets(app.getPath('userData'),safeStorage);
+  center = new CreditCenter(app.getPath('userData'),{credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}}});
   delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
@@ -317,21 +320,27 @@ async function start() {
         if (id === 'codex' || !id) { quota.setActive(true); quota.refresh(); }
         await center.refresh(['kimi','minimax','zai'].includes(id) ? 'relay' : id, {manual:true});
       } else if (name === 'rule') center.setRule(value?.key, value?.rule);
+      else if(name==='connect')await center.connect(value?.provider,value?.key,{replaceRecordId:value?.replaceRecordId||null});
+      else if(name==='credential-page'){
+        const urls={firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
+        if(!Object.hasOwn(urls,value?.provider))return{ok:false};await shell.openExternal(urls[value.provider]);
+      }
+      else if(name==='policy-source'){const policy=policyFor(value?.provider);if(!policy)return{ok:false};await shell.openExternal(policy.url);}
       else if (name === 'manual') center.addManual(value);
       else if (name === 'preferences') { if (typeof value?.enabled !== 'boolean' || typeof value?.reminders !== 'boolean') return { ok: false }; center.setPreferences(value); }
       else if (name === 'language') { if (!['zh-CN','en'].includes(value?.language)) return { ok: false }; return save({ language: value.language }); }
       else if (name === 'badge') { pinnedPanel = true; openPanel(true, true); }
       else return { ok: false };
       return { ok: true };
-    } catch { return { ok: false, error: 'operation_failed' }; }
+    } catch(error) { return { ok: false, error: ['login_required','invalid_credential','credential_storage_failed','credential_commit_partial','storage_failed','timeout','query_failed'].includes(error.message)?error.message:'operation_failed' }; }
   });
   center.on('state', broadcast);
   center.on('alert', alert => {
     if (demo || quitting || !center.enabled || !center.reminders) return;
     const providerName = center.inventory.tools.find(t => t.id === alert.provider)?.name || alert.provider;
-    delivery.send(alert, { title: alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
+    delivery.send(alert, { title: alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text('到了平台公布的恢复日期','Scheduled renewal date reached'):text('到了预计恢复时间','Expected renewal time reached'):text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
       body: alert.kind === 'recovered' ? text(`${providerName} 的${alert.label}已核实恢复。可打开额度中心安排任务。`, `${providerName}: ${alert.labelEn} renewal verified. Open the credit center to plan work.`)
-        : alert.kind === 'check_renewal' ? text(`${providerName} 已到你记录的恢复时间。请刷新核实实际到账，刻度尚未确认恢复。`, `${providerName}: your recorded renewal time has arrived. Refresh to verify the actual balance; renewal is not confirmed.`)
+        : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text(`${providerName} 按本机日历已到平台公布的恢复日期。官方未说明具体时刻和时区，请刷新核实实际额度。`,`${providerName}: the published renewal date is today in your local calendar. The provider specifies no time or timezone; refresh to verify.`):text(`${providerName} 记录的账期时间为 ${new Date(alert.at).toLocaleString('zh-CN')}。请核实套餐积分是否到账；合计余额变化不单独证明恢复。`,`${providerName}: the recorded billing boundary is ${new Date(alert.at).toLocaleString('en')}. Verify the plan grant; a total balance change alone does not prove renewal.`):text(`${providerName} 已到你记录的恢复时间。请刷新核实实际到账，刻度尚未确认恢复。`, `${providerName}: your recorded renewal time has arrived. Refresh to verify the actual balance; renewal is not confirmed.`)
         : alert.kind === 'reset_soon' ? text(`${providerName} 的${alert.label}约 ${alert.minutes} 分钟后周期重置，可先安排待办任务。`, `${providerName}: ${alert.labelEn} resets in about ${alert.minutes} minutes. Plan pending work.`)
         : alert.stale ? text(`${providerName} 本人记录的到期时间在约 ${alert.hours} 小时后，请核实当前余额。`, `${providerName}: your recorded expiry is in about ${alert.hours} hours. Verify the current balance.`)
         : text(`${providerName} 的${alert.label}将在约 ${alert.hours} 小时内到期。打开额度中心查看。`, `${providerName}: ${alert.labelEn} expires in about ${alert.hours} hours. Open the credit center for details.`), silent: true });

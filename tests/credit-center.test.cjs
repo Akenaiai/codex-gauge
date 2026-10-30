@@ -70,7 +70,7 @@ test('malformed on-disk records are protected and cannot be overwritten by a ref
 });
 test('Firecrawl adapter keeps billing boundaries separate and does not assume plan-minus-balance is usage',async()=>{
   const [r]=await apiBalance('firecrawl','example-secret',async(url,opt)=>{assert.equal(url,'https://api.firecrawl.dev/v2/team/credit-usage');assert.equal(opt.headers.Authorization,'Bearer example-secret');return{success:true,data:{remainingCredits:1200,planCredits:1000,billingPeriodEnd:'2027-01-01T00:00:00Z'}};});
-  assert.equal(r.pools[0].amount,1200);assert.equal(r.pools[0].expiresAt,undefined);assert.equal(r.pools[0].resetsAt,undefined);assert.ok(!JSON.stringify(r).includes('example-secret'));
+  assert.equal(r.pools[0].amount,1200);assert.equal(r.pools[0].expiresAt,undefined);assert.equal(r.pools[0].resetsAt,null);assert.ok(!JSON.stringify(r).includes('example-secret'));
 });
 test('DeepSeek grants and purchased credits remain disjoint pools and never become an invented expiry',async()=>{
   const [r]=await apiBalance('deepseek','example-secret',async()=>({balance_infos:[{currency:'CNY',total_balance:'15.00',granted_balance:'5',topped_up_balance:'10'}]}));

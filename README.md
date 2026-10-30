@@ -6,6 +6,8 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 **New in 0.3:** a desktop **Credit center** inventories your local AI CLIs, MCP servers and plugins, tracks separate balances and expiry/renewal dates, and keeps the original Codex badge. Open it from the tray or gauge panel. Automatic queries, timestamped host snapshots and manual readings are clearly distinguished. See the [credit-center guide and supported sources](docs/CREDIT_CENTER.md).
 
+**0.3.1:** Tavily quota queries, system-encrypted API connections, and official expiry/renewal rules with honest date-only precision. Firecrawl can refresh automatically after an independent read-only credential is verified; a host-only connection stays explicitly unverified.
+
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.

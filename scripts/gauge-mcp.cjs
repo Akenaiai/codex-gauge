@@ -7,6 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { createInterface } = require('node:readline');
 const { fresh, events } = require('../src/credit-model.cjs');
+const {policyFor}=require('../src/credit-policies.cjs');
 const argument = process.argv.find(v=>v.startsWith('--data-dir='));
 const directory = argument ? path.resolve(argument.slice(11)) : path.join(process.env.APPDATA || path.join(os.homedir(),'Library','Application Support'),'Codex Gauge');
 function snapshot() {
@@ -30,9 +31,9 @@ async function handle(message){
   if(!tools.some(t=>t.name===name)||Object.keys(args).some(k=>k!=='provider')||args.provider&&typeof args.provider!=='string')return reply({isError:true,content:[{type:'text',text:'Unsupported read request'}]});
   try {
     const data=snapshot(); const records=(data.records||[]).filter(r=>r.status!=='account_changed');
-    const value=name==='gauge_inventory'?{scannedAt:data.inventory?.scannedAt,tools:data.inventory?.tools||[],issues:data.inventory?.issues||[]}:
+    const value=name==='gauge_inventory'?{scannedAt:data.inventory?.scannedAt,tools:(data.inventory?.tools||[]).map(t=>({...t,policy:policyFor(t.id)})),issues:data.inventory?.issues||[]}:
       name==='gauge_balances'?records.filter(r=>!args.provider||r.provider===args.provider).map(r=>({...r,stale:!fresh(r)})):
-      events(records,data.rules||{});
+      events(records,data.rules||{}).map(e=>e.dateOnly?{...e,at:null}:e);
     return reply({content:[{type:'text',text:JSON.stringify(value)}]});
   }catch{return reply({isError:true,content:[{type:'text',text:'No readable Gauge snapshot. Open the credit center first.'}]});}
 }

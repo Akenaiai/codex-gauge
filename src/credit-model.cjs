@@ -4,6 +4,8 @@ const FRESH_MS = 5 * 60000;
 const numeric = n => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 function time(v) { return Number.isSafeInteger(v) && v > 0 ? v : null; }
 function value(v) { if (v == null) return null; const n = typeof v === 'string' && /^\d+(?:\.\d+)?$/.test(v) ? Number(v) : v; if (!numeric(n)) throw new Error('invalid_balance'); return n; }
+function calendarDate(v){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;const d=Date.parse(v+'T12:00:00Z');return Number.isFinite(d)&&new Date(d).toISOString().slice(0,10)===v?v:null;}
+function localDate(now){const d=new Date(now);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function cleanRecord(input, now = Date.now()) {
   if (!input || !/^[a-z0-9_-]{1,80}$/.test(input.provider) || typeof input.scope !== 'string' || input.scope.length < 1 || input.scope.length > 180) throw new Error('invalid_account');
   if (!Array.isArray(input.pools) || input.pools.length > 30 || !input.pools.length) throw new Error('invalid_pools');
@@ -16,6 +18,8 @@ function cleanRecord(input, now = Date.now()) {
     if (p.unit === 'percent' && amount !== null && amount > 100) throw new Error('invalid_balance');
     return { id: p.id, label: String(p.label || p.id).slice(0, 100), labelEn: String(p.labelEn || p.label || p.id).slice(0, 100),
       unit: p.unit, amount, limit, expiresAt: time(p.expiresAt), resetsAt: time(p.resetsAt), periodStart: time(p.periodStart), periodEnd: time(p.periodEnd),
+      resetDate:calendarDate(p.resetDate),resetSource:p.resetSource==='policy'&&input.source==='api'?'policy':'upstream',
+      resetLabel:typeof p.resetLabel==='string'?p.resetLabel.slice(0,100):null,resetLabelEn:typeof p.resetLabelEn==='string'?p.resetLabelEn.slice(0,100):null,
       dateSource: p.dateSource === 'user' ? 'user' : 'upstream', entitlement: ['available','exhausted','not_in_plan','unknown'].includes(p.entitlement) ? p.entitlement : null };
   });
   const account = typeof input.account === 'string' ? input.account.slice(0, 100) : '';
@@ -42,11 +46,12 @@ function events(records, rules = {}, now = Date.now()) {
   for (const record of records) for (const raw of record.pools) {
     const p = poolWithRule(record, raw, rules), stale = !fresh(record, now);
     for (const kind of ['expiry', 'reset', 'billing']) {
-      const at = kind === 'expiry' ? p.expiresAt : kind === 'reset' ? p.resetsAt : p.periodEnd;
+      const dateOnly=kind==='reset'&&!p.resetsAt&&!!p.resetDate;
+      const at = kind === 'expiry' ? p.expiresAt : kind === 'reset' ? p.resetsAt||dateOnly&&Date.parse(p.resetDate+'T12:00:00Z') : p.periodEnd;
       if (!at || at < now - 7 * 86400000 || at > now + 366 * 86400000) continue;
       result.push({ id: `${record.id}/${p.id}/${kind}/${at}`, recordId: record.id, provider: record.provider, poolId: p.id,
-        label: p.label, labelEn: p.labelEn, amount: p.amount, unit: p.unit, kind, at, stale, elapsed: at <= now,
-        source: kind==='expiry'&&p.rule?.expiresAt||kind==='reset'&&p.rule?.resetsAt?'user':'upstream', recordSource:record.source, identityVerified:record.identityVerified, notify: p.rule?.notify !== false });
+        label:kind==='reset'&&p.resetLabel||p.label,labelEn:kind==='reset'&&p.resetLabelEn||p.labelEn, amount: p.amount, unit: p.unit, kind, at, stale, elapsed:dateOnly?localDate(now)>p.resetDate:at<=now,dateOnly,onDate:dateOnly?p.resetDate:null,
+        source: kind==='expiry'&&p.rule?.expiresAt||kind==='reset'&&p.rule?.resetsAt?'user':kind==='reset'?p.resetSource:'upstream', recordSource:record.source, identityVerified:record.identityVerified, notify: p.rule?.notify !== false });
     }
   }
   return result.sort((a,b) => a.at - b.at);
@@ -63,6 +68,10 @@ function recoveryAlerts(previous, current, now = Date.now()) {
   const result = [];
   for (const pool of current.pools) {
     const old = previous.pools.find(p => p.id === pool.id);
+    if(old?.resetSource==='policy'||pool.resetSource==='policy'){
+      if(old?.resetsAt&&old.resetsAt>previous.fetchedAt&&old.resetsAt<=now&&pool.resetsAt>old.resetsAt)result.push({key:`center:policy-cycle:${current.id}:${hash(pool.id)}:${old.resetsAt}`,expiresAt:now+86400000,provider:current.provider,recordId:current.id,poolId:pool.id,label:pool.resetLabel||pool.label,labelEn:pool.resetLabelEn||pool.labelEn,kind:'check_renewal',source:'policy',at:old.resetsAt,dateOnly:false});
+      continue;
+    }
     // A larger balance alone is not evidence of renewal. Require a crossed,
     // upstream-reported cycle boundary AND the next upstream cycle AND recovery.
     if (!old?.resetsAt || old.resetsAt > now || old.resetsAt <= previous.fetchedAt || !pool.resetsAt || pool.resetsAt <= old.resetsAt || pool.amount == null || old.amount == null || pool.amount <= old.amount) continue;
@@ -73,8 +82,10 @@ function recoveryAlerts(previous, current, now = Date.now()) {
 }
 function renewalAlerts(records,rules={},now=Date.now()) {
   return events(records,rules,now).filter(e=>e.kind==='reset'&&e.notify&&(!['cli','relay','mcp'].includes(e.recordSource)||e.identityVerified)).flatMap(e=>{
+    if(e.dateOnly)return e.onDate===localDate(now)?[{...e,kind:'check_renewal',key:'center:date-check:'+hash(e.id),expiresAt:e.at+48*3600000}]:[];
+    if(e.source==='policy'&&e.at<=now&&now-e.at<86400000)return[{...e,kind:'check_renewal',key:'center:policy-check:'+hash(e.id),expiresAt:e.at+86400000}];
     if(e.source==='user'&&e.at<=now&&now-e.at<86400000)return[{...e,kind:'check_renewal',key:'center:check:'+hash(e.id),expiresAt:e.at+86400000}];
-    if(e.source!=='upstream'||e.stale||e.unit!=='percent'||e.amount<30||e.at<=now||e.at-now>2*3600000)return[];
+    if(!['upstream','policy'].includes(e.source)||e.stale||e.unit!=='percent'&&!(e.source==='policy'&&e.unit==='credits')||e.unit==='percent'&&e.amount<30||e.at<=now||e.at-now>2*3600000)return[];
     const minutes=Math.ceil((e.at-now)/60000),stage=minutes<=60?'1h':'2h';
     return[{...e,kind:'reset_soon',key:'center:reset:'+hash(e.id)+':'+stage,expiresAt:e.at,minutes}];
   });

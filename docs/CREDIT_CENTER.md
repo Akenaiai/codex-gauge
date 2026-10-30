@@ -1,5 +1,21 @@
 # Credit center / 额度中心
 
+## 0.3.1 additions / 新增接入与日期依据
+
+Tavily uses `GET https://api.tavily.com/usage` and shows the remaining **account plan** quota, distinct from pay-as-you-go charges. Existing credentials may be read from the matching enabled provider's MCP environment in Codex, Cursor, Claude Code/Desktop, Gemini or Qwen configuration; disabled entries do not automatically become enabled. Credentials never enter inventory or renderer state.
+
+The **Connect** dialog for Firecrawl, Tavily and DeepSeek verifies the official read-only endpoint before storing one current credential per provider with system encryption. Unavailable encryption and Linux basic-text storage are rejected. A later request using an old key cannot replace the newly verified account. If persistence fails, the previous encrypted credential and account view are restored, or an explicit partial-save error is shown if rollback itself fails. Matching a host snapshot is optional and explicit; unrelated workspaces remain visible. No account is created, key generated, permission enlarged or subscription changed by this dialog.
+
+Monthly renewal policy can supplement API observations without pretending to be account-grant evidence. Firecrawl's positive plan allowance and a monthly-length billing period identify its expected plan reset; annual-length periods are not assigned an invented monthly date. Its aggregate remaining balance still has no inferred expiry, because purchases and rollovers can follow other rules. A cycle inferred from policy emits a verification reminder rather than confirmed renewal.
+
+Tavily's official FAQ specifies the first day of the month without an exact time or timezone. `resetDate`/`dateOnly` preserve that precision. Calendar ordering uses an internal anchor, omitted as a timestamp from date-only MCP events. A local-calendar reminder asks for verification; it does not assert that the provider reset at local midnight. Official-rule panels include the reviewed source and review date; missing account-specific grant/billing dates remain unknown.
+
+中文：Tavily 从官方用量接口读取套餐余量，可沿用已启用客户端的对应 MCP 凭据。新增平台连接入口先验证只读查询，再用系统加密保存；每个平台保持一个当前凭据，旧请求不能覆盖新连接，失败可回滚。替换快照须选择已确认同账号/工作区的那条，其他账号不被隐藏。
+
+Firecrawl 的月度账期和官方规则用于展示套餐积分的“预计重置”，不把合计余额判为全部到期，也不把余额增加判为套餐到账。Tavily 每月1日按日期展示，具体时刻与时区未知时保持未知。各平台规则与来源可在卡片中展开查看。
+
+Sources reviewed 2026-10-30: [Tavily usage](https://docs.tavily.com/documentation/api-reference/endpoint/usage), [Tavily reset FAQ](https://docs.tavily.com/faq/faq), [Firecrawl billing](https://docs.firecrawl.dev/billing), [Lovart credit expiry](https://www.lovart.ai/statement/lovart-subscribe-faq), [Pippit plans](https://xyq.jianying.com/pricing), [Dreamina plans](https://jimeng.jianying.com/), [Runway credits](https://help.runwayml.com/hc/en-us/articles/15124877443219-How-do-credits-work), [Exa billing](https://exa.ai/docs/admin/billing).
+
 Gauge 0.3 keeps the existing Codex badge and adds a resizable desktop credit center. Open it from the tray's **Credit center · All AI tools** entry or the gauge panel's **All AI tool quotas** button. `Codex Gauge.exe --credit-center` opens it directly.
 
 ## Inventory and evidence

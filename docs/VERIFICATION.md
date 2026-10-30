@@ -1,5 +1,16 @@
 # Verification / 验证记录
 
+## 0.3.1 connections and renewal precision / 连接与恢复日期（2026-10-30）
+
+- **80 automated checks passed:** credential-source scoping (including enabled Cursor connections), encrypted persistence, failed-verification isolation, rollback, old-key response invalidation, per-workspace snapshot mapping, policy provenance across restart, and date-only schedules. A policy-derived cycle or an aggregate-balance increase cannot produce a confirmed-renewal notice.
+- **32 native checks passed** against source and actual ASAR resources in an isolated profile. New checks cover live Tavily reads from an existing configuration, date-only UI, policy details, the connection dialog, masked inputs, actual Windows system-encryption roundtrips, disabled cancel/Escape during a committing verification, and a complete isolated mocked read-only HTTP → IPC → encrypted-save path. Mocked credentials and balances remain test-only.
+- **Firecrawl live read:** after receiving an existing credential, the official read-only credit endpoint succeeded, then succeeded again through the protected-credential adapter. This is independent of the earlier host snapshot and requires no model turn. Its monthly reset time is policy-derived from account billing boundaries; total-credit expiry stays unknown. Actual installed refresh is recorded in the private release receipt, separately from UI/mock checks.
+- **Installed account path:** the installed 0.3.1 instance automatically read Firecrawl at startup, then completed a real verified/encrypted connection and another refresh. The confirmed matching legacy snapshot was replaced, with one active Firecrawl record. Tavily also returned an automatic API reading and a date-only renewal. The original Codex badge returned ready/anchored and its settings were preserved. No credential appeared in the returned UI state.
+- **Contents:** 31 runtime/sidecar files matched the reviewed sources before installation. The archive contains no local credit records, imported snapshots or credential files. Prior Codex badge behavior and preferences remain covered by regression checks.
+- **Remaining boundaries:** providers that expose only totals do not gain invented per-pool expiry dates. Date-only official rules do not supply an exact reset moment or timezone. Natural future notification delivery and Mac device behavior remain unverified. No key is created, account permission enlarged, purchase made or model generation requested.
+
+中文：80项检查、源码及实际发行资源上的32项原生检查通过。Firecrawl 独立凭据在官方只读接口及加密凭据适配层均实读成功，与宿主快照区分。Tavily 显示日期级恢复规则；规则推算不冒充已到账。实际安装后的刷新及配置保持单独留回执；自然提醒送达与Mac仍待实测。
+
 ## 0.3.0 credit center / 额度中心（2026-10-30）
 
 - **Regression and model checks:** 68 automated checks passed, including the original 47. New coverage includes discovery evidence and disabled/cache distinction, source/account isolation, unknown versus zero, expiry versus billing boundaries, recovery after polling gaps/outages, confirmed manual schedules, corrupt storage preservation, transactional preference/manual writes, resumed-query generation isolation and allowlisted ephemeral Lovart MCP reads.

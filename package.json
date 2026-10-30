@@ -1,6 +1,6 @@
 {
   "name": "codex-gauge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A desktop AI credit center with the original precision-styled Codex usage badge.",
   "main": "src/main.cjs",
   "author": "Aken",
@@ -57,6 +57,10 @@
       {
         "from": "src/relay-credit-bridge.py",
         "to": "adapters/relay-credit-bridge.py"
+      },
+      {
+        "from": "src/credit-policies.cjs",
+        "to": "mcp/src/credit-policies.cjs"
       }
     ],
     "win": {
