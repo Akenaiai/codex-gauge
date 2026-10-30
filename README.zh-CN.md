@@ -2,23 +2,19 @@
 
 [English](README.md) · [下载](https://github.com/Akenaiai/codex-gauge/releases) · [源码](https://github.com/Akenaiai/codex-gauge)
 
-贴在 Codex 个人头像上方的一枚小仪表。悬停展开，查看剩余额度、重置时间和可用重置卡。
+统一查看本机 AI 工具额度的桌面看板，一眼区分有额度、已用尽和临期工具。原来贴在 Codex 头像上方的小仪表继续保留，悬停可看剩余额度、重置时间和可用重置卡。
 
-**0.3 新增额度中心：** 统一梳理本机 AI CLI、MCP 和插件，分别记录余额、到期和恢复时间，原 Codex 小仪表继续保留。从托盘或小面板打开。自动查询、宿主查询快照和本人记录明确区分。接入方式、支持的平台及实际边界见[额度中心说明](docs/CREDIT_CENTER.md)。
+**第一次用，从这里开始：** [安装与首次查询](docs/GETTING_STARTED.zh-CN.md) · [会读取哪些本机连接](docs/GETTING_STARTED.zh-CN.md#3-会读取哪些本机连接) · [哪些日期是实查哪些是预计](docs/GETTING_STARTED.zh-CN.md#4-哪些日期是实查哪些是预计)。
 
-**0.3.2：** 首页改成一行一个工具，直接筛选“有额度、已用尽、临期 / 快重置、待确认”。近期到期优先，完整分项与接入操作收进“详情”。原小仪表与自动查询保留。[版本说明](docs/releases/0.3.2.md)。
+**不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**0.3.3：** 新增独立的网页日期核对记录，补充自动接口未返回的日期，保留账户、来源与非实时标识。永久有效、到期、恢复和账单日分开，不猜时区或实际到账；查不到的说明原因。[版本说明](docs/releases/0.3.3.md)。
-
-**0.3.4：** 按已知发放日或失效日，预计每月同日发放并提醒核实。不新增平台网页登录或 Cookie 读取，余额继续沿用本机已有连接查询，预计不冒充已到账。[版本说明](docs/releases/0.3.4.md)。
+**当前版本 0.3.4：** 首页区分“有额度、已用尽、临期 / 快重置、待确认”。自动余额、上次网页核对、每月预计发放分别标注来源；余额刷新不更新网页记录，预计不代表已到账。[版本说明](docs/releases/0.3.4.md) · [额度中心进阶说明](docs/CREDIT_CENTER.md)。
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)
 
 ![刻度设计预览，图中均为示例数据](assets/preview-dark.jpg)
 
 **先完成 Windows。** Windows 头像定位已实现；Mac 合并候选已包含原生头像吸附、更新按钮避让及随 Codex 启停；本机自动检查与打包通过，真实窗口体验仍待验收，详见 docs/MAC.md。
-
-[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)：已核对公开历史、v0.3.4实际安装包与空白配置启动，检查是否夹带开发者账号数据。
 
 断连时，头像红色到期标记和置顶临期卡保留上次记录的未到期时间，并标明“上次数据”、记录时间及“实际可用情况待刷新确认”；连接恢复后按新数据更新。
 
@@ -39,7 +35,9 @@
 
 从[发布页](https://github.com/Akenaiai/codex-gauge/releases)下载安装程序或绿色 ZIP。当前程序**没有 Windows 代码签名**，请核对来源和 SHA-256，不关闭系统保护。
 
-需要 Windows 10/11 x64、Codex 桌面客户端，以及已经安装并登录的[官方 Codex CLI](https://github.com/openai/codex)。CLI 提供本机登录和额度数据。打开 Codex 后，仪表会定位到个人头像上方；暂时无法定位时仍可从托盘打开详情。
+安装版选 `Codex.Gauge.Setup.0.3.4.exe`；免安装版选 `Codex.Gauge-0.3.4-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
+
+需要 Windows 10/11 x64。原 Codex 小仪表还需要 Codex 桌面客户端，以及已经安装并登录的[官方 Codex CLI](https://github.com/openai/codex)，由 CLI 提供本机登录和 Codex 额度数据。打开 Codex 后，仪表会定位到个人头像上方；其他已支持平台可通过自己的连接独立使用额度中心，暂时无法定位头像时仍可从托盘打开。
 
 普通模式在 Codex 最小化或其他应用位于前台时隐藏；置顶模式在 Codex 最小化后仍可见。Codex 关闭后两种模式都收起小仪表，托盘仍能打开详情。
 
@@ -57,7 +55,7 @@
 
 ## 通过 Git 运行
 
-先安装 Node.js 22.12+（推荐当前 LTS）、Git，并登录官方 Codex CLI。
+先安装 Node.js 22.12+（推荐当前 LTS）和 Git。需要使用原 Codex 小仪表时，再安装并登录官方 Codex CLI、打开 Codex 桌面客户端。
 
 ```sh
 git clone https://github.com/Akenaiai/codex-gauge.git

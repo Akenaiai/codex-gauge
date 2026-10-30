@@ -2,23 +2,19 @@
 
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)
 
-A small, precision-styled Codex usage gauge above your profile. Hover for remaining capacity, reset times and available reset credits.
+A desktop AI credit center with a small, precision-styled Codex usage gauge above your profile. See which tools have quota, which are used up and which have approaching deadlines. The original hover panel keeps Codex capacity, resets and reset credits close at hand.
 
-**New in 0.3:** a desktop **Credit center** inventories your local AI CLIs, MCP servers and plugins, tracks separate balances and expiry/renewal dates, and keeps the original Codex badge. Open it from the tray or gauge panel. Automatic queries, timestamped host snapshots and manual readings are clearly distinguished. See the [credit-center guide and supported sources](docs/CREDIT_CENTER.md).
+**Start here:** [Install and make your first check](docs/GETTING_STARTED.md) · [Local connections and supported queries](docs/GETTING_STARTED.md#3-which-local-connections-are-read) · [Observed vs. estimated dates](docs/GETTING_STARTED.md#4-understand-observed-and-estimated-dates).
 
-**0.3.2:** a compact quota overview shows one row per queried tool, with direct filters for Available, Used up, Expiring / resetting, and Unconfirmed. Near-term expiries come first; complete pools and connection controls open in Details. Original badge and automatic queries remain available. [Release notes](docs/releases/0.3.2.md).
+**No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**0.3.3:** account-page date observations supplement automatic balances without inventing account matches, timezones or confirmed grants. Permanent funds, expiry, renewal and billing dates stay distinct; omitted dates have a reason. [Release notes](docs/releases/0.3.3.md).
-
-**0.3.4:** monthly grants can be forecast on the same day from a known grant/expiry date, with explicit estimated labels and verification reminders. No additional provider browser sign-in or cookie access is introduced. Existing local connections continue to supply balances. [Release notes](docs/releases/0.3.4.md).
+**Current version: 0.3.4.** The overview separates Available, Used up, Expiring / resetting and Unconfirmed. Automatic balances, historical website observations and monthly grant forecasts keep their own source labels. Balance refreshes do not refresh website records; a forecast never confirms arrival. [Release notes](docs/releases/0.3.4.md) · [Technical credit-center guide](docs/CREDIT_CENTER.md).
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)
 
 **Windows first.** Windows profile anchoring is implemented. The local macOS source now includes an Accessibility-based profile anchor; real Mac window acceptance is pending. See docs/MAC.md.
-
-[Distribution privacy verification](docs/PRIVACY_VERIFICATION.md): public history, actual v0.3.4 artifacts and an isolated first-start run were checked for developer account data.
 
 ## What it does
 
@@ -37,7 +33,9 @@ A small, precision-styled Codex usage gauge above your profile. Hover for remain
 
 Download the setup executable or portable ZIP from [Releases](https://github.com/Akenaiai/codex-gauge/releases). The app is **not code-signed**. Verify the release source and SHA-256 checksum; do not disable Windows protections.
 
-You need Windows 10/11 x64, the Codex desktop app, and an installed, signed-in [official Codex CLI](https://github.com/openai/codex). The CLI supplies authentication and current quota data. Keep Codex open for the attached gauge. If the profile cannot be located, the tray still opens the usage panel.
+Choose `Codex.Gauge.Setup.0.3.4.exe` for installation, or fully extract `Codex.Gauge-0.3.4-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
+
+You need Windows 10/11 x64. The original Codex badge additionally needs the Codex desktop app and an installed, signed-in [official Codex CLI](https://github.com/openai/codex). The CLI supplies authentication and current Codex quota data. Keep Codex open for the attached gauge. Other supported providers can use the credit center independently through their own connections; if the profile cannot be located, the tray still opens the panel.
 
 Normal mode hides when Codex is minimized or another app is foreground. Keep-on-top mode remains visible while Codex is minimized; both modes hide the attached gauge when Codex closes. You can still open the panel from the tray.
 
@@ -55,7 +53,7 @@ If the gauge remains absent, open it from the desktop or Start menu and check it
 
 ## Run from Git
 
-Install Node.js 22.12+ (a current LTS version is recommended), Git and the signed-in Codex CLI.
+Install Node.js 22.12+ (a current LTS version is recommended) and Git. To use the original Codex badge, also install and sign in to the official Codex CLI and open the Codex desktop app.
 
 ```sh
 git clone https://github.com/Akenaiai/codex-gauge.git
