@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.2 glanceable overview / 额度总览（2026-10-30）
+
+- 90 automated checks cover existing readers/reminders and overview classification: zero grants with purchased funds, independent video/tool entitlements, reset credits, stale/elapsed readings, disjoint accounts and deadline attribution. Independent review findings were fixed before packaging.
+- 21 native packaged-window checks cover status filters, hidden unconnected inventory, complete provider details, preserved expansion, nested encrypted connection/date dialogs, search focus, calendar, bilingual rendering, narrow-width layout and retained Settings controls. Renderer isolation and console-error checks pass. Public overview screenshots are generated from synthetic examples; real readings and screenshots stay private.
+- The original badge and backend query/reminder implementation are unchanged. Natural future notifications and macOS retain their prior field-test limits; automated checks and native rendering do not establish user acceptance of the design.
+
+90项自动检查覆盖原查询提醒与总览分类，21项发行资源原生窗口检查覆盖筛选、详情、连接与日期入口、中英文、窄窗及设置可达性。公开截图使用合成数据，真实读数与截图留在私有层。原小仪表与后台实现保持；自然未来通知和Mac继续待验，界面运行通过不代表本人已认可设计。
+
 ## 0.3.1 connections and renewal precision / 连接与恢复日期（2026-10-30）
 
 - **80 automated checks passed:** credential-source scoping (including enabled Cursor connections), encrypted persistence, failed-verification isolation, rollback, old-key response invalidation, per-workspace snapshot mapping, policy provenance across restart, and date-only schedules. A policy-derived cycle or an aggregate-balance increase cannot produce a confirmed-renewal notice.

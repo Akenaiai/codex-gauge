@@ -24,6 +24,14 @@ The scanner reads MCP/plugin section metadata from known Codex, Claude Code/Desk
 
 Host-managed connectors can be listed in a local `credit-host-tools.json` array of `{ "name": "provider", "kind": "plugin" }` entries. This is host-supplied inventory, not a cloud connector discovery API. No whole-disk discovery is claimed. Tools installed in custom locations, other host profiles, browser-only services and remote devices may need a manual entry.
 
+## Quota overview
+
+The home view contains one row per queried tool, with four clickable status filters. **Available**, **Used up**, and **Unconfirmed** describe the reading; **Expiring / resetting** overlaps those states and identifies expiry within seven days or reset within two days. Expiries sort before resets. Unread, failed, stale, or elapsed-window readings cannot be treated as current zero balances or confirmed availability.
+
+The displayed percentage is the tightest coding-model window, excluding separate tool/video entitlements and reset credits. DeepSeek's known disjoint grant and purchased cash pools can be combined within one currency/account; other pools and accounts are never arbitrarily summed. The shown account is identified when several exist, and each deadline keeps its account. Reset-credit expiry is explicitly named and does not describe the model percentage. Exact dates are available on hover and in Details; date-only schedules never acquire an invented time.
+
+**Details** preserves every pool, read timestamp, source, official rule and existing connection/date controls. **All tools** retains the full inventory. Query, reminder, manual reading and rescan controls are under Settings, including in narrow windows. The original Codex badge opens separately.
+
 ## Queries
 
 | Provider | Read path | Limits |
@@ -67,6 +75,10 @@ Sources checked 2026-10-30: [Pippit CLI](https://github.com/Pippit-dev/cli), [De
 ## 中文说明
 
 0.3 在保留 Codex 小仪表的基础上，新增可调整大小的额度中心。托盘“额度中心 · 全部 AI 工具”或小面板的入口可以打开。
+
+0.3.2 首页改为一行一个已查询工具，顶部筛选“有额度、已用尽、待确认”，以及与它们可重叠的“临期 / 快重置”（7天内到期、2天内重置）。到期优先，重置其次。每行突出余量与文字状态；具体时间可悬停或进入详情查看，只有日期时不补造时刻。重置卡到期明确标注，不等于模型额度到期。多个账号不相加，日期保留对应账号；DeepSeek 同币种、同账号内明确分开的赠送与充值余额可合计。失联、过旧或已过窗口的读数标待确认。
+
+“详情”保留全部分项、来源、日期与连接入口，“全部工具”保留完整目录。查询、提醒、补充记录和重新梳理工具收进设置，窄窗仍可打开。原 Codex 小仪表独立保留。
 
 目录梳理覆盖本机常见客户端的 MCP/插件配置、已知 CLI、相关 Skill 与插件缓存。配置、安装、已连通和可查额度分别表达；缓存不代表启用。自定义位置、其他用户配置、纯网页服务和远端设备不保证自动发现，可补充本人记录。
 
