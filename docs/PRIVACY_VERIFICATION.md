@@ -1,5 +1,13 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.3.6 follow-up / 创作翻面升级复核（2026-10-30）
+
+The actual installer contains 84 application-payload files and 49 ASAR paths. Its payload matches the tested unpacked build; ZIP ASAR/MCP resources match. Allowlist and private-data filename checks find no saved settings, balance/date imports, credentials or browser profiles. The public creative-face images are synthetic native-window fixtures, not personal screenshots. The new face preference and Suno readings remain per-user runtime data; Suno authentication stays with the existing MCP client.
+
+156 package/source/document/image files are included in local account-marker and credential comparisons, with no matches. No values are printed or included in this report. An installer-ASAR empty-profile run passes 18 isolation checks: no balances, dates, keys or creative rows, and the original face by default; a second profile discovers only its own canary. Startup/host/notification stubs and the historical full-history audit limits below still apply. This is a targeted follow-up, not a new full-history or separate-Windows-account claim.
+
+中文：0.3.6安装器84个应用负载文件、ASAR49个路径与受检构建一致，未包含私人数据文件。156个包内 / 源码 / 文档 / 示例图片在本地与账号标记、在用凭据及DPAPI来源比对，无匹配，不回显秘密。两张新增创作翻面图来自合成原生窗口夹具，非个人截图。实际安装器ASAR空白用户18项检查通过，未继承余额、日期、密钥或翻面偏好；未新建真实Windows账号，原系统任务 / 定位 / 通知的夹具替代边界保持。
+
 ## 0.3.5 follow-up / 本次升级复核（2026-10-30）
 
 The 0.3.5 installer contains 84 application-payload files and 46 ASAR paths. Its payload matches the tested unpacked build; ZIP ASAR and MCP resources match. The allowlist and saved-data filename checks find no user settings, balance/date records, imports, encrypted credentials or browser profiles. Across 148 inspected package/source files, local comparisons against existing account markers and API credentials, including DPAPI sources, find no matches; values are never printed or included here. This is a targeted follow-up to the historical full-history audit below, not a new full-history scan.

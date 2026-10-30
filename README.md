@@ -8,11 +8,11 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Current version: 0.3.5.** A skippable first-use guide shows discovered tools and available query paths. Enter missing expiry dates and monthly subscription grant days directly in the app, with clear user-recorded / estimated labels. No configuration-file edits or provider login inside Gauge. [Release notes](docs/releases/0.3.5.md) · [Technical credit-center guide](docs/CREDIT_CENTER.md).
+**Current version: 0.3.6.** Flip the expanded gauge to **Creative credits** for image, video and music balances, read times and pool-specific dates. Coding quotas stay on the original face. Suno reuses your existing MCP connection and separates generation from downloads. [Release notes](docs/releases/0.3.6.md) · [Technical credit-center guide](docs/CREDIT_CENTER.md).
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
-![Codex Gauge design preview with sample data](assets/preview-en.jpg)
+![Creative flip face with synthetic sample data](docs/images/creative-panel-en.png)
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
 
@@ -33,7 +33,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 Download the setup executable or portable ZIP from [Releases](https://github.com/Akenaiai/codex-gauge/releases). The app is **not code-signed**. Verify the release source and SHA-256 checksum; do not disable Windows protections.
 
-Choose `Codex.Gauge.Setup.0.3.5.exe` for installation, or fully extract `Codex.Gauge-0.3.5-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
+Choose `Codex.Gauge.Setup.0.3.6.exe` for installation, or fully extract `Codex.Gauge-0.3.6-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
 
 You need Windows 10/11 x64. The original Codex badge additionally needs the Codex desktop app and an installed, signed-in [official Codex CLI](https://github.com/openai/codex). The CLI supplies authentication and current Codex quota data. Keep Codex open for the attached gauge. Other supported providers can use the credit center independently through their own connections; if the profile cannot be located, the tray still opens the panel.
 

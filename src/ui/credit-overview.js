@@ -8,7 +8,7 @@
   function fresh(r,now){return r.status==='ready'&&r.stale!==true&&finite(r.fetchedAt)&&r.fetchedAt<=now&&now-r.fetchedAt<FRESH;}
   function summarizeRecord(r,provider,rules,now){
     const pools=(r.pools||[]).map(p=>effective(r,p,rules));
-    const eligible=pools.filter(p=>!card(p)&&!['not_in_plan','unknown'].includes(p.entitlement));
+    const eligible=pools.filter(p=>!card(p)&&p.resource!=='downloads'&&!(provider==='suno'&&p.id==='download_credits')&&!['not_in_plan','unknown'].includes(p.entitlement));
     const model=eligible.filter(p=>p.unit==='percent'&&!toolsPool(p)&&!(provider==='minimax'&&p.id==='video'));
     let metric=null,status='unknown';
     if(model.length){

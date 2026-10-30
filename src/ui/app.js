@@ -14,6 +14,7 @@
   const t = (cn, en) => state.settings.language === 'zh-CN' ? cn : en;
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icons = {
+    flip: '<path d="M5 7h14v10H5zM2 10V5h5M22 14v5h-5"/>',
     settings: '<path d="M9 2h6l1 3 3 1 3 5-2 2 0 3-4 4-3-1-3 1-4-4v-3l-2-2 3-5 3-1z"/><circle cx="12" cy="12" r="3"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
     back: '<path d="m14 6-6 6 6 6"/>',
@@ -196,10 +197,27 @@
   }
   function panelMarkup() {
     return `<section class="panel"><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
-      ${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
+      <button class="flip-switch" data-action="show-creative">${icon('flip')}${t('创作积分','Creative credits')}</button>${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
       <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
       ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
+  }
+  function panelFacesMarkup() {
+    const flipped=screenName!=='settings'&&state.settings.panelFace==='creative';
+    return `<div class="flip-stage"><div class="flip-deck ${flipped?'is-flipped':''}"><div class="flip-face codex-face" ${flipped?'inert aria-hidden="true"':'aria-hidden="false"'}>${panelMarkup()}</div><div class="flip-face creative-face" ${flipped?'aria-hidden="false"':'inert aria-hidden="true"'}>${window.creativePanel.markup({state,t,esc,button,icon})}</div></div></div>`;
+  }
+  function renderPanel() {
+    const deck=app.querySelector?.('.flip-deck');
+    if(!deck){app.innerHTML=panelFacesMarkup();return;}
+    const front=deck.querySelector('.codex-face'),back=deck.querySelector('.creative-face');
+    const active=document.activeElement,focus=active?.dataset?.action;
+    const frontScroll=front.querySelector('.content')?.scrollTop||0,backScroll=back.querySelector('.content')?.scrollTop||0;
+    front.innerHTML=panelMarkup();back.innerHTML=window.creativePanel.markup({state,t,esc,button,icon});
+    front.querySelector('.content').scrollTop=frontScroll;back.querySelector('.content').scrollTop=backScroll;
+    const flipped=screenName!=='settings'&&state.settings.panelFace==='creative';
+    deck.classList.toggle('is-flipped',flipped);front.inert=flipped;back.inert=!flipped;front.setAttribute('aria-hidden',String(flipped));back.setAttribute('aria-hidden',String(!flipped));
+    const face=flipped?back:front;
+    if(focus){const target=Array.from(face.querySelectorAll('[data-action]')).find(button=>button.dataset.action===focus)||face.querySelector('.flip-switch');target?.focus({preventScroll:true});}
   }
   function notificationNotice() {
     const d = state.notificationDelivery;
@@ -220,10 +238,17 @@
     document.documentElement.lang = state.settings.language;
     document.body.className = `${preview ? 'preview ' : ''}${state.dark ? '' : 'light'}`;
     if (preview) app.innerHTML = `<div class="preview-intro"><div class="kicker">CODEX GAUGE / 01</div><h1>${t('额度，一眼有数。', 'Your usage, at a glance.')}</h1><p>${t('贴在个人头像上方的一枚小仪表。暖金色记录当前余量，细刻度保留读数的秩序。以下为设计预览，全部为示例数据。', 'A small instrument above your profile. Warm brass for remaining capacity; fine graduations for clarity. Design preview with sample data only.')}</p></div>
-      <div class="preview-stage"><div class="preview-rail"><div class="rail-logo">C</div><div class="rail-nav">${icon('gauge')}${icon('ticket')}${icon('settings')}</div><div class="spacer"></div>${mini()}<div class="rail-avatar">AK</div></div><div class="preview-frame">${panelMarkup()}</div><div class="preview-notes"><strong>01 / ${t('常驻', 'AT A GLANCE')}</strong>${t('双弧线、小读数。只占头像上方的一点空间。', 'Two arcs. One reading. A small space above your profile.')}<strong>02 / ${t('展开', 'IN DETAIL')}</strong>${t('双周期仪表、重置时间、重置卡，一层展开。', 'Two usage windows, reset times and credits in one view.')}<div class="preview-buttons"><button data-preview="theme">${t('切换明暗', 'Theme')}</button><button data-preview="language">中 / EN</button><button data-preview="low">${t('低余量', 'Low')}</button><button data-preview="offline">${t('断线状态', 'Offline')}</button><button data-preview="reset">${t('还原', 'Reset')}</button></div></div></div>`;
-    else app.innerHTML = view === 'badge' ? mini() : panelMarkup();
+      <div class="preview-stage"><div class="preview-rail"><div class="rail-logo">C</div><div class="rail-nav">${icon('gauge')}${icon('ticket')}${icon('settings')}</div><div class="spacer"></div>${mini()}<div class="rail-avatar">AK</div></div><div class="preview-frame">${panelFacesMarkup()}</div><div class="preview-notes"><strong>01 / ${t('常驻', 'AT A GLANCE')}</strong>${t('双弧线、小读数。只占头像上方的一点空间。', 'Two arcs. One reading. A small space above your profile.')}<strong>02 / ${t('展开', 'IN DETAIL')}</strong>${t('双周期仪表、重置时间、重置卡，一层展开。', 'Two usage windows, reset times and credits in one view.')}<div class="preview-buttons"><button data-preview="theme">${t('切换明暗', 'Theme')}</button><button data-preview="language">中 / EN</button><button data-preview="low">${t('低余量', 'Low')}</button><button data-preview="offline">${t('断线状态', 'Offline')}</button><button data-preview="reset">${t('还原', 'Reset')}</button></div></div></div>`;
+    else if(view==='badge')app.innerHTML=mini();else renderPanel();
   }
   async function action(name, value) {
+    if(name==='show-creative'||name==='show-codex'){
+      const previous=state.settings.panelFace||'codex',face=name==='show-creative'?'creative':'codex';
+      screenName='gauge';state.settings.panelFace=face;
+      if(preview){const deck=app.querySelector('.flip-deck');deck.classList.toggle('is-flipped',face==='creative');for(const side of deck.querySelectorAll('.flip-face')){const hidden=side.classList.contains('creative-face')!==(face==='creative');side.inert=hidden;side.setAttribute('aria-hidden',String(hidden));}return;}
+      render(true);const result=await window.gauge.action('settings',{panelFace:face});
+      if(!result?.ok){state.settings.panelFace=previous;showToast(t('翻面偏好未保存，请重试','Face preference was not saved. Please retry'));}return;
+    }
     if (name === 'settings-page' || name === 'back') { screenName = name === 'back' ? 'gauge' : 'settings'; render(true); return; }
     if (name === 'credits') { details = !details; render(true); return; }
     if (name === 'news-details') { newsDetails = !newsDetails; render(true); return; }

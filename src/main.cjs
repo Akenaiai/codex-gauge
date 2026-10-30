@@ -15,6 +15,7 @@ const { CreditCenter } = require('./credit-center.cjs');
 const {observationNotice}=require('./credit-date-observations.cjs');
 const {CreditSecrets}=require('./credit-credentials.cjs');
 const {policyFor}=require('./credit-policies.cjs');
+const {creativeSnapshot,creativeQueryTargets}=require('./creative-credits.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
@@ -38,7 +39,7 @@ const text = (cn, en) => zh() ? cn : en;
 function state() {
   return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
     settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
-    resetFeed: resetFeed.state(), update, version: app.getVersion(), demo };
+    resetFeed: resetFeed.state(),creative:creativeSnapshot(center?.state()), update, version: app.getVersion(), demo };
 }
 function centerState() { return { ...center.state(), language: store.settings.language, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors }; }
 function broadcast() {
@@ -193,6 +194,7 @@ async function action(name, value) {
     case 'close': closePanel(); updateVisibility(); break;
     case 'credit-center': openCenter(); break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
+    case 'creative-refresh': await Promise.allSettled(creativeQueryTargets(center.state()).map(id=>center.refresh(id,{manual:true})));break;
     case 'reset-news-source': {
       const event = resetFeed.state().events.find(e => e.id === value);
       await shell.openExternal(event?.sourceUrl || PAGE); break;
@@ -200,7 +202,7 @@ async function action(name, value) {
     case 'settings': {
       if (!value || typeof value !== 'object') return { ok: false };
       const patch = {};
-      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews']) if (key in value) patch[key] = value[key];
+      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews','panelFace']) if (key in value) patch[key] = value[key];
       if ('autostart' in value) {
         if (!app.isPackaged) return { ok: false, error: 'install_first' };
         patch.autostart = value.autostart === true;

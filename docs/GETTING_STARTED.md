@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-For Windows 0.3.5. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+For Windows 0.3.6. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.5.exe`. For an installation-free launch, download `Codex.Gauge-0.3.5-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.6.exe`. For an installation-free launch, download `Codex.Gauge-0.3.6-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
@@ -27,6 +27,10 @@ The original badge needs the Codex desktop app and an installed, signed-in [offi
 | Unconfirmed | Unread, failed, stale or elapsed-window data needs a fresh check |
 
 Open **Details → Dates & source** for all pools and timestamps, or **Calendar** for dates. Different accounts are not automatically combined. A website record is not automatically identified as the API account. New installations contain no developer account, balances or date rules. Without a supported local source, the list may be empty. Screenshots use synthetic data.
+
+### Preview only creative credits
+
+Hover over the small Codex badge to expand it, then click **Creative credits**. The card rotates to image, video and music balances with each source's read time and available dates. **Flip back** restores the original coding gauge. The selected face survives reopening; reduced-motion settings disable rotation. Used up and unread/stale stay distinct. Coding windows, search quotas, reset cards and download credits are excluded. The back's refresh queries creative sources; the credit center remains available for full details and date entry.
 
 ## 3. Which local connections are read
 
@@ -49,6 +53,7 @@ Supported automatic balance reads are listed below. Other discovered tools remai
 | Codex | Signed-in official CLI; local read-only app-server | Only windows, reset times and card dates actually returned |
 | Pippit / 小云雀, Dreamina / 即梦 | Their installed, signed-in native CLIs | Current balance responses omit credit expiry and grant dates |
 | Lovart | Existing working Lovart MCP connection in Codex | Fixed balance tool only; current response omits account identity and dates |
+| Suno | Existing enabled `suno` MCP connection in Codex | Generation and download credits are separate; subscription renewal is billing only; no stable account ID |
 | Kimi, MiniMax, ZCode | Separately installed Agent Relay, Python and the corresponding existing connections | Dates depend on returned data; Gauge does not install the companion or dispatch tasks |
 | Firecrawl, Tavily, DeepSeek | Matching API credentials | Returned dates and policy-derived dates stay distinct; a balance may have no expiry |
 

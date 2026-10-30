@@ -1,5 +1,14 @@
 # Verification / 验证记录
 
+## 0.3.6 creative flip and Suno / 创作翻面与Suno（2026-10-30）
+
+- 134 automated checks pass, including creative-only filtering, coding/media date isolation, pool-named expiry, stale readings, separate Suno generation/download balances, public-identity changes, fixed read-only MCP calls and face preference validation. The existing original-gauge checks remain in the suite.
+- 20 native packaged-window checks pass through production main/renderer/IPC with synthetic current-user sources: intermediate 3D rotation, stable mounted deck during state updates, hidden-face inertness, compact zero-balance rows, media-only content/refresh, pool-specific and estimated dates, flip-back, saved face after renderer reopen, English/Chinese, a 320-pixel-wide panel, reduced motion, empty state and no renderer errors. Dark Chinese and light English captures were inspected; public images use only these synthetic fixtures.
+- The real Suno adapter successfully reused the existing local MCP connection and returned separate generation/download pools without a model turn or generation. Its public handle is checked before/after; no stable account ID is invented. Subscription renewal stays billing-only.
+- Production code from the actual installer ASAR passes 18 empty-profile isolation checks, including no creative balances and the original face by default. Startup, native host observation and notifications are stubbed in isolated fixtures. The new release still needs actual installation verification separately; natural future delivery and Mac remain field-test limits.
+
+134项自动检查、20项包内原生操作通过；Suno真实只读接口接通。截图仅用合成示例，空白用户18项隔离检查不继承任何余额、日期或凭据。原小仪表、真实安装后的既有偏好与查询另行核对；不把预计或会员续期当作已到账。
+
 ## 0.3.5 guidance and graphical dates / 引导与图形日期（2026-10-30）
 
 - 123 automated checks pass. New coverage includes first-use/upgrade migration, direct date persistence/edit/delete, account binding, short-month forecasts, stale-zero verification, reminder receipt isolation, failed-save rollback, Chinese tool names and date-only MCP output.

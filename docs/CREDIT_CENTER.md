@@ -2,6 +2,14 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.6: Creative flip face and Suno / 创作翻面与 Suno
+
+The expanded badge panel flips between the original Codex view and **Creative credits**. The latter filters to known image/video/music providers and explicit media-only entitlements. Coding windows, search quotas, cash balances, reset cards and downloads are excluded. Each row preserves its own reading timestamp and uncertainty; neither separate accounts nor generation/download pools are summed. Dates must belong to retained media pools; independent dates on a mixed coding/video provider require an explicit video label. Sub-pool dates name that pool. The 52-pixel badge behavior is preserved. `panelFace` is a validated local preference, and the hidden face is inert for keyboard/accessibility navigation. Reduced motion disables rotation.
+
+Suno automatically queries the existing enabled MCP server named `suno`, using only its actual `account-me` / `account-usage` tool names through the same isolated ephemeral app-server path as Lovart. It checks the public handle before/after usage, hashes it into source scope and suppresses old sources after changes. No stable unique account ID is supplied, so `identityVerified` remains false: account-specific confirmed date overrides and recovered-grant notifications cannot be inherited. Separately named user dates remain available. Missing song credits are a failed/unknown response, never zero. Download credits have `resource: downloads`; generation has `resource: music`. `renews_on` is retained only as `periodEnd` (billing), with no invented reset or expiry. There is no generation, library access, model turn or browser login.
+
+中文：原小仪表展开后可翻到创作积分背面，只显示生图、生视频、生音乐及明确的媒体权益，编程和下载等其他额度不参与。日期沿用原归属和来源，分项到期明确标池；不同账号及下载 / 生成积分不相加。翻面选择保存在本机，键盘不会进入隐藏一面，减少动态效果时取消旋转。Suno复用已有名为`suno`的MCP连接，固定只读调用并核对前后公开标识；缺少稳定ID时不继承确认日期或到账证明。会员续期只作账期，缺失积分日期可从软件填写独立本人预计，无需登录。
+
 ## 0.3.5: In-app guidance and user dates / 软件内引导与日期填写
 
 The skippable first-use guide distinguishes discovered inventory, supported query paths and successful current readings. It can be reopened from **Quick start**. Installations with an older settings/center file skip automatic onboarding; an explicitly incomplete new-user guide stays pending across restarts. A failed completion save never blocks the overview for the current session.
@@ -52,6 +60,7 @@ The displayed percentage is the tightest coding-model window, excluding separate
 | Pippit / 小云雀 | Native `status`, `get-credit-balance`, `status` | Account/team checked around the read; this CLI response provides no expiry schedule |
 | Dreamina / 即梦 | Native `user_credit` | Uses response account identity; no expiry schedule in this response |
 | Lovart | Existing Codex OAuth through app-server, allowlisted `get_credits` | Ephemeral context only, no model turn or persistent chat; account identity and expiry are not returned |
+| Suno | Existing enabled `suno` MCP, `account-me` / `account-usage` / `account-me` | Song and download credits separated; public handle checked but stable identity unverified; subscription renewal is billing only |
 | Kimi, MiniMax, ZCode | Installed Agent Relay quota implementation via a narrow Python bridge | Requires the separate companion and Python; before/after account or credential-source fingerprints prevent cross-account reuse |
 | DeepSeek | Official `GET /user/balance` | Granted and purchased balances are separate; no inferred expiration |
 | Firecrawl | Official `GET /v2/team/credit-usage` | Billing-period end is not asserted to be expiry or renewal |

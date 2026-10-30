@@ -43,8 +43,8 @@ class CreditCenter extends EventEmitter {
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      queryReady:t.id==='codex'?this.records.some(r=>r.provider==='codex'&&fresh(r)):['kimi','minimax','zai'].includes(t.id)?this.inventory.tools.some(t=>t.id==='agent-relay'):t.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||t.id==='lovart'&&c.kind==='mcp'&&c.evidence==='configured')),
+    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      queryReady:t.id==='codex'?this.records.some(r=>r.provider==='codex'&&fresh(r)):['kimi','minimax','zai'].includes(t.id)?this.inventory.tools.some(t=>t.id==='agent-relay'):t.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno'].includes(t.id)&&c.kind==='mcp'&&c.evidence==='configured')),
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
@@ -106,7 +106,7 @@ class CreditCenter extends EventEmitter {
     const previous = this.records.find(r => r.id === record.id);
     if (previous && previous.fetchedAt > record.fetchedAt) return;
     // Local CLI adapters represent one current login. Never remind for its old account.
-    if (['cli','relay','api'].includes(record.source)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
+    if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&record.provider==='suno') for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
     const recovered = notify && previous ? recoveryAlerts(previous, record) : [];
     this.records = [...this.records.filter(r => r.id !== record.id), record].slice(-250);
     for (const event of recovered) {
@@ -139,6 +139,7 @@ class CreditCenter extends EventEmitter {
       let rows;
       if (id === 'xyq') rows = await adapters.xyq(this.options);
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
+      else if(id==='suno')rows=await require('./codex-mcp-credit.cjs').suno(this.options);
       else if (id === 'jimeng') rows = await adapters.jimeng(this.options);
       else if (id === 'relay') rows = await adapters.relay(this.options);
       else if (['firecrawl','deepseek','tavily'].includes(id)) rows = await adapters.securedApiBalance(id, this.options);
@@ -164,10 +165,10 @@ class CreditCenter extends EventEmitter {
     if(this.stopped || !manual&&!this.enabled)return;
     const generation=this.generation;
     this.loadImports();
-    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','tavily'].filter(x => {
+    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily'].filter(x => {
       if(x==='relay')return this.inventory.tools.some(t=>t.id==='agent-relay');
       return this.inventory.tools.some(t=>t.id===x && t.connections.some(c=> c.enabled &&
-        (['installed','credential_reference'].includes(c.evidence) || x==='lovart' && c.kind==='mcp' && c.evidence==='configured')));
+        (['installed','credential_reference'].includes(c.evidence) || ['lovart','suno'].includes(x) && c.kind==='mcp' && c.evidence==='configured')));
     });
     // Limit concurrent upstream reads. Each query has a separate bounded timeout.
     for (let i=0; i<ids.length; i+=3) {

@@ -18,6 +18,7 @@ function cleanRecord(input, now = Date.now()) {
     if (p.unit === 'percent' && amount !== null && amount > 100) throw new Error('invalid_balance');
     return { id: p.id, label: String(p.label || p.id).slice(0, 100), labelEn: String(p.labelEn || p.label || p.id).slice(0, 100),
       unit: p.unit, amount, limit, expiresAt: time(p.expiresAt), resetsAt: time(p.resetsAt), periodStart: time(p.periodStart), periodEnd: time(p.periodEnd),
+      resource:['image','video','music','downloads','tools'].includes(p.resource)?p.resource:null,
       resetDate:calendarDate(p.resetDate),resetSource:p.resetSource==='policy'&&input.source==='api'?'policy':'upstream',
       resetLabel:typeof p.resetLabel==='string'?p.resetLabel.slice(0,100):null,resetLabelEn:typeof p.resetLabelEn==='string'?p.resetLabelEn.slice(0,100):null,
       dateSource: p.dateSource === 'user' ? 'user' : 'upstream', entitlement: ['available','exhausted','not_in_plan','unknown'].includes(p.entitlement) ? p.entitlement : null };

@@ -3,6 +3,7 @@
 // never acquire an invented monthly expiry.
 const checkedOn='2026-10-30';
 const policies={
+suno:{url:'https://help.suno.com/en/articles/2417089',zh:'付费订阅的生成积分按月补充，年付与月付均有月度发放。MCP区分歌曲生成积分与下载额度；其会员续期字段不当作积分失效或发放日，缺失的积分日期可本人填写预计。',en:'Paid plans replenish generation credits monthly with either monthly or annual billing. The MCP separates song-generation and download credits. Subscription renewal is not treated as credit expiry or grant timing; missing credit dates can be entered as user forecasts.'},
 firecrawl:{url:'https://docs.firecrawl.dev/billing',zh:'套餐积分按月度周期重置。部分年付套餐允许结转；购买积分通常随有效订阅保留。总余额中各类积分的到期明细未提供。',en:'Plan credits renew monthly. Some annual plans allow rollover; purchased credits generally remain while subscribed. Individual expiries within the total are not provided.'},
 tavily:{url:'https://docs.tavily.com/faq/faq',zh:'月度额度在每月1日重置，与账单日无关。官方未说明具体时刻和时区；按日期提醒核实，不宣称已到账。',en:'Monthly quota resets on the first day, regardless of billing date. The official FAQ specifies no time or timezone; date reminders ask for verification.'},
 lovart:{url:'https://www.lovart.ai/statement/lovart-subscribe-faq',zh:'订阅积分在下一账期重置，不结转。2026-06-30起新购买的充值积分有效366天，之前购买的长期有效。余额接口未返回各积分类型及账号账期日。',en:'Subscription credits reset next cycle without rollover. Top-ups bought from 2026-06-30 expire after 366 days; earlier purchases remain valid. The API does not identify these pools or your billing date.'},

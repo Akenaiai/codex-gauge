@@ -13,7 +13,7 @@ async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400
       events: [{ id: 'demo', type: kind, status: newsStatus, kindKnown: true, scopeKnown: false, precision, until, updatedAt: NOW, confirmation: 'source_post', sourceUrl: 'https://x.com/example/status/123' }] } };
   const noop = () => {};
   class Clock extends Date { static now() { return NOW; } }
-  const window = { resetModel, gauge: { state: async () => state, onState: noop } };
+  const window = { resetModel, creativePanel:require('../src/ui/creative-panel.js'), gauge: { state: async () => state, onState: noop } };
   vm.runInNewContext(fs.readFileSync('src/ui/app.js', 'utf8'), { window, Date: Clock, URLSearchParams,
     location: { search: '?view=' + view }, document: { getElementById: () => app, addEventListener: noop,
       documentElement: {}, body: { addEventListener: noop } }, setInterval: noop });
