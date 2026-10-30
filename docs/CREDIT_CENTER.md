@@ -2,6 +2,16 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.5: In-app guidance and user dates / 软件内引导与日期填写
+
+The skippable first-use guide distinguishes discovered inventory, supported query paths and successful current readings. It can be reopened from **Quick start**. Installations with an older settings/center file skip automatic onboarding; an explicitly incomplete new-user guide stays pending across restarts. A failed completion save never blocks the overview for the current session.
+
+**Set dates** in the guide or tool Details creates a local user date entry without any import file. Choose a verified account/pool, or name a separate account if identity is unavailable. A one-time expiry stays distinct from a recurring monthly forecast. Monthly grant days require an explicitly selected subscription type. Purchased/daily/permanent pools do not acquire monthly forecasts. Known purchased/permanent balance pools reject such a binding. Dates never overwrite the upstream record, infer an account match or confirm a grant.
+
+`credit-center.json` stores `userDates` separately from legacy `dateObservations` and `monthlySchedules`, plus `onboardingCompleted`. Entries contain an opaque ID, provider, account alias, pool label/type, optional bound record/pool IDs, an optional `expiryDate`, optional `monthlyDay`/calendar anchor, update time and reminder preference. Binding requires a currently verified matching account and pool; inactive or changed accounts suppress its events and reminders. Independent named entries remain explicitly independent. Event/receipt scopes include the binding, so changing accounts or pools cannot swallow a new reminder. Dates are local-calendar verification prompts, not an exact provider timestamp. Read-only MCP emits `source: user` or `user_schedule`, `dateOnly: true`, and `at: null`.
+
+中文：首次引导分清“已发现、具备查询入口、已读到余额”，可跳过或重看，旧安装不自动弹出。引导和详情的“填写日期”无需配置文件；可选择已核实账号 / 积分池，或单独填写账号别名。到期日是一次本人记录，每月发放日是明确标注的订阅预计，不修改自动余额、不确认到账。按账户绑定的日期在换号后暂停事件与提醒，切换绑定分别去重；独立记录保持独立。记录支持编辑、删除和单独提醒，保存失败保留旧值。新字段只写当前用户本机数据目录，不进入源码或发布包。
+
 ## 0.3.1 additions / 新增接入与日期依据
 
 Tavily uses `GET https://api.tavily.com/usage` and shows the remaining **account plan** quota, distinct from pay-as-you-go charges. Existing credentials may be read from the matching enabled provider's MCP environment in Codex, Cursor, Claude Code/Desktop, Gemini or Qwen configuration; disabled entries do not automatically become enabled. Credentials never enter inventory or renderer state.

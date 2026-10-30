@@ -322,6 +322,9 @@ async function start() {
         await center.refresh(['kimi','minimax','zai'].includes(id) ? 'relay' : id, {manual:true});
       } else if (name === 'rule') center.setRule(value?.key, value?.rule);
       else if(name==='monthly-rule')center.setMonthlyRule(value?.observationId,value?.itemId,value?.rule);
+      else if(name==='user-dates')center.setUserDate(value);
+      else if(name==='remove-user-dates')center.removeUserDate(value?.id);
+      else if(name==='onboarding-complete')center.completeOnboarding();
       else if(name==='connect')await center.connect(value?.provider,value?.key,{replaceRecordId:value?.replaceRecordId||null});
       else if(name==='credential-page'){
         const urls={firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};

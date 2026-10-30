@@ -1,5 +1,15 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.3.5 follow-up / 本次升级复核（2026-10-30）
+
+The 0.3.5 installer contains 84 application-payload files and 46 ASAR paths. Its payload matches the tested unpacked build; ZIP ASAR and MCP resources match. The allowlist and saved-data filename checks find no user settings, balance/date records, imports, encrypted credentials or browser profiles. Across 148 inspected package/source files, local comparisons against existing account markers and API credentials, including DPAPI sources, find no matches; values are never printed or included here. This is a targeted follow-up to the historical full-history audit below, not a new full-history scan.
+
+An empty synthetic current-user environment running production code from the actual installer ASAR passes 16 checks: no discovered tools, account/balance records, website observations, monthly rules, user-entered dates or stored keys; the new-user guide is available. A second profile sees only its own canary configuration. As before, startup registration, host observation and notifications are stubbed to protect the running installation; this is not a separate Windows account or a macOS test. The new `userDates` and `onboardingCompleted` fields are local runtime data, never build inputs.
+
+中文：0.3.5实际安装器84个应用负载文件、ASAR46个路径经允许清单及私人文件名检查，未夹带账号记录、余额 / 日期数据、密钥或浏览器资料。148个包内及源码文件与本机既有账号标记、API凭据及DPAPI来源仅在本地比对，无匹配，不回显秘密。真实安装器ASAR在空白用户环境下16项检查通过，日期为空且可进入首次引导；两个隔离配置只发现各自的工具。此为新增范围的跟进检查，旧版全历史检查范围仍见下文，不把夹具隔离写作真实新Windows账号验证。
+
+## 0.3.4 baseline / 历史基线
+
 Checked on **2026-10-30** against public runtime commit `cde575ab51f567e186e61e000d49a4040e1f3a59` and the published **v0.3.4 Windows installer and ZIP**. This records the inspected release; it is not a claim that every future change is automatically safe.
 
 | Check | Result |

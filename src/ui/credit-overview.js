@@ -45,12 +45,12 @@
     const records=(tool.records||[]).filter(r=>r.status!=='account_changed'),summaries=records.map(r=>summarizeRecord(r,tool.id,rules,now));
     const ranked=summaries.slice().sort((a,b)=>({available:0,empty:1,unknown:2}[a.status]-{available:0,empty:1,unknown:2}[b.status])||Number(b.fresh)-Number(a.fresh));
     const selected=ranked[0],status=summaries.some(s=>s.status==='available')?'available':summaries.length&&summaries.every(s=>s.status==='empty')?'empty':'unknown';
-    const webDates=(tool.webDates||[]).filter(d=>['web','user_schedule'].includes(d.source)&&['expiry','reset'].includes(d.kind)&&d.days>=-7).map(d=>({...d,near:d.days>=(d.estimated?-1:0)&&d.days<=(d.kind==='expiry'?7:2)&&(d.kind==='reset'||d.amount==null||d.amount>0)}));
+    const webDates=[...(tool.webDates||[]),...(tool.recordedDates||[])].filter(d=>['web','user','user_schedule'].includes(d.source)&&['expiry','reset'].includes(d.kind)&&d.days>=-7).map(d=>({...d,near:d.days>=(d.estimated?-1:0)&&d.days<=(d.kind==='expiry'?7:2)&&(d.kind==='reset'||d.amount==null||d.amount>0)}));
     const dates=[...deadlines(records,rules,now),...webDates].sort((a,b)=>a.at-b.at),near=dates.filter(d=>d.near),priority=near.find(d=>d.kind==='expiry')||near[0];
     return{tool,id:tool.id,name:tool.name,status,metric:selected?.metric||null,meter:selected?.meter??null,record:selected?.record||null,reason:selected?.reason??'missing',accountCount:records.length,availableAccounts:summaries.filter(s=>s.status==='available').length,dates,deadline:priority||dates[0]||null,urgent:near.length>0,urgentKind:priority?.kind||null,hasReading:records.length>0};
   }
   function build(state,now=Date.now()){
-    const rows=(state.tools||[]).filter(t=>t.records?.length||t.dateObservations?.length||t.adapter&&(t.queryStatus||t.querying)).map(t=>analyze(t,state.rules||{},now));
+    const rows=(state.tools||[]).filter(t=>t.records?.length||t.dateObservations?.length||t.userDates?.length||t.adapter&&(t.queryStatus||t.querying)).map(t=>analyze(t,state.rules||{},now));
     rows.sort((a,b)=>Number(b.urgent)-Number(a.urgent)||(a.urgent&&b.urgent?Number(b.urgentKind==='expiry')-Number(a.urgentKind==='expiry')||a.deadline.at-b.deadline.at:0)||({empty:0,available:1,unknown:2}[a.status]-{empty:0,available:1,unknown:2}[b.status])||a.name.localeCompare(b.name));
     return{rows,total:rows.length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:rows.filter(r=>r.status==='unknown').length,urgent:rows.filter(r=>r.urgent).length};
   }

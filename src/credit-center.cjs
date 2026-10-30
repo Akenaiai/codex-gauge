@@ -9,15 +9,18 @@ const adapters = require('./credit-adapters.cjs');
 const {configuredKey}=require('./credit-credentials.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
+const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
   constructor(directory, options = {}) {
-    super(); this.store = new CreditStore(directory); this.options = options; this.busy = new Set(); this.statuses = {}; this.stopped = false; this.generation = 0;
+    super(); const existingInstallation=['credit-center.json','settings.json'].some(file=>fs.existsSync(path.join(directory,file)));this.store = new CreditStore(directory); this.options = options; this.busy = new Set(); this.statuses = {}; this.stopped = false; this.generation = 0;
     this.providerEpoch=new Map();this.queryRuns=new Map();this.connectRuns=new Map();this.connecting=new Set();
     const data = this.store.data;
     this.records = [];
     this.dateObservations=cleanObservations(data.dateObservations);
+    this.userDates=cleanUserDates(data.userDates);
+    this.onboardingCompleted=data.onboardingCompleted===true||data.onboardingCompleted==null&&(existingInstallation||data.records.length>0||this.dateObservations.length>0);
     this.monthlySchedules={};
     for(const [key,rule]of Object.entries(data.monthlySchedules||{}))if(this.dateObservations.some(o=>['lovart','xyq','jimeng'].includes(o.provider)&&o.items.some(p=>key===o.id+'/'+p.id&&['monthly','subscription'].includes(p.id)&&p.kind!=='never')))try{this.monthlySchedules[key]=validateMonthlyRule(rule);}catch{}
     for (const r of Array.isArray(data.records) ? data.records : []) try {
@@ -36,22 +39,25 @@ class CreditCenter extends EventEmitter {
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
   }
   persist() {
-    Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
+    Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,userDates:this.userDates,onboardingCompleted:this.onboardingCompleted,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
     const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      queryReady:t.id==='codex'?this.records.some(r=>r.provider==='codex'&&fresh(r)):['kimi','minimax','zai'].includes(t.id)?this.inventory.tools.some(t=>t.id==='agent-relay'):t.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||t.id==='lovart'&&c.kind==='mcp'&&c.evidence==='configured')),
+      userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
-    return { ...this.inventory, tools, enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
+    return { ...this.inventory, tools, onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
-      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules), ...this.notices].sort((a,b) => a.at-b.at),
+      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
       storageError: this.store.error, revision: this.store.data.revision };
   }
   rescan() {
     this.inventory = scan({ ...this.options, hostTools: this.store.hostInventory() });
     for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
     for (const row of this.records) this.ensureTool(row.provider);
+    for(const row of this.userDates)this.ensureUserDateTool(row.provider);
     this.loadImports(); this.persist(); this.emit('state'); return this.state();
   }
   ensureTool(id) {
@@ -71,6 +77,24 @@ class CreditCenter extends EventEmitter {
     } catch { }
   }
   ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});}
+  ensureUserDateTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!existing)tool.connections=[];if(!tool.connections.some(c=>c.evidence==='user_dates'))tool.connections.push({kind:'manual',source:'User dates',label:id,enabled:true,evidence:'user_dates'});}
+  completeOnboarding(){const old=this.onboardingCompleted;this.onboardingCompleted=true;this.persist();if(this.store.error){this.onboardingCompleted=old;this.store.data.onboardingCompleted=old;throw Error('storage_failed');}this.emit('state');}
+  setUserDate(input){
+    if(!input||!this.inventory.tools.some(t=>t.id===input.provider))throw Error('invalid_dates');
+    const previous=this.userDates.find(row=>input.id?row.id===input.id:input.recordId&&row.recordId===input.recordId&&row.poolId===input.poolId);
+    if(input.id&&!previous)throw Error('invalid_dates');
+    const clean=validateUserDate({...input,anchorDate:previous?.monthlyDay===input.monthlyDay?previous.anchorDate:null});
+    if(clean.recordId){const r=this.records.find(r=>r.id===clean.recordId&&r.provider===clean.provider&&r.status!=='account_changed'&&r.identityVerified),p=r?.pools.find(p=>p.id===clean.poolId);
+      if(!p||p.unit==='cards'||p.entitlement==='not_in_plan')throw Error('identity_unverified');
+      if(clean.monthlyDay&&(p.expiryStatus==='never'||/purchased|daily/i.test(p.id)))throw Error('invalid_dates');
+      clean.account=r.account||clean.account;
+    }
+    const old=this.userDates.slice(),row={...clean,id:previous?.id||hash(require('node:crypto').randomUUID()),updatedAt:Date.now()};
+    if(!previous&&old.length>=250)throw Error('invalid_dates');
+    this.userDates=[...old.filter(r=>r.id!==row.id),row];this.persist();
+    if(this.store.error){this.userDates=old;this.store.data.userDates=old;this.emit('state');throw Error('storage_failed');}this.emit('state');return row.id;
+  }
+  removeUserDate(id){const old=this.userDates;if(!old.some(r=>r.id===id))throw Error('invalid_dates');this.userDates=old.filter(r=>r.id!==id);this.persist();if(this.store.error){this.userDates=old;this.store.data.userDates=old;throw Error('storage_failed');}this.emit('state');}
   setMonthlyRule(observationId,itemId,rule){
     const o=this.dateObservations.find(o=>o.id===observationId),p=o?.items.find(p=>p.id===itemId);
     if(!o||!['lovart','xyq','jimeng'].includes(o.provider)||!p||!['monthly','subscription'].includes(p.id)||p.kind==='never')throw Error('invalid_monthly_rule');
@@ -213,6 +237,7 @@ class CreditCenter extends EventEmitter {
     if (this.reminders) for (const alert of expiryAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
     if (this.reminders) for (const alert of renewalAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
     if(this.reminders)for(const alert of observationAlerts(this.dateObservations,Date.now(),this.monthlySchedules))this.emit('alert',alert);
+    if(this.reminders)for(const alert of userDateAlerts(this.userDates,this.records))this.emit('alert',alert);
     if(this.reminders)for(const notice of this.notices)if(notice.expiresAt>Date.now()&&this.rules[notice.recordId+'/'+notice.poolId]?.notify!==false&&this.records.some(r=>r.id===notice.recordId&&r.status!=='account_changed'))this.emit('alert',notice);
     this.emit('state');
   }

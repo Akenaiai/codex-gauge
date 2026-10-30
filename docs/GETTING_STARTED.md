@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-For Windows 0.3.4. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+For Windows 0.3.5. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.4.exe`. For an installation-free launch, download `Codex.Gauge-0.3.4-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.5.exe`. For an installation-free launch, download `Codex.Gauge-0.3.5-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
@@ -15,7 +15,7 @@ The original badge needs the Codex desktop app and an installed, signed-in [offi
 
 ## 2. Make your first check
 
-1. Open **All tools** and inspect discovery evidence: CLI, MCP configuration, plugin, or installation cache only. Discovery does not prove authentication or a supported balance endpoint.
+1. On the first launch, the guide shows discovered tools, query paths and balances already read. You can skip it or reopen **Quick start** in the header. Upgrades do not automatically show it. Open **All tools** and inspect discovery evidence: CLI, MCP configuration, plugin, or installation cache only. Discovery does not prove authentication or a supported balance endpoint.
 2. For a supported tool, open **View / Details → Refresh** and check its account, source and read time. See the connection table below if something is missing. Tools without an adapter can use **Add reading**, which stays labeled as a manual record.
 3. Return to **Overview** and use its four filters.
 
@@ -73,11 +73,14 @@ A date-only observation never gains an invented clock time. Unspecified timezone
 
 ### Set a monthly grant forecast
 
-In 0.3.4, the control appears only for eligible monthly / subscription **website date records** for Pippit, Dreamina and Lovart: **Details → Recorded dates & expected grants → Set monthly grant day / Edit**. New installations do not include these private records, so the button may be absent. Creating a record currently requires an [advanced private-file import](CREDIT_CENTER.md#account-page-date-observations); there is no general graphical website-record creation form. For ordinary use, **Set dates** on an existing pool can save a one-time confirmed date.
+In the guide, click **Set dates** next to a tool. Later, use **Details → Your dates & monthly forecasts → Set dates**. This works for discovered non-Codex tools, including tools without an automatic balance query. No configuration file or website-record import is required. Codex keeps its original badge date settings.
 
-With an eligible record, choose the last grant or expiry date and confirm the usual day of the month. A grant on the 12th forecasts the 12th next month. An expiry date can anchor that same day's next expected grant. The 31st uses the last day in short months and returns to the 31st later. These examples are not preloaded account records.
+1. Select a verified account and pool if available. Otherwise choose a separate record and enter an account/workspace alias and pool name. An unverified MCP account is never automatically matched.
+2. Enter the credit expiry date, a monthly grant day, or both. Only choose **Monthly subscription credits** if that pool actually grants monthly. Purchases and daily claims do not get monthly forecasts.
+3. Save. The overview, Details and Calendar show the dates as user-entered or expected. For example, day 12 forecasts the 12th each month. Day 31 uses the last day in short months, then returns to 31. A forecast never confirms arrival or changes the balance.
+4. Reopen **Edit** to change dates or the reminder switch. **Delete this date record** removes the saved dates and their forecast. Original automatic balances and historical website observations remain separate.
 
-Use this only for a subscription that actually grants monthly credits. Permanent funds, purchases and daily claims do not receive monthly rules. Forecasts never inherit an expiry's clock time or treat a larger total as a confirmed grant. The original date record remains historical.
+Bound dates stop following a source after its verified account changes. Separately named entries stay independent and ask you to verify that named account. A one-time expiry does not silently become a recurring expiry. Saved website observations from older versions still work through their legacy controls; [private-file imports](CREDIT_CENTER.md#account-page-date-observations) are optional advanced integration.
 
 ## 5. Queries and reminders
 

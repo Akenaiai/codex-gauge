@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.5 guidance and graphical dates / 引导与图形日期（2026-10-30）
+
+- 123 automated checks pass. New coverage includes first-use/upgrade migration, direct date persistence/edit/delete, account binding, short-month forecasts, stale-zero verification, reminder receipt isolation, failed-save rollback, Chinese tool names and date-only MCP output.
+- 24 native packaged-window checks pass through the production main process, renderer and IPC with isolated synthetic connections. They cover first-use guidance, verified vs. separate accounts, form saves, overview/calendar labels, editing/deletion, reminder preferences, English/Chinese, a 760-pixel-wide layout, renderer restart, and storage failure without trapping the user. Dark guidance and light date-entry captures were inspected. External balance calls, startup registration, host observation and notifications were stubbed; these are interface/integration checks, not a new live-provider or natural-delivery claim.
+- The actual installer payload matches the tested unpacked build; ZIP ASAR/MCP resources match. A production installer-ASAR empty-profile run passes 16 isolation checks, including zero user date records and no inherited completion state. See the privacy report for distribution inspection scope.
+
+123项自动检查与24项包内原生流程检查通过；新增日期无需配置文件，原余额和旧网页记录保持独立。真实安装后的原小仪表、偏好和查询另行核对；自然未来通知送达与Mac仍待实测。
+
 ## 0.3.4 monthly forecasts / 月度预计（2026-10-30）
 
 - 109 automated checks include short/leap months, year changes, original-day preservation, separate expiry clock precision, zero-balance forecasts, due/overdue receipts, bounded overdue retention, account-specific overrides, disable/import/restart behavior, failed-save rollback and estimated MCP events with `at: null`.
