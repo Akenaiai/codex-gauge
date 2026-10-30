@@ -1,5 +1,15 @@
 # Verification / 验证记录
 
+## 0.3.0 credit center / 额度中心（2026-10-30）
+
+- **Regression and model checks:** 68 automated checks passed, including the original 47. New coverage includes discovery evidence and disabled/cache distinction, source/account isolation, unknown versus zero, expiry versus billing boundaries, recovery after polling gaps/outages, confirmed manual schedules, corrupt storage preservation, transactional preference/manual writes, resumed-query generation isolation and allowlisted ephemeral Lovart MCP reads.
+- **Native Electron and distribution resources:** 19 checks passed against the actual ASAR plus its external Python bridge in an isolated profile. Exercised full inventory search, calendar, date/manual dialogs, Chinese/English switching, desktop/narrow layouts, details remaining open through watchdog broadcasts and rescan. No renderer console errors. Actual read-only provider queries confirmed Codex, Pippit, Dreamina, Kimi, MiniMax, ZCode, DeepSeek and Lovart paths. The Relay script was tested outside ASAR as shipped, rather than assuming source-mode behavior would survive packaging.
+- **Package contents:** 28 shipped source/sidecar files matched this checkout byte for byte. The app archive excludes tests, local profiles, private inventory, real balances and credentials. Native helpers are retained. Windows installer and ZIP build completed; no code signing is configured.
+- **Installation:** installer exited 0 and the updated process ran. The existing settings-file SHA-256 was identical before and immediately after installation. The original installer and settings backup were retained locally. Final installed live-state and remote release evidence are recorded separately from the isolated UI checks.
+- **Limits:** comprehensive means the explicitly listed local discovery sources, not every account on every device. Host-only snapshots are not automatic queries. Missing upstream expiry dates and independent credentials stay unknown/unconnected. Natural future expiry/renewal notifications, real sleep/sign-in/Focus Assist delivery, exact historical notification-to-provider routing and Mac device behavior are not established by these checks. No generation, model turn, purchase or card redemption was made.
+
+中文：68项自动检查与发行资源上的19项Electron操作检查通过；核实真实只读查询、Windows桥接实际路径、中英文、窄窗口及详情展开保持。28个包内/外置源文件逐字节一致，安装退出0，旧设置安装前后哈希一致。自然提醒送达、Mac及接口未返回的到期信息继续保留缺口，不把这些检查当作用户认可或平台功能齐全。
+
 Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
 
 ## 0.2.2 combined repairs / 通知与窗口层级合并修复
@@ -93,3 +103,7 @@ Version: 0.2.2. Date: 2026-10-23. Platform: Windows x64.
 - Fresh observations clear the last-reading label; used or missing credits disappear after refresh, expired deadlines cease to be upcoming, and account-switch snapshot clearing remains in place. No stale snapshot can trigger a new expiry notification.
 - 47 automated checks pass, including offline/timeout/aged-ready panel and badge renderings in both languages, time boundaries, missing credits and existing account-switch isolation. macOS and naturally occurring system notification delivery retain their existing field-test limits.
 - 断连或读数变旧时保留未到期卡片的红色提醒，显示上次数据时间及可用情况待确认；恢复刷新后以新数据为准。47 项检查通过，覆盖中英文界面、到期边界及原有账号切换隔离。自然系统通知与 Mac 保留原待验边界。
+
+Final field recheck: after the successful isolated source/ASAR reads, both the local CLI account reader and the Codex desktop usage tool became unavailable during the same work session (workspace routing discovery failed/timed out). The installed center preserves explicit failure states; these later failures are not evidence that the earlier source reads or every provider remain live. No root cause in proxy settings was established and no persistent proxy/account configuration was changed. A separately reproduced desktop-discovery omission for the stable fnm Pippit install was fixed and covered by an additional check.
+
+正式环境复核补充：本轮后段，本机CLI与Codex桌面内置额度查询同时失败，工作区路由发现失败或超时。程序显示查询失败，不把早先成功作为持续在线证明；未确定代理根因，未持久修改代理或账户配置。小云雀稳定fnm安装目录的检测遗漏已独立复现、修复并增加检查。

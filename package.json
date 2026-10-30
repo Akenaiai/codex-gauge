@@ -1,7 +1,7 @@
 {
   "name": "codex-gauge",
-  "version": "0.2.3",
-  "description": "A precision-styled, read-only Codex usage gauge for your desktop.",
+  "version": "0.3.0",
+  "description": "A desktop AI credit center with the original precision-styled Codex usage badge.",
   "main": "src/main.cjs",
   "author": "Aken",
   "license": "MIT",
@@ -17,16 +17,64 @@
     "build:win": "npm run build:native && electron-builder --win nsis zip --x64",
     "build:mac": "electron-builder --mac dmg zip"
   },
-  "devDependencies": { "electron": "44.5.1", "electron-builder": "26.15.3" },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  },
   "build": {
     "appId": "com.aken.codexgauge",
     "productName": "Codex Gauge",
-    "directories": { "output": "dist" },
-    "files": ["src/**/*", "assets/**/*", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md"],
-    "extraResources": [{ "from": "native/bin", "to": "native", "filter": ["*.exe"] }],
-    "win": { "icon": "assets/icon.ico", "signExecutable": false },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "createDesktopShortcut": true, "include": "native/installer.nsh" },
-    "mac": { "category": "public.app-category.developer-tools", "icon": "assets/icon.png", "extraResources": [] },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "extraResources": [
+      {
+        "from": "native/bin",
+        "to": "native",
+        "filter": [
+          "*.exe"
+        ]
+      },
+      {
+        "from": "scripts/gauge-mcp.cjs",
+        "to": "mcp/scripts/gauge-mcp.cjs"
+      },
+      {
+        "from": "src/credit-model.cjs",
+        "to": "mcp/src/credit-model.cjs"
+      },
+      {
+        "from": "src/catalog.cjs",
+        "to": "mcp/src/catalog.cjs"
+      },
+      {
+        "from": "src/relay-credit-bridge.py",
+        "to": "adapters/relay-credit-bridge.py"
+      }
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "include": "native/installer.nsh"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png",
+      "extraResources": []
+    },
     "publish": null
   }
 }

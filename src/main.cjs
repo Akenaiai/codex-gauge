@@ -11,9 +11,12 @@ const { ResetFeed, PAGE } = require('./reset-feed.cjs');
 const { resetAlerts, newsPlan } = require('./reminders.cjs');
 const { NotificationDelivery, configureActivation } = require('./notifications.cjs');
 const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cjs');
+const { CreditCenter } = require('./credit-center.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
+const centerProfile = process.argv.find(a => a.startsWith('--center-profile='));
+if (centerProfile && !app.isPackaged) app.setPath('userData', path.resolve(centerProfile.slice('--center-profile='.length)));
 app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
 const openNotificationPanel = () => { pinnedPanel = true; openPanel(true, true); panel.focus(); };
@@ -25,6 +28,7 @@ let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, 
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
 let badgeRaisedAt = 0;
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
+let center, centerWindow;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
@@ -33,7 +37,24 @@ function state() {
     settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
     resetFeed: resetFeed.state(), update, version: app.getVersion(), demo };
 }
-function broadcast() { for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state()); }
+function centerState() { return { ...center.state(), language: store.settings.language, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors }; }
+function broadcast() {
+  for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state());
+  if (centerWindow && !centerWindow.isDestroyed() && center) centerWindow.webContents.send('credits:state', centerState());
+}
+function openCenter() {
+  if (centerWindow && !centerWindow.isDestroyed()) { centerWindow.show(); centerWindow.focus(); return; }
+  centerWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 700, minHeight: 560, show: false,
+    backgroundColor: '#f5f4ef', title: text('刻度 · 额度中心', 'Codex Gauge · Credit center'), icon: path.join(ROOT, 'assets/icon.png'),
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false } });
+  centerWindow.setMenu(null);
+  centerWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  centerWindow.webContents.on('will-navigate', e => e.preventDefault());
+  centerWindow.webContents.on('will-attach-webview', e => e.preventDefault());
+  centerWindow.loadFile(path.join(__dirname, 'ui/credits.html'));
+  centerWindow.once('ready-to-show', () => { centerWindow?.show();quota.setActive(true); });
+  centerWindow.on('closed', () => { centerWindow = null;updateVisibility(); });
+}
 function createWindow(width, height, view) {
   const win = new BrowserWindow({ width, height, show: false, frame: false, transparent: true, resizable: false,
     maximizable: false, minimizable: false, hasShadow: false, skipTaskbar: true, alwaysOnTop: true,
@@ -80,7 +101,7 @@ function updateVisibility() {
       badgeRaisedAt = Date.now();
     }
   } else { badgeRaisedAt = 0; badge.hide(); if (!forcedPanel) closePanel(); }
-  quota.setActive(!!host.exists || forcedPanel || demo);
+  quota.setActive(!!host.exists || forcedPanel || demo || typeof centerWindow !== 'undefined' && centerWindow && !centerWindow.isDestroyed() && centerWindow.isVisible());
   resetFeed.setActive(!demo && store.settings.resetNews && (!!host.exists || forcedPanel));
 }
 function openPanel(activate = false, force = false) {
@@ -105,6 +126,7 @@ function refreshTray() {
   const s = store.settings;
   tray.setToolTip(text('刻度 · Codex 剩余额度', 'Codex Gauge · Remaining usage'));
   tray.setContextMenu(Menu.buildFromTemplate([
+    { label: text('额度中心 · 全部 AI 工具', 'Credit center · All AI tools'), click: openCenter },
     { label: text('查看额度', 'Open gauge'), click: () => { pinnedPanel = true; openPanel(true, true); } },
     { label: text('保持置顶', 'Keep on top'), type: 'checkbox', checked: s.topmost, click: item => save({ topmost: item.checked }) },
     { label: text('回到头像上方', 'Reset position'), click: () => save({ offset: { x: 0, y: 0 }, floating: null }) },
@@ -166,6 +188,7 @@ async function action(name, value) {
     case 'leave': clearTimeout(hoverTimer); if (!pinnedPanel && !forcedPanel && !drag) leaveTimer = setTimeout(closePanel, 450); break;
     case 'toggle': if (panel.isVisible() && pinnedPanel) closePanel(); else { pinnedPanel = true; openPanel(true); } break;
     case 'close': closePanel(); updateVisibility(); break;
+    case 'credit-center': openCenter(); break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
     case 'reset-news-source': {
       const event = resetFeed.state().events.find(e => e.id === value);
@@ -262,6 +285,7 @@ function processCreditReminders() {
 }
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
+  center = new CreditCenter(app.getPath('userData'));
   delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
@@ -281,15 +305,47 @@ async function start() {
     if (![badge.webContents, panel.webContents].includes(event.sender) || event.senderFrame !== event.sender.mainFrame || typeof name !== 'string') throw new Error('Unauthorized');
     return action(name, value);
   });
+  const centerAuthorized = event => centerWindow && !centerWindow.isDestroyed() && event.sender === centerWindow.webContents && event.senderFrame === event.sender.mainFrame;
+  ipcMain.handle('credits:state', event => { if (!centerAuthorized(event)) throw new Error('Unauthorized'); return centerState(); });
+  ipcMain.handle('credits:action', async (event, name, value) => {
+    if (!centerAuthorized(event)) throw new Error('Unauthorized');
+    try {
+      if (name === 'rescan') center.rescan();
+      else if (name === 'refresh') {
+        const id = value?.provider;
+        if (id && typeof id !== 'string') return { ok: false };
+        if (id === 'codex' || !id) { quota.setActive(true); quota.refresh(); }
+        await center.refresh(['kimi','minimax','zai'].includes(id) ? 'relay' : id, {manual:true});
+      } else if (name === 'rule') center.setRule(value?.key, value?.rule);
+      else if (name === 'manual') center.addManual(value);
+      else if (name === 'preferences') { if (typeof value?.enabled !== 'boolean' || typeof value?.reminders !== 'boolean') return { ok: false }; center.setPreferences(value); }
+      else if (name === 'language') { if (!['zh-CN','en'].includes(value?.language)) return { ok: false }; return save({ language: value.language }); }
+      else if (name === 'badge') { pinnedPanel = true; openPanel(true, true); }
+      else return { ok: false };
+      return { ok: true };
+    } catch { return { ok: false, error: 'operation_failed' }; }
+  });
+  center.on('state', broadcast);
+  center.on('alert', alert => {
+    if (demo || quitting || !center.enabled || !center.reminders) return;
+    const providerName = center.inventory.tools.find(t => t.id === alert.provider)?.name || alert.provider;
+    delivery.send(alert, { title: alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
+      body: alert.kind === 'recovered' ? text(`${providerName} 的${alert.label}已核实恢复。可打开额度中心安排任务。`, `${providerName}: ${alert.labelEn} renewal verified. Open the credit center to plan work.`)
+        : alert.kind === 'check_renewal' ? text(`${providerName} 已到你记录的恢复时间。请刷新核实实际到账，刻度尚未确认恢复。`, `${providerName}: your recorded renewal time has arrived. Refresh to verify the actual balance; renewal is not confirmed.`)
+        : alert.kind === 'reset_soon' ? text(`${providerName} 的${alert.label}约 ${alert.minutes} 分钟后周期重置，可先安排待办任务。`, `${providerName}: ${alert.labelEn} resets in about ${alert.minutes} minutes. Plan pending work.`)
+        : alert.stale ? text(`${providerName} 本人记录的到期时间在约 ${alert.hours} 小时后，请核实当前余额。`, `${providerName}: your recorded expiry is in about ${alert.hours} hours. Verify the current balance.`)
+        : text(`${providerName} 的${alert.label}将在约 ${alert.hours} 小时内到期。打开额度中心查看。`, `${providerName}: ${alert.labelEn} expires in about ${alert.hours} hours. Open the credit center for details.`), silent: true });
+  });
   quota.on('state', () => {
+    center.updateCodex(quota.state(), quota.accountKey);
     processCreditReminders();
     processResetReminders();
     broadcast();
   });
   resetFeed.on('state', () => { processResetReminders(); broadcast(); });
   nativeTheme.on('updated', broadcast);
-  powerMonitor.on('suspend', () => { quota.stop(); resetFeed.stop(); badge.hide(); closePanel(); });
-  powerMonitor.on('resume', () => { updateVisibility(); quota.refresh(); });
+  powerMonitor.on('suspend', () => { quota.stop(); resetFeed.stop(); center.stop(); badge.hide(); closePanel(); });
+  powerMonitor.on('resume', () => { updateVisibility(); quota.refresh(); center.stopped = false; center.start(); });
   screen.on('display-metrics-changed', layout);
   if (demo) {
     quota.setActive = () => {}; quota.refresh = async () => {};
@@ -299,6 +355,7 @@ async function start() {
     panel.once('ready-to-show', () => openPanel(true, true));
     updateVisibility();
   } else {
+    center.start();
     observe();
     watchdog = setInterval(() => {
       if (process.platform === 'win32' && lastHost && Date.now() - lastHost > 8000) { observer?.kill(); lastHost = 0; }
@@ -307,7 +364,8 @@ async function start() {
   }
   reminderTimer = setInterval(() => { processCreditReminders(); processResetReminders(); }, 30000);
   activation.ready();
+  if (process.argv.includes('--credit-center') || centerProfile) openCenter();
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; center?.stop(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });

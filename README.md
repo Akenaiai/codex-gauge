@@ -4,6 +4,8 @@
 
 A small, precision-styled Codex usage gauge above your profile. Hover for remaining capacity, reset times and available reset credits.
 
+**New in 0.3:** a desktop **Credit center** inventories your local AI CLIs, MCP servers and plugins, tracks separate balances and expiry/renewal dates, and keeps the original Codex badge. Open it from the tray or gauge panel. Automatic queries, timestamped host snapshots and manual readings are clearly distinguished. See the [credit-center guide and supported sources](docs/CREDIT_CENTER.md).
+
 ![Codex Gauge design preview with sample data](assets/preview-en.jpg)
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
