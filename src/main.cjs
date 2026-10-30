@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage, systemPreferences } = require('electron');
 const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const path = require('node:path');
@@ -18,7 +18,8 @@ const {policyFor}=require('./credit-policies.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
-const centerProfile = process.argv.find(a => a.startsWith('--center-profile='));
+const centerProfile = !app.isPackaged && process.argv.find(a => a.startsWith('--center-profile='));
+const isolatedCenter = !!centerProfile;
 if (centerProfile && !app.isPackaged) app.setPath('userData', path.resolve(centerProfile.slice('--center-profile='.length)));
 app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
@@ -37,7 +38,7 @@ const text = (cn, en) => zh() ? cn : en;
 
 function state() {
   return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
-    settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
+    settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform, accessibilityRequired: !!host.accessibilityRequired, reason: host.reason },
     resetFeed: resetFeed.state(), update, version: app.getVersion(), demo };
 }
 function centerState() { return { ...center.state(), language: store.settings.language, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors }; }
@@ -82,7 +83,7 @@ function panelBounds() {
 function layout() {
   if (!badge || drag) return;
   const settings = store.settings;
-  if (settings.topmost && settings.floating) badge.setBounds(clampRect({ ...settings.floating, width: 52, height: 52 }, areaFor(settings.floating)));
+  if (process.platform !== 'darwin' && settings.topmost && settings.floating) badge.setBounds(clampRect({ ...settings.floating, width: 52, height: 52 }, areaFor(settings.floating)));
   else if (host.anchored) {
     const point = process.platform === 'win32' ? screen.screenToDipPoint({ x: host.x, y: host.y }) : { x: host.x, y: host.y };
     badge.setBounds(placeBadge(point, areaFor(point), settings.offset));
@@ -91,7 +92,7 @@ function layout() {
 }
 function updateVisibility() {
   if (quitting) return;
-  const visible = demo || host.exists && (store.settings.topmost ? (host.anchored || hadAnchor || store.settings.floating) : host.anchored && !host.minimized && host.foreground);
+  const visible = demo || host.exists && (host.platform === 'darwin' ? host.anchored && !host.minimized && host.foreground : store.settings.topmost ? (host.anchored || hadAnchor || store.settings.floating) : host.anchored && !host.minimized && host.foreground);
   if (visible) {
     layout();
     const wasVisible = badge.isVisible();
@@ -131,7 +132,8 @@ function refreshTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: text('额度中心 · 全部 AI 工具', 'Credit center · All AI tools'), click: openCenter },
     { label: text('查看额度', 'Open gauge'), click: () => { pinnedPanel = true; openPanel(true, true); } },
-    { label: text('保持置顶', 'Keep on top'), type: 'checkbox', checked: s.topmost, click: item => save({ topmost: item.checked }) },
+    ...(process.platform === 'darwin' ? [] : [{ label: text('保持置顶', 'Keep on top'), type: 'checkbox', checked: s.topmost, click: item => save({ topmost: item.checked }) }]),
+    ...(process.platform === 'darwin' ? [{ label: text('开启头像跟随权限', 'Enable profile anchoring'), click: () => action('accessibility') }] : []),
     { label: text('回到头像上方', 'Reset position'), click: () => save({ offset: { x: 0, y: 0 }, floating: null }) },
     { type: 'separator' },
     { label: text('退出刻度', 'Quit Codex Gauge'), click: async () => {
@@ -147,24 +149,39 @@ function updateDrag() {
     y: drag.bounds.y + p.y - drag.cursor.y }, areaFor(p)));
 }
 function observe() {
-  if (process.platform !== 'win32') { host = { exists: true, anchored: false }; updateVisibility(); return; }
+  if (!['win32', 'darwin'].includes(process.platform)) { host = {}; updateVisibility(); return; }
+  if (process.platform === 'darwin' && !store.settings.macAnchorEnabled) {
+    host = { exists: false, anchored: false, platform: 'darwin', accessibilityRequired: true };
+    updateVisibility(); broadcast(); return;
+  }
   const generation = ++hostGeneration;
-  const executable = path.join(app.isPackaged ? process.resourcesPath : ROOT, app.isPackaged ? 'native' : 'native/bin', 'GaugeHost.exe');
-  observer = spawn(executable, [String(process.pid)], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
-  const lines = createInterface({ input: observer.stdout });
-  lines.on('line', line => {
+  let failedHandled = false;
+  const accept = line => {
     if (generation !== hostGeneration) return;
-    try {
-      host = JSON.parse(line); lastHost = Date.now(); helperRetries = 0;
-      if (host.anchored) hadAnchor = true; else if (!host.exists) hadAnchor = false;
-      updateVisibility(); broadcast();
-    } catch { }
-  });
+    host = { ...JSON.parse(line), platform: process.platform };
+    lastHost = Date.now(); helperRetries = 0;
+    if (host.anchored) hadAnchor = true; else if (!host.exists) hadAnchor = false;
+    updateVisibility(); broadcast();
+  };
   const failed = () => {
-    if (quitting || generation !== hostGeneration) return;
-    host = {}; lastHost = 0; updateVisibility(); broadcast();
+    if (quitting || generation !== hostGeneration || failedHandled) return;
+    failedHandled = true; observer?.kill(); observer = null;
+    host = { platform: process.platform, reason: 'observer_failed' }; lastHost = 0; updateVisibility(); broadcast();
     if (helperRetries++ < 3) setTimeout(() => { if (!quitting && generation === hostGeneration) observe(); }, 3000);
   };
+  const base = path.join(app.isPackaged ? process.resourcesPath : ROOT, app.isPackaged ? 'native' : 'native/bin');
+  if (process.platform === 'darwin') {
+    try {
+      const addon = require(path.join(base, 'GaugeHostMac.node'));
+      const poll = () => { try { accept(addon.read(process.pid)); } catch { failed(); } };
+      const timer = setInterval(poll, 150);
+      observer = { kill() { clearInterval(timer); addon.stop(); } };
+      poll();
+    } catch { failed(); }
+    return;
+  }
+  observer = spawn(path.join(base, 'GaugeHost.exe'), [String(process.pid)], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  createInterface({ input: observer.stdout }).on('line', line => { try { accept(line); } catch { } });
   observer.once('error', failed); observer.once('exit', failed);
 }
 async function checkUpdate() {
@@ -192,6 +209,15 @@ async function action(name, value) {
     case 'toggle': if (panel.isVisible() && pinnedPanel) closePanel(); else { pinnedPanel = true; openPanel(true); } break;
     case 'close': closePanel(); updateVisibility(); break;
     case 'credit-center': openCenter(); break;
+    case 'accessibility':
+      if (process.platform === 'darwin') {
+        systemPreferences.isTrustedAccessibilityClient(true);
+        const result = save({ macAnchorEnabled: true });
+        if (!result.ok) return result;
+        if (!observer) observe();
+        await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility');
+      }
+      break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
     case 'reset-news-source': {
       const event = resetFeed.state().events.find(e => e.id === value);
@@ -211,7 +237,9 @@ async function action(name, value) {
         try { await startup.set(patch.autostart); startupError = false; broadcast(); }
         catch {
           save({ autostart: previousAutostart });
-          try { await startup.set(previousAutostart); } catch { }
+          // Mac registration is transactional and may have restored a legacy helper
+          // whose enabled state was not represented by the old login preference.
+          if (process.platform !== 'darwin') try { await startup.set(previousAutostart); } catch { }
           startupError = true; broadcast(); return { ok: false, error: 'save_failed' };
         }
       }
@@ -289,20 +317,23 @@ function processCreditReminders() {
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
   creditSecrets=new CreditSecrets(app.getPath('userData'),safeStorage);
-  center = new CreditCenter(app.getPath('userData'),{credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}}});
+  center = new CreditCenter(app.getPath('userData'),{...(isolatedCenter ? {home:app.getPath('userData'),env:{PATH:''},hostTools:[]} : {}),credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}}});
   delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
     try { await startup.set(true); } catch { startupError = true; }
   }
-  if (process.platform === 'darwin' && !store.settings.floating) {
-    const area = screen.getPrimaryDisplay().workArea; store.settings.topmost = true;
-    store.settings.floating = { x: area.x + area.width - 90, y: area.y + 90 };
+  if (process.platform === 'darwin') store.settings.topmost = false;
+  if (isolatedCenter) {
+    quota.setActive = () => {}; quota.refresh = async () => {};
+    resetFeed.setActive = () => {}; resetFeed.refresh = async () => {};
   }
   session.defaultSession.setPermissionRequestHandler((_w, _p, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   badge = createWindow(52, 52, 'badge'); panel = createWindow(356, 650, 'panel');
-  tray = new Tray(nativeImage.createFromPath(path.join(ROOT, 'assets', 'tray.png')));
+  const trayImage = nativeImage.createFromPath(path.join(ROOT, 'assets', process.platform === 'darwin' ? 'GaugeTemplate.png' : 'tray.png'));
+  if (process.platform === 'darwin') trayImage.setTemplateImage(true);
+  tray = new Tray(trayImage);
   refreshTray(); tray.on('click', () => { pinnedPanel = true; openPanel(true, true); });
   ipcMain.handle('gauge:state', event => { if (![badge.webContents, panel.webContents].includes(event.sender)) throw new Error('Unauthorized'); return state(); });
   ipcMain.handle('gauge:action', (event, name, value) => {
@@ -369,16 +400,21 @@ async function start() {
     updateVisibility();
   } else {
     center.start();
-    observe();
+    if (!isolatedCenter && process.platform === 'darwin' && !store.settings.macAnchorEnabled) panel.once('ready-to-show', () => openPanel(true, true));
+    if (!isolatedCenter) observe();
     watchdog = setInterval(() => {
-      if (process.platform === 'win32' && lastHost && Date.now() - lastHost > 8000) { observer?.kill(); lastHost = 0; }
+      if (['win32', 'darwin'].includes(process.platform) && lastHost && Date.now() - lastHost > 8000) { host = {}; updateVisibility(); observer?.kill(); lastHost = 0; }
       broadcast();
     }, 2000);
   }
   reminderTimer = setInterval(() => { processCreditReminders(); processResetReminders(); }, 30000);
   activation.ready();
   if (process.argv.includes('--credit-center') || centerProfile) openCenter();
-  app.on('activate', () => openPanel(true, true));
+  app.on('activate', () => isolatedCenter ? openCenter() : openPanel(true, true));
+  if (isolatedCenter) {
+    const report = { userData: app.getPath('userData'), isolated: true, toolCount: center.inventory.tools.length, recordCount: center.records.length, nativeObserverStarted: !!observer, modelRequests: false };
+    fs.writeFileSync(path.join(app.getPath('userData'), 'acceptance-state.json'), JSON.stringify(report, null, 2));
+  }
 }
 app.on('before-quit', () => { quitting = true; center?.stop(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });
