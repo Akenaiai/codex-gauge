@@ -31,13 +31,14 @@ else app.whenReady().then(start);
 let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, lastHost = 0, pinnedPanel = false, forcedPanel = false;
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
 let badgeRaisedAt = 0;
+let panelFace = 'codex';
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
 let center, centerWindow, creditSecrets;
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
 function state() {
-  return { ...quota.state(), settings: store.settings, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
+  return { ...quota.state(), settings: { ...store.settings, panelFace }, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
     settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
     resetFeed: resetFeed.state(),creative:creativeSnapshot(center?.state()), update, version: app.getVersion(), demo };
 }
@@ -109,6 +110,7 @@ function updateVisibility() {
   resetFeed.setActive(!demo && store.settings.resetNews && (!!host.exists || forcedPanel));
 }
 function openPanel(activate = false, force = false) {
+  if (!panel.isVisible()) panelFace = 'codex';
   clearTimeout(leaveTimer); clearTimeout(hoverTimer); forcedPanel = force || forcedPanel;
   if (force) {
     const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
@@ -121,7 +123,10 @@ function openPanel(activate = false, force = false) {
   panel.moveTop();
   broadcast();
 }
-function closePanel() { clearTimeout(leaveTimer); clearTimeout(hoverTimer); pinnedPanel = false; forcedPanel = false; panel?.hide(); }
+function closePanel() {
+  clearTimeout(leaveTimer); clearTimeout(hoverTimer); pinnedPanel = false; forcedPanel = false; panel?.hide();
+  if (panelFace !== 'codex') { panelFace = 'codex'; broadcast(); }
+}
 function save(patch) {
   try { store.save(patch); refreshTray(); broadcast(); layout(); updateVisibility(); return { ok: true }; }
   catch { store.error = true; broadcast(); return { ok: false, error: 'save_failed' }; }
@@ -195,6 +200,10 @@ async function action(name, value) {
     case 'credit-center': openCenter(); break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
     case 'creative-refresh': await Promise.allSettled(creativeQueryTargets(center.state()).map(id=>center.refresh(id,{manual:true})));break;
+    case 'panel-face': {
+      if (!['codex', 'creative'].includes(value)) return { ok: false };
+      panelFace = value; broadcast(); return { ok: true };
+    }
     case 'reset-news-source': {
       const event = resetFeed.state().events.find(e => e.id === value);
       await shell.openExternal(event?.sourceUrl || PAGE); break;
@@ -202,7 +211,7 @@ async function action(name, value) {
     case 'settings': {
       if (!value || typeof value !== 'object') return { ok: false };
       const patch = {};
-      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews','panelFace']) if (key in value) patch[key] = value[key];
+      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews']) if (key in value) patch[key] = value[key];
       if ('autostart' in value) {
         if (!app.isPackaged) return { ok: false, error: 'install_first' };
         patch.autostart = value.autostart === true;

@@ -246,8 +246,8 @@
       const previous=state.settings.panelFace||'codex',face=name==='show-creative'?'creative':'codex';
       screenName='gauge';state.settings.panelFace=face;
       if(preview){const deck=app.querySelector('.flip-deck');deck.classList.toggle('is-flipped',face==='creative');for(const side of deck.querySelectorAll('.flip-face')){const hidden=side.classList.contains('creative-face')!==(face==='creative');side.inert=hidden;side.setAttribute('aria-hidden',String(hidden));}return;}
-      render(true);const result=await window.gauge.action('settings',{panelFace:face});
-      if(!result?.ok){state.settings.panelFace=previous;showToast(t('翻面偏好未保存，请重试','Face preference was not saved. Please retry'));}return;
+      render(true);const result=await window.gauge.action('panel-face',face);
+      if(!result?.ok){state.settings.panelFace=previous;showToast(t('翻面失败，请重试','Could not flip the panel. Please retry'));}return;
     }
     if (name === 'settings-page' || name === 'back') { screenName = name === 'back' ? 'gauge' : 'settings'; render(true); return; }
     if (name === 'credits') { details = !details; render(true); return; }

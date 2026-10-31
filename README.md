@@ -8,7 +8,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Current version: 0.3.9.** Daily gifts that clear the same day no longer raise expiry notifications or red priority on the creative face. Their balances and dates stay available. Subscription and purchased credits expiring today still remind normally. [Release notes](docs/releases/0.3.9.md) · [Technical guide](docs/CREDIT_CENTER.md).
+**Current version: 0.3.10.** Creative credit cards now fit the compact panel with long date/account notes, and reopening the panel always starts with Codex usage. [Release notes](docs/releases/0.3.10.md) · [Technical guide](docs/CREDIT_CENTER.md).
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
