@@ -10,8 +10,9 @@ const {configuredKey}=require('./credit-credentials.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
-const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
-function queryReady(tool,inventory,records){
+const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential','browser_offline','browser_setup_required','page_closed','selection_changed'];
+function queryReady(tool,inventory,records,browser={}){
+  if(['tapnow','ideogram'].includes(tool.id))return !!(browser?.enabled&&browser.paired&&browser.connected&&browser.providers?.[tool.id]?.configured);
   if(tool.id==='codex')return records.some(r=>r.provider==='codex'&&fresh(r));
   if(['kimi','minimax','zai'].includes(tool.id))return inventory.tools.some(t=>t.id==='agent-relay');
   if(tool.id==='runway')return tool.connections.some(c=>c.enabled&&c.kind==='mcp'&&c.source==='Codex'&&c.evidence==='configured');
@@ -32,7 +33,7 @@ class CreditCenter extends EventEmitter {
     for (const r of Array.isArray(data.records) ? data.records : []) try {
       if (r.id !== r.provider + ':' + r.scope || !/^[a-f0-9]{20}$/.test(r.scope)) continue;
       const clean = cleanRecord({ ...r, scope: r.scope });
-      this.records.push(enrichSchedules({ ...clean, id: r.id, scope: r.scope, status: ['ready','offline','account_changed','stale'].includes(r.status) ? r.status : 'offline', error: r.error ? 'query_failed' : null }));
+      this.records.push(enrichSchedules({ ...clean, id: r.id, scope: r.scope, status: r.source==='browser'&&r.status!=='account_changed'?'offline':['ready','offline','account_changed','stale'].includes(r.status) ? r.status : 'offline', error: r.source==='browser'?'browser_offline':r.error ? 'query_failed' : null }));
     } catch { }
     this.customTools = data.customTools && typeof data.customTools === 'object' && !Array.isArray(data.customTools) ? data.customTools : {};
     this.rules = {};
@@ -49,20 +50,20 @@ class CreditCenter extends EventEmitter {
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily','runway','kling','recraft'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      queryReady:queryReady(t,this.inventory,this.records),
+    const tools = this.inventory.tools.map(t => ({ ...t, canBrowser:['tapnow','ideogram'].includes(t.id),adapter: ['tapnow','ideogram'].includes(t.id)?!!this.options.browserState?.()?.enabled:['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily','runway','kling','recraft'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      queryReady:queryReady(t,this.inventory,this.records,this.options.browserState?.()),
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
     return { ...this.inventory, tools, onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
       events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
-      storageError: this.store.error, revision: this.store.data.revision };
+      browserLink:this.options.browserState?.(),storageError: this.store.error, revision: this.store.data.revision };
   }
   rescan() {
     this.inventory = scan({ ...this.options, hostTools: this.store.hostInventory() });
     for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
-    for (const row of this.records) this.ensureTool(row.provider);
+    for (const row of this.records){this.ensureTool(row.provider);if(row.source==='browser')this.ensureBrowserTool(row.provider);}
     for(const row of this.userDates)this.ensureUserDateTool(row.provider);
     this.loadImports(); this.persist(); this.emit('state'); return this.state();
   }
@@ -84,6 +85,14 @@ class CreditCenter extends EventEmitter {
   }
   ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});}
   ensureUserDateTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!existing)tool.connections=[];if(!tool.connections.some(c=>c.evidence==='user_dates'))tool.connections.push({kind:'manual',source:'User dates',label:id,enabled:true,evidence:'user_dates'});}
+  acceptBrowserReading(input,{manual=false}={}){
+    if(this.stopped||!this.enabled&&!manual||!['tapnow','ideogram'].includes(input?.provider)||input.source!=='browser'||input.identityVerified!==false)throw Error('invalid_response');
+    const r=cleanRecord(input);this.put(r,false);this.ensureBrowserTool(r.provider);this.statuses[r.provider]='ready';this.persist();if(this.store.error)throw Error('storage_failed');this.emit('state');
+  }
+  browserUnavailable(id,error='browser_offline'){
+    for(const r of this.records)if(r.provider===id&&r.source==='browser'&&r.status!=='account_changed'){r.status='offline';r.error=error;}this.statuses[id]=error;this.persist();this.emit('state');
+  }
+  ensureBrowserTool(id){const had=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!had)t.connections=[];const c=t.connections.find(c=>c.kind==='browser');if(c)c.enabled=!!this.options.browserState?.()?.enabled;else t.connections.push({kind:'browser',source:'User-linked browser page',label:id,enabled:!!this.options.browserState?.()?.enabled,evidence:'user_linked'});}
   completeOnboarding(){const old=this.onboardingCompleted;this.onboardingCompleted=true;this.persist();if(this.store.error){this.onboardingCompleted=old;this.store.data.onboardingCompleted=old;throw Error('storage_failed');}this.emit('state');}
   setUserDate(input){
     if(!input||!this.inventory.tools.some(t=>t.id===input.provider)&&!Object.hasOwn(providers,input.provider))throw Error('invalid_dates');
@@ -113,6 +122,7 @@ class CreditCenter extends EventEmitter {
     const previous = this.records.find(r => r.id === record.id);
     if (previous && previous.fetchedAt > record.fetchedAt) return;
     // Local CLI adapters represent one current login. Never remind for its old account.
+    if(record.source==='browser')for(const old of this.records)if(old.provider===record.provider&&old.source==='browser'&&old.id!==record.id)old.status='account_changed';
     if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&['suno','recraft','kling'].includes(record.provider)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
     if(record.provider==='kling'&&record.source==='mcp')for(const old of this.records)if(old.provider==='kling'&&old.source==='cli')old.status='account_changed';
     if(record.provider==='runway'&&record.source==='mcp'&&record.connectionRef)for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.id!==record.id&&(!old.connectionRef||old.connectionRef===record.connectionRef))old.status='account_changed';
@@ -140,7 +150,7 @@ class CreditCenter extends EventEmitter {
       this.ensureTool('codex'); this.persist(); this.emit('state');
     } catch { }
   }
-  async query(id) {
+  async query(id,{manual=false}={}) {
     if (this.stopped || this.busy.has(id)) return;
     const generation=this.generation,epoch=this.providerEpoch.get(id)||0,run=Symbol();this.queryRuns.set(id,run);
     this.busy.add(id); this.statuses[id] = 'querying'; this.emit('state');
@@ -150,6 +160,7 @@ class CreditCenter extends EventEmitter {
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
       else if(id==='suno')rows=await require('./codex-mcp-credit.cjs').suno(this.options);
       else if(['runway','kling','recraft'].includes(id))rows=await require('./creative-providers.cjs')[id](this.options);
+      else if(['tapnow','ideogram'].includes(id)&&this.options.browserRefresh)rows=await this.options.browserRefresh(id,{manual});
       else if (id === 'jimeng') rows = await adapters.jimeng(this.options);
       else if (id === 'relay') rows = await adapters.relay(this.options);
       else if (['firecrawl','deepseek','tavily'].includes(id)) rows = await adapters.securedApiBalance(id, this.options);
@@ -179,14 +190,14 @@ class CreditCenter extends EventEmitter {
     if(this.stopped || !manual&&!this.enabled)return;
     const generation=this.generation;
     this.loadImports();
-    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft'].filter(x => {
+    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].filter(x => {
       if(x==='relay')return this.inventory.tools.some(t=>t.id==='agent-relay');
-      return this.inventory.tools.some(t=>t.id===x&&queryReady(t,this.inventory,this.records));
+      return this.inventory.tools.some(t=>t.id===x&&queryReady(t,this.inventory,this.records,this.options.browserState?.()));
     });
     // Limit concurrent upstream reads. Each query has a separate bounded timeout.
     for (let i=0; i<ids.length; i+=3) {
       if(this.stopped||generation!==this.generation||!manual&&!this.enabled)break;
-      await Promise.allSettled(ids.slice(i,i+3).map(x => this.query(x)));
+      await Promise.allSettled(ids.slice(i,i+3).map(x => this.query(x,{manual})));
     }
     if(generation===this.generation){this.persist();this.emit('state');}
   }
@@ -194,7 +205,7 @@ class CreditCenter extends EventEmitter {
     if (!this.records.some(r => r.pools.some(p => key === r.id + '/' + p.id))) throw new Error('invalid_rule');
     const record=this.records.find(r=>key.startsWith(r.id+'/'));
     if(record?.provider==='codex')throw new Error('codex_settings_in_gauge');
-    if(['relay','cli','mcp'].includes(record?.source)&&!record.identityVerified)throw new Error('identity_unverified');
+    if(['relay','cli','mcp','browser'].includes(record?.source)&&!record.identityVerified)throw new Error('identity_unverified');
     const rule = validateRule(input), old = this.rules[key]; this.rules[key] = rule; this.persist();
     if (this.store.error) { if(old)this.rules[key]=old;else delete this.rules[key];this.emit('state');throw new Error('storage_failed'); }
     this.emit('state');
@@ -230,6 +241,7 @@ class CreditCenter extends EventEmitter {
     this.enabled = enabled === true; this.reminders = reminders === true; this.persist();
     if(this.store.error){this.enabled=oldEnabled;this.reminders=oldReminders;this.emit('state');throw new Error('storage_failed');}
     if(oldEnabled&&!this.enabled){this.generation++;this.busy.clear();}
+    if(oldEnabled!==this.enabled)this.options.browserControl?.();
     if(!oldEnabled&&this.enabled)this.refresh();
     this.emit('state');
   }

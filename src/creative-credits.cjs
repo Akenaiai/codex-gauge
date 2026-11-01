@@ -1,7 +1,7 @@
 'use strict';
 const {analyze,summarizeRecord}=require('./ui/credit-overview.js');
 const {timing,selectDates,priorityExpiry}=require('./ui/creative-timing.js');
-const media={xyq:['image','video'],jimeng:['image','video'],lovart:['image','video'],runway:['image','video'],kling:['image','video'],recraft:['image'],tapnow:['image','video'],suno:['music'],chatcut:['video'],adobe:['image','video'],canva:['image','video'],'comfy-local':['image','video']};
+const media={xyq:['image','video'],jimeng:['image','video'],lovart:['image','video'],runway:['image','video'],kling:['image','video'],recraft:['image'],ideogram:['image','video'],tapnow:['image','video'],suno:['music'],chatcut:['video'],adobe:['image','video'],canva:['image','video'],'comfy-local':['image','video']};
 const download=p=>p.resource==='downloads'||/download|下载/i.test(p.id+' '+p.label+' '+p.labelEn);
 function creativePool(provider,p){
   if(p.unit==='cards'||['CNY','USD','tokens'].includes(p.unit)||p.resource==='tools'||download(p))return false;
@@ -39,5 +39,5 @@ function creativeSnapshot(state={},now=Date.now()){
   rows.sort((a,b)=>Number(b.expiring)-Number(a.expiring)||(a.expiring&&b.expiring?timing(a.priorityExpiry,now).order-timing(b.priorityExpiry,now).order:0)||({available:0,unknown:1,empty:2}[a.status]-{available:0,unknown:1,empty:2}[b.status])||a.name.localeCompare(b.name));
   return{rows,expiring:rows.filter(r=>r.expiring).length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:0,enabled:state.enabled!==false,busy};
 }
-function creativeQueryTargets(state){const ids=(state.tools||[]).filter(t=>['xyq','jimeng','lovart','suno','runway','kling','recraft'].includes(t.id)&&t.queryReady).map(t=>t.id);if((state.tools||[]).some(t=>t.id==='minimax'&&t.records?.some(r=>r.pools.some(p=>creativePool('minimax',p)))))ids.push('relay');return ids;}
+function creativeQueryTargets(state){const ids=(state.tools||[]).filter(t=>['xyq','jimeng','lovart','suno','runway','kling','recraft','tapnow','ideogram'].includes(t.id)&&t.queryReady).map(t=>t.id);if((state.tools||[]).some(t=>t.id==='minimax'&&t.records?.some(r=>r.pools.some(p=>creativePool('minimax',p)))))ids.push('relay');return ids;}
 module.exports={creativeSnapshot,creativeQueryTargets,creativePool};

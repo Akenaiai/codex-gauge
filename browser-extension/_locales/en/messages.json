@@ -1,0 +1,8 @@
+{
+  "name": {
+    "message": "Gauge · Page credits"
+  },
+  "description": {
+    "message": "Optional read-only link for selected credit balances in dedicated provider tabs."
+  }
+}

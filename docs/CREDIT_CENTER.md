@@ -1,5 +1,11 @@
 # Credit center / 额度中心
 
+## 0.4.0: Optional page balance / 可选网页余额
+
+TapNow and Ideogram can use the optional browser component. See the [English setup](BROWSER_CONNECTION.md) and [中文教程](BROWSER_CONNECTION.zh-CN.md). This reads selected visible balances in dedicated tabs; it does not add provider login inside Gauge, reuse website sessions or read dates. `source=browser` observations remain `identityVerified=false`, cannot inherit verified account dates and start offline after restart. Unknown, changed, stale and disconnected readings stay outside the compact back. Zero is retained only after a valid read. Browser pairing is disabled by default and stores its encrypted key only in user data.
+
+中文：两个平台增加可选浏览器余额连接，独立配对、分站授权、用户点选可见余额和账户标识。账号归属未验证，不绑定实查账号日期、不确认发放到账；未知或离线不当零，也不占背面。只读余额，不改变原来日期快照与预计规则。下方旧版本段落保留各自时间点的行为说明。
+
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
 ## 0.3.13: Direct official member MCP / 直连官方会员MCP

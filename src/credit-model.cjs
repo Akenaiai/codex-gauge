@@ -28,8 +28,8 @@ function cleanRecord(input, now = Date.now()) {
   const account = typeof input.account === 'string' ? input.account.slice(0, 100) : '';
   return { id: input.provider + ':' + hash(input.scope), provider: input.provider, scope: hash(input.scope), account,
     ...(input.provider==='runway'&&/^[a-f0-9]{20}$/.test(input.connectionRef||'')?{connectionRef:input.connectionRef}:{}),
-    identityVerified: input.identityVerified === true, fetchedAt, status: 'ready', error: null,
-    source: ['cli', 'api', 'relay', 'host', 'codex', 'manual', 'mcp'].includes(input.source) ? input.source : 'host', pools };
+    identityVerified: input.source!=='browser' && input.identityVerified === true, fetchedAt, status: 'ready', error: null,
+    source: ['cli', 'api', 'relay', 'host', 'codex', 'manual', 'mcp', 'browser'].includes(input.source) ? input.source : 'host', pools };
 }
 function fresh(record, now = Date.now()) { return record?.status === 'ready' && record.fetchedAt <= now && now - record.fetchedAt < FRESH_MS; }
 function poolWithRule(record, pool, rules) {

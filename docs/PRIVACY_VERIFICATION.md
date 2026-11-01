@@ -1,5 +1,13 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.4.0 preview / 可选浏览器组件复核（2026-11-01）
+
+The Windows candidate installer contains 95 application-payload files and 54 ASAR entries. Its payload matches the tested unpacked build; the portable ZIP's ASAR, MCP resources and browser component match the installer. The component contains only code, a public extension identity key, a generated icon and license. It contains no user pairing key, selected page positions or provider data. Private filename and developer-home-path checks find no matches. The desktop pairing profile is created only in per-user runtime storage after explicit enablement.
+
+180 candidate/package/document files were compared locally against 65 existing private account/date/encrypted markers and two active API credential sources, with no matches and no credential output. The actual installer-ASAR code passes 18 synthetic-user isolation checks: no developer tools, balances, dates or saved keys are inherited; a second synthetic profile discovers only its own configured integration. Native startup, host and notifications remain stubbed in that isolation fixture. This is a targeted candidate audit, not a repeated full-history audit or a separate Windows-user login test. Real provider browser readings remain pending field validation.
+
+中文：0.4.0 候选安装器的 95 个应用文件、54 个 ASAR 条目及 ZIP 中的组件均核对一致；组件只带代码、公开身份公钥、生成图标和许可，不含用户配对密钥、点选位置或账号积分。180 个候选 / 包 / 文档文件与 65 个私人标记、两类活动 API 凭据仅在本机对比，无匹配、不输出秘密。安装器实际代码的 18 项合成用户隔离检查通过。未重做历史全量扫描或单独 Windows 账号登录测试，真实网页余额和自动周期仍待现场验证。
+
 ## 0.3.8 follow-up / 每日赠送静音复核（2026-10-30）
 
 The installer payload matches the tested unpacked build, and ZIP ASAR/MCP resources match. The new cadence helper is packaged as source and as a narrow MCP dependency, without user data. Allowlist/private-filename checks find no account settings, balances, private date imports, encrypted keys or browser profiles. Updated images are synthetic native fixtures.

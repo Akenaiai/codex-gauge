@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-For Windows 0.3.8. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+This guide includes the Windows 0.4.0 source preview. The latest stable installer is 0.3.14 and does not yet include the optional browser component; that preview still needs live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.8.exe`. For an installation-free launch, download `Codex.Gauge-0.3.8-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.14.exe`. For an installation-free launch, download `Codex.Gauge-0.3.14-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
@@ -77,6 +77,10 @@ Firecrawl, Tavily and DeepSeek can reuse `FIRECRAWL_API_KEY`, `TAVILY_API_KEY` a
 
 Without an existing API connection, you may choose **Details → Connect** and enter your own API key. Gauge verifies a read-only request and saves it with local system encryption. This is not a provider account login; it does not create a key, buy a plan or expand permissions. You can leave it unconfigured. Never post keys, cookies, configuration files or real account screenshots in public issues.
 
+### Optional TapNow / Ideogram browser connection
+
+Their official member MCPs currently expose no balance tool. Version 0.4.0 includes an optional browser component: **All tools → View → Connect page balance**. Load it in Chrome/Edge, pair locally and select a visible full balance plus persistent account/team marker. It reads only selected positions in its own dedicated tab. The component is off by default, adds no sign-in inside Gauge and does not copy cookies or sessions. Page readings do not verify account identity or refresh dates. See the [complete setup and privacy details](BROWSER_CONNECTION.md).
+
 ## 4. Understand observed and estimated dates
 
 **Check the source and observation time for each date. A successful balance refresh does not refresh a website date record.**
@@ -84,7 +88,7 @@ Without an existing API connection, you may choose **Details → Connect** and e
 | Source / label | What it establishes | How it updates |
 | --- | --- | --- |
 | Date in an automatic query | The account date returned by the last API/CLI read; future renewal still needs verification | Reread through supported queries; failed reads retain an explicitly old reading |
-| Web account, Checked, Not live | A historical observation from an actual account-page check; it may have changed | User verifies in their own browser and updates a private import; Gauge does not sign in or scrape it |
+| Web account, Checked, Not live | A historical observation from an actual account-page check; it may have changed | User verifies in their own browser and updates a private import; the optional balance reader does not refresh historical dates |
 | Official rule / Based on official rules | Validity or an expected renewal derived from a published rule, not grant confirmation | Details links the source and review date; rules are not a live policy service |
 | User confirmed | A one-time date entered and checked by the user | Edit with Set dates; reaching it prompts verification |
 | Monthly same-day forecast; grant unconfirmed | A user-configured expected monthly grant day | Advances with the calendar; editable and disableable; never confirms arrival |

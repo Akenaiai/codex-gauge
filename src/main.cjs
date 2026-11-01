@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage, clipboard } = require('electron');
 const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const path = require('node:path');
@@ -14,6 +14,7 @@ const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cj
 const { CreditCenter } = require('./credit-center.cjs');
 const {observationNotice}=require('./credit-date-observations.cjs');
 const {CreditSecrets}=require('./credit-credentials.cjs');
+const {BrowserLink}=require('./browser-link.cjs');
 const {policyFor}=require('./credit-policies.cjs');
 const {creativeSnapshot,creativeQueryTargets}=require('./creative-credits.cjs');
 const ROOT = path.resolve(__dirname, '..');
@@ -33,7 +34,8 @@ let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0
 let badgeRaisedAt = 0;
 let panelFace = 'codex';
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
-let center, centerWindow, creditSecrets;
+let center, centerWindow, creditSecrets, browserLink, browserLinkError;
+const browserExtensionRoot=()=>app.isPackaged?path.join(process.resourcesPath,'browser-extension'):path.join(ROOT,'browser-extension');
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
 
@@ -300,7 +302,9 @@ function processCreditReminders() {
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
   creditSecrets=new CreditSecrets(app.getPath('userData'),safeStorage);
-  center = new CreditCenter(app.getPath('userData'),{credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}}});
+  center = new CreditCenter(app.getPath('userData'),{credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}},browserState:()=>browserLink?.state()||{enabled:false,error:browserLinkError},browserRefresh:(id,options)=>browserLink?browserLink.requestRead(id,options):Promise.reject(Error('browser_setup_required')),browserControl:()=>browserLink?.syncPause()});
+  try{const manifest=JSON.parse(fs.readFileSync(path.join(browserExtensionRoot(),'manifest.json'),'utf8'));browserLink=new BrowserLink(app.getPath('userData'),safeStorage,{extensionKey:manifest.key,receive:(record,meta)=>center.acceptBrowserReading(record,meta),paused:()=>!center.enabled});browserLink.on('state',broadcast);browserLink.on('connected',id=>{if(center.enabled&&!center.stopped)center.refresh(id);});browserLink.on('unavailable',(id,error)=>{if(!quitting)center.browserUnavailable(id,error);});await browserLink.start();}catch{browserLinkError='browser_component_missing';}
+
   delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
   startup = createStartup(app, ROOT);
   if (app.isPackaged && !demo && store.settings.autostart) {
@@ -337,6 +341,19 @@ async function start() {
       else if(name==='remove-user-dates')center.removeUserDate(value?.id);
       else if(name==='onboarding-complete')center.completeOnboarding();
       else if(name==='connect')await center.connect(value?.provider,value?.key,{replaceRecordId:value?.replaceRecordId||null});
+      else if(name==='browser-link-pair'){if(!browserLink)return{ok:false};clipboard.writeText(await browserLink.pairingCode());}
+      else if(name==='browser-link-reset'){if(!browserLink)return{ok:false};clipboard.writeText(await browserLink.resetPairing());}
+      else if(name==='browser-link-disable'){if(browserLink)browserLink.disable();}
+      else if(name==='browser-link-folder'){const error=await shell.openPath(browserExtensionRoot());if(error)return{ok:false};}
+      else if(name==='browser-link-chrome'||name==='browser-link-edge'){
+        const edge=name.endsWith('edge'),page=edge?'edge://extensions':'chrome://extensions';
+        if(process.platform==='win32'){
+          const tail=edge?'Microsoft/Edge/Application/msedge.exe':'Google/Chrome/Application/chrome.exe';
+          const executable=[process.env.PROGRAMFILES,process.env['PROGRAMFILES(X86)'],process.env.LOCALAPPDATA].filter(Boolean).map(root=>path.join(root,tail)).find(p=>fs.existsSync(p));
+          if(!executable)return{ok:false};const child=spawn(executable,['--new-tab',page],{windowsHide:true,detached:true,stdio:'ignore'});child.on('error',()=>{});child.unref();
+        }else if(process.platform==='darwin'){const child=spawn('open',['-a',edge?'Microsoft Edge':'Google Chrome',page],{stdio:'ignore'});child.on('error',()=>{});}
+        else return{ok:false};
+      }
       else if(name==='credential-page'){
         const urls={firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
         if(!Object.hasOwn(urls,value?.provider))return{ok:false};await shell.openExternal(urls[value.provider]);
@@ -371,8 +388,8 @@ async function start() {
   });
   resetFeed.on('state', () => { processResetReminders(); broadcast(); });
   nativeTheme.on('updated', broadcast);
-  powerMonitor.on('suspend', () => { quota.stop(); resetFeed.stop(); center.stop(); badge.hide(); closePanel(); });
-  powerMonitor.on('resume', () => { updateVisibility(); quota.refresh(); center.stopped = false; center.start(); });
+  powerMonitor.on('suspend', () => { quota.stop(); resetFeed.stop(); center.stop(); browserLink?.suspend(); badge.hide(); closePanel(); });
+  powerMonitor.on('resume', () => { browserLink?.resume();updateVisibility(); quota.refresh(); center.stopped = false; center.start(); });
   screen.on('display-metrics-changed', layout);
   if (demo) {
     quota.setActive = () => {}; quota.refresh = async () => {};
@@ -394,5 +411,5 @@ async function start() {
   if (process.argv.includes('--credit-center') || centerProfile) openCenter();
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; center?.stop(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; center?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });
