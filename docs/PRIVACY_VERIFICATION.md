@@ -1,5 +1,11 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.4.2 follow-up / 后台可靠性复核
+
+The same package allowlist, optional browser permissions and account-unverified boundary are retained. The final installer, ZIP ASAR/MCP resources and browser component match the tested build; 18 installer-ASAR synthetic-user isolation checks pass. The existing local pairing, preferences and independent date records survive upgrade. Timeout and navigation-race fixes do not add cookie, session, profile or hidden-page-state access. Real background validation is distinct: 20 minutes and 4 automatic updates, with all sampled heartbeats connected. No personal browser screenshots are distributed.
+
+中文：保留原打包允许清单、可选权限及网页账号待核实边界，安装器 / ZIP / 组件一致，18 项实际安装器代码的合成用户隔离检查通过。原配对、设置、独立日期保留；超时与导航竞态修复不增加 Cookie、会话、浏览器资料或隐藏页面状态访问。真实后台 20 分钟、4 次自动更新与心跳持续在线另行验证；不分发个人浏览器截图。
+
 ## 0.4.1 follow-up / TapNow 自动菜单读取复核（2026-11-01）
 
 The candidate keeps the same optional browser permissions and local pairing boundary. TapNow reads only the fixed visible balance span and current-team title; it does not collect other account-menu fields. The installer payload, portable ZIP ASAR/MCP resources and browser component match the tested unpacked candidate. Private-file and developer-home-path checks find no matches. The actual installer-ASAR code passes 18 isolated synthetic-user checks with no inherited developer balances, dates, connections or keys.

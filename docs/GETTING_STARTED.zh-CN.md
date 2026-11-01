@@ -2,11 +2,11 @@
 
 [English](GETTING_STARTED.md) · [返回首页](../README.zh-CN.md) · [下载安装包](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-本文包含 0.4.1 预览功能。当前稳定安装包为 0.3.14，不含浏览器组件；长时间后台可靠性修复验证完成后再发布新的稳定连接版本。Ideogram 也仍待真实平台验证。刻度保留原 Codex 小仪表，并提供统一的 AI 额度中心。**不需要注册刻度账号，也不需要在刻度里额外登录各个平台。** 查询沿用你自己电脑上的已有连接。尚未登录的工具，需要在它原来的客户端或 CLI 中完成登录；也可以先跳过。
+适用于 Windows 0.4.2。TapNow 真实余额与二十分钟后台自动刷新已实测通过，Ideogram 仍待真实平台验证。刻度保留原 Codex 小仪表，并提供统一的 AI 额度中心。**不需要注册刻度账号，也不需要在刻度里额外登录各个平台。** 查询沿用你自己电脑上的已有连接。尚未登录的工具，需要在它原来的客户端或 CLI 中完成登录；也可以先跳过。
 
 ## 1. 安装并打开
 
-1. 打开上方发布页，在 **Assets** 下载 `Codex.Gauge.Setup.0.3.14.exe`。需要免安装运行时选 `Codex.Gauge-0.3.14-win.zip`，完整解压后运行其中的 `Codex Gauge.exe`。后续版本以发布页文件名为准。GitHub 的 **Source code** ZIP 是源码，需要开发环境才能运行。
+1. 打开上方发布页，在 **Assets** 下载 `Codex.Gauge.Setup.0.4.2.exe`。需要免安装运行时选 `Codex.Gauge-0.4.2-win.zip`，完整解压后运行其中的 `Codex Gauge.exe`。后续版本以发布页文件名为准。GitHub 的 **Source code** ZIP 是源码，需要开发环境才能运行。
 2. 系统要求是 Windows 10/11 x64。安装包已包含桌面运行环境，无需另装 Node.js；可选的 Agent Relay 查询需要另外安装该工具及 Python。
 3. 当前安装包没有 Windows 代码签名。可将下载文件右键复制路径，在 PowerShell 运行 `Get-FileHash -Algorithm SHA256 -LiteralPath '下载文件的完整路径'`，与同一发布页的 `SHA256SUMS.txt` 比较。这只能验证文件是否一致，不等于代码签名；不要关闭系统保护。
 4. 运行刻度。从任务栏通知区域的刻度图标打开 **额度中心 · 全部 AI 工具**；图标可能收在隐藏图标菜单中。已有 Codex 小面板也有进入额度中心的按钮。
@@ -79,7 +79,7 @@ Firecrawl、Tavily、DeepSeek 可以复用当前进程的 `FIRECRAWL_API_KEY`、
 
 ### 可选的 TapNow / Ideogram 网页连接
 
-两个平台的官方会员 MCP 当前没有余额查询工具。0.4.1 增加可选浏览器组件：**全部工具 → 查看 → 连接网页余额**。在 Chrome / Edge 加载组件、本机配对并打开专用网页；TapNow 自动读取固定余额和当前团队标识，Ideogram 需本人点选；只操作组件自己打开的专用标签页。组件默认关闭，不在刻度里登录、不复制 Cookie 或会话；网页读数不验证账号归属，也不刷新日期。[完整安装与隐私说明](BROWSER_CONNECTION.zh-CN.md)。
+两个平台的官方会员 MCP 当前没有余额查询工具。0.4.2 提供可选浏览器组件：**全部工具 → 查看 → 连接网页余额**。在 Chrome / Edge 加载组件、本机配对并打开专用网页；TapNow 自动读取固定余额和当前团队标识，Ideogram 需本人点选；只操作组件自己打开的专用标签页。组件默认关闭，不在刻度里登录、不复制 Cookie 或会话；网页读数不验证账号归属，也不刷新日期。[完整安装与隐私说明](BROWSER_CONNECTION.zh-CN.md)。
 
 ## 4. 哪些日期是实查，哪些是预计
 

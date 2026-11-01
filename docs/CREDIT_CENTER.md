@@ -1,5 +1,11 @@
 # Credit center / 额度中心
 
+## 0.4.2: Background read deadlines / 后台读取期限
+
+TapNow page injections return synchronous fixed-field snapshots. The extension worker samples and waits within a bounded read, keeps heartbeats polling while busy, and preserves its existing alarm on wakeup. Late settings, scripts and responses cannot send a reading after its deadline. Selected-field reading and picking validate the expected supported home page before DOM access, including after waits and navigation. No extra permissions or embedded login are introduced. Windows field validation: 20 minutes, 4 automatic updates, uninterrupted sampled heartbeats and matching final creative balance.
+
+中文：TapNow 页面同步短读，组件后台负责有界采样；读取忙时仍发送心跳，唤醒时保留已有定时。迟到的设置、脚本和响应不能在期限后发送读数。本人点选流程访问 DOM 前及异步恢复后核对预期主页，不越到工作画布。未增加权限或刻度内登录；Windows 后台 20 分钟、4 次自动更新与最终背面一致均已实测。
+
 ## 0.4.1: Automatic TapNow menu / TapNow 自动账户菜单
 
 The TapNow component reopens only the fixed account menu after refreshing its own dedicated home tab. It reads the credit-row amount and current-team title, rejecting changes during sampling. No custom selectors or added permissions are needed for TapNow. Ideogram retains the selected-field flow. Windows live balance transfer and a full five-minute automatic-refresh observation passed; browser identity and dates remain unverified.

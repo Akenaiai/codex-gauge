@@ -2,7 +2,7 @@
 
 [简体中文](BROWSER_CONNECTION.zh-CN.md) · [First use](GETTING_STARTED.md)
 
-Version 0.4.1 supports TapNow and Ideogram. This is an optional Chrome/Edge component, off by default. These providers' official member MCP catalogs were checked on November 1, 2026 and did not expose a balance query. Authorizing their MCP alone therefore does not make balances available in Gauge.
+Version 0.4.2 supports TapNow and Ideogram. This is an optional Chrome/Edge component, off by default. These providers' official member MCP catalogs were checked on November 1, 2026 and did not expose a balance query. Authorizing their MCP alone therefore does not make balances available in Gauge.
 
 ## Connect your own browser
 
@@ -33,3 +33,5 @@ Use **Re-pair** in Gauge to revoke an old component connection and generate a ne
 The reader and bridge have automated and isolated native-app checks. A live provider connection additionally needs your own browser installation, site permission, visible fields and successful reading; those steps are not proven by the automated fixtures. Expiry and monthly grant dates keep their existing source labels. This component reads balances only and does not extract page dates or create date rules.
 
 Windows field check: a real TapNow browser balance reached the installed app and matched its creative back. A bounded observation also confirmed a subsequent automatic reading across a full five-minute window without an agent-triggered manual refresh. Account verification, date extraction, live Ideogram reading and Mac support are not established by this check.
+
+Version 0.4.2 background follow-up: a 20-minute Windows run completed 4 automatic readings without browser automation or agent-triggered manual refresh; all sampled heartbeats stayed connected. Sampling runs in the extension worker, page steps are synchronous, and read/picker operations enforce deadlines and their expected home page. A timeout stays unconfirmed and can retry on a later automatic cycle. This is field evidence for this Windows setup, not universal browser or account verification.
