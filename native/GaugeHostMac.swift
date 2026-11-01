@@ -34,38 +34,77 @@ func rect(_ element: AXUIElement) -> CGRect? {
     return CGRect(origin: point, size: size)
 }
 func children(_ element: AXUIElement) -> [AXUIElement] { attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] }
-func visibleUpdateRect(_ element: AXUIElement) -> CGRect? {
-    if attribute(element, "AXHidden") as? Bool == true { return nil }
-    guard elementAttribute(element, kAXParentAttribute) != nil else { return nil }
-    let labels = [kAXDescriptionAttribute, kAXTitleAttribute, kAXHelpAttribute].compactMap { attribute(element, $0) as? String }
-    return labels.contains(where: isUpdateLabel) ? rect(element) : nil
+// An incomplete AX read is unknown, never evidence that a visible update vanished.
+func updateAttribute(_ element: AXUIElement, _ name: String, reliable: inout Bool) -> CFTypeRef? {
+    var value: CFTypeRef?
+    let status = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+    if status != .success && status != .attributeUnsupported && status != .noValue { reliable = false }
+    return status == .success ? value : nil
 }
-func findUpdateControl(profile: AXUIElement, profileRect: CGRect, window: CGRect) -> AXUIElement? {
-    var ancestor = elementAttribute(profile, kAXParentAttribute), column: AXUIElement?
-    // Match the navigation ancestor, not a global "Update" elsewhere in a chat.
-    for _ in 0..<8 {
-        guard let item = ancestor else { break }
-        if attribute(item, kAXRoleAttribute) as? String == kAXWindowRole { break }
-        if let r = rect(item), window.contains(r), r.contains(profileRect),
-           r.width <= min(400, window.width / 2), r.height >= profileRect.height + 16 { column = item }
-        ancestor = elementAttribute(item, kAXParentAttribute)
+func visibleUpdateRect(_ element: AXUIElement, reliable: inout Bool) -> CGRect? {
+    if updateAttribute(element, "AXHidden", reliable: &reliable) as? Bool == true { return nil }
+    guard updateAttribute(element, kAXParentAttribute, reliable: &reliable) != nil else { return nil }
+    let labels = [kAXDescriptionAttribute, kAXTitleAttribute, kAXHelpAttribute].compactMap {
+        updateAttribute(element, $0, reliable: &reliable) as? String
     }
-    guard let column else { return nil }
-    var queue = [column], visited = 0, found: AXUIElement?, top = profileRect.minY
-    let deadline = Date().addingTimeInterval(0.06)
-    while !queue.isEmpty && visited < 400 && Date() < deadline {
-        // Footer controls are at the end; visit them first and skip text bodies.
-        let item = queue.removeLast(); visited += 1
-        let role = attribute(item, kAXRoleAttribute) as? String ?? ""
-        if [kAXTextAreaRole, kAXTextFieldRole, kAXStaticTextRole].contains(role) { continue }
-        if [kAXButtonRole, kAXMenuButtonRole, kAXProgressIndicatorRole, kAXGroupRole].contains(role),
-           let r = visibleUpdateRect(item) {
-            let candidate = updateAnchorTop(profile: profileRect, updates: [r], window: window)
-            if candidate < top { top = candidate; found = item }
+    guard labels.contains(where: isUpdateLabel) else { return nil }
+    guard let r = rect(element) else { reliable = false; return nil }
+    return r
+}
+struct UpdateSearch {
+    var queue: [AXUIElement] = []
+    var visited = 0
+    var found: AXUIElement?
+    var top = CGFloat.greatestFiniteMagnitude
+    var reliable = true
+    mutating func step(profile: AXUIElement, profileRect: CGRect, window: CGRect) -> (AXUIElement?, Bool) {
+        if queue.isEmpty && visited == 0 {
+            var ancestor = elementAttribute(profile, kAXParentAttribute), column: AXUIElement?
+            for _ in 0..<8 {
+                guard let item = ancestor else { break }
+                if attribute(item, kAXRoleAttribute) as? String == kAXWindowRole { break }
+                if let r = rect(item), window.contains(r), r.contains(profileRect),
+                   r.width <= min(400, window.width / 2), r.height >= profileRect.height + 16 { column = item }
+                ancestor = elementAttribute(item, kAXParentAttribute)
+            }
+            guard let column else { return (nil, false) }
+            queue = [column]
         }
-        queue.append(contentsOf: children(item))
+        let deadline = ProcessInfo.processInfo.systemUptime + 0.06
+        while !queue.isEmpty && visited < 2000 && ProcessInfo.processInfo.systemUptime < deadline {
+            let item = queue.removeLast(); visited += 1
+            let role = updateAttribute(item, kAXRoleAttribute, reliable: &reliable) as? String ?? ""
+            if [kAXTextAreaRole, kAXTextFieldRole, kAXStaticTextRole].contains(role) { continue }
+            if [kAXButtonRole, kAXMenuButtonRole, kAXProgressIndicatorRole, kAXGroupRole].contains(role),
+               let r = visibleUpdateRect(item, reliable: &reliable) {
+                let candidate = updateAnchorTop(profile: profileRect, updates: [r], window: window)
+                if candidate < profileRect.minY && candidate < top { top = candidate; found = item }
+            }
+            let nested = updateAttribute(item, kAXChildrenAttribute, reliable: &reliable) as? [AXUIElement] ?? []
+            queue.append(contentsOf: nested)
+        }
+        let result = (found, queue.isEmpty && reliable)
+        // Preserve unfinished work across timer ticks; a node limit is also unknown.
+        if queue.isEmpty || visited >= 2000 { self = UpdateSearch() }
+        return result
     }
-    return found
+}
+struct UpdateAvoidance {
+    var clearance: CGFloat = 0
+    var absentSince: TimeInterval?
+    var misses = 0
+    mutating func observe(gap: CGFloat?, complete: Bool, now: TimeInterval) {
+        if let gap, gap > 0 {
+            clearance = max(clearance, gap); absentSince = nil; misses = 0
+        } else if complete {
+            if absentSince == nil { absentSince = now }
+            misses += 1
+            if misses >= 3 && now - absentSince! >= 1.5 { self = UpdateAvoidance() }
+        } else {
+            // Interrupted/failed scans cannot confirm a continuous absence.
+            absentSince = nil; misses = 0
+        }
+    }
 }
 func validProfile(_ r: CGRect, _ window: CGRect) -> Bool {
     window.contains(r) && r.width >= 12 && r.width <= min(400, window.width / 2) &&
@@ -107,6 +146,8 @@ final class HostObserver {
     var cachedProfile: AXUIElement?
     var cachedWindow: AXUIElement?
     var cachedUpdate: AXUIElement?
+    var updateSearch = UpdateSearch()
+    var updateAvoidance = UpdateAvoidance()
     var nextUpdateScan = Date.distantPast
     var lastBounds: CGRect?
     var nextScan = Date.distantPast
@@ -152,6 +193,7 @@ final class HostObserver {
         let apps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).filter { !$0.isTerminated }
         guard let running = apps.first(where: { $0.isActive }) ?? apps.first else {
             cachedWindow = nil; cachedProfile = nil; cachedUpdate = nil; pid = 0
+            updateSearch = UpdateSearch(); updateAvoidance = UpdateAvoidance()
             emit(["exists": false, "reason": "host_closed"]); return
         }
         let app = AXUIElementCreateApplication(running.processIdentifier)
@@ -186,6 +228,7 @@ final class HostObserver {
         if changed {
             pid = running.processIdentifier; cachedWindow = window; cachedProfile = nil; nextScan = .distantPast
             cachedUpdate = nil; nextUpdateScan = .distantPast
+            updateSearch = UpdateSearch(); updateAvoidance = UpdateAvoidance()
             scanQueue.removeAll(); scanVisited = 0
             subscribe(app, window)
         }
@@ -194,25 +237,36 @@ final class HostObserver {
         if lastBounds?.size != bounds.size {
             cachedProfile = nil; nextScan = .distantPast; scanQueue.removeAll(); scanVisited = 0
             cachedUpdate = nil; nextUpdateScan = .distantPast
+            updateSearch = UpdateSearch()
         }
         lastBounds = bounds
         if Date() >= nextScan {
-            cachedProfile = findProfile(window, bounds, queue: &scanQueue, visited: &scanVisited)
-            if cachedProfile != nil || scanQueue.isEmpty {
+            let found = findProfile(window, bounds, queue: &scanQueue, visited: &scanVisited)
+            if let found { cachedProfile = found }
+            if found != nil || scanQueue.isEmpty {
                 nextScan = Date().addingTimeInterval(2); scanQueue.removeAll(); scanVisited = 0
             }
         }
         var result: [String: Any] = ["exists": true, "foreground": active, "minimized": false, "anchored": false, "reason": "profile_unavailable"]
         if let button = cachedProfile, let r = rect(button), validProfile(r, bounds), let anchor = anchorRect(button) {
-            if Date() >= nextUpdateScan {
-                cachedUpdate = findUpdateControl(profile: button, profileRect: r, window: bounds)
-                nextUpdateScan = Date().addingTimeInterval(0.5)
-            }
-            // Read cached geometry live; disappearance/hidden/disabled AX objects
-            // restore the profile anchor without retaining a stale fixed offset.
-            let updates = cachedUpdate.flatMap(visibleUpdateRect).map { [$0] } ?? []
+            let now = ProcessInfo.processInfo.systemUptime
             let profileTop = min(r.minY, anchor.minY)
-            let top = min(profileTop, updateAnchorTop(profile: r, updates: updates, window: bounds))
+            var liveReliable = true
+            let live = cachedUpdate.flatMap { visibleUpdateRect($0, reliable: &liveReliable) }
+            let liveTop = updateAnchorTop(profile: r, updates: live.map { [$0] } ?? [], window: bounds)
+            if liveTop < profileTop { updateAvoidance.observe(gap: profileTop - liveTop, complete: false, now: now) }
+            if Date() >= nextUpdateScan {
+                let (found, complete) = updateSearch.step(profile: button, profileRect: r, window: bounds)
+                var reliable = true
+                let foundRect = found.flatMap { visibleUpdateRect($0, reliable: &reliable) }
+                let foundTop = updateAnchorTop(profile: r, updates: foundRect.map { [$0] } ?? [], window: bounds)
+                if foundRect != nil { cachedUpdate = found }
+                let gap = min(foundTop, liveTop) < profileTop ? profileTop - min(foundTop, liveTop) : nil
+                updateAvoidance.observe(gap: gap, complete: complete && reliable, now: now)
+                nextUpdateScan = Date().addingTimeInterval(updateSearch.visited == 0 ? 0.5 : 0.15)
+            }
+            // Keep a measured clearance relative to the live avatar, never a desktop coordinate.
+            let top = profileTop - updateAvoidance.clearance
             result["anchored"] = true; result["x"] = anchor.midX; result["y"] = top
             result["avoidingUpdate"] = top < profileTop
             result["reason"] = "attached"
@@ -253,7 +307,33 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(updateAnchorTop(profile: p.offsetBy(dx: 1200, dy: -100), updates: [u.offsetBy(dx: 1200, dy: -100)], window: w.offsetBy(dx: 1200, dy: -100)) == 670)
     precondition(isUpdateLabel("有可用更新") && isUpdateLabel("Downloading 42%") && isUpdateLabel("正在下载 42%"))
     precondition(!isUpdateLabel("Update available: remote CLI"))
-    print("Mac geometry, update avoidance, removal, movement and label checks passed; no application UI accessed.")
+    var hold = UpdateAvoidance()
+    hold.observe(gap: 50, complete: true, now: 0)
+    for i in 1...20 {
+        hold.observe(gap: nil, complete: false, now: Double(i) * 0.15)
+        precondition(hold.clearance == 50) // partial scan / AX failure cannot lower the badge
+    }
+    hold.observe(gap: nil, complete: true, now: 4)
+    hold.observe(gap: 50, complete: true, now: 4.5)
+    precondition(hold.clearance == 50 && hold.misses == 0)
+    hold.observe(gap: 35, complete: true, now: 5)
+    precondition(hold.clearance == 50) // progress label / layout transitions keep clearance
+    hold.observe(gap: 70, complete: true, now: 5.5)
+    precondition(hold.clearance == 70)
+    hold.observe(gap: nil, complete: true, now: 6)
+    hold.observe(gap: nil, complete: true, now: 6.5)
+    hold.observe(gap: nil, complete: false, now: 7)
+    hold.observe(gap: nil, complete: true, now: 7.5)
+    precondition(hold.clearance == 70) // unknown scan interrupts confirmed absence
+    hold.observe(gap: nil, complete: true, now: 8)
+    hold.observe(gap: nil, complete: true, now: 9)
+    precondition(hold.clearance == 0) // only a sustained, complete absence restores placement
+    hold.observe(gap: 50, complete: true, now: 10)
+    precondition(p.minY - hold.clearance == 770)
+    precondition(p.offsetBy(dx: 1200, dy: -100).minY - hold.clearance == 670)
+    hold = UpdateAvoidance()
+    precondition(hold.clearance == 0) // a different window starts independently
+    print("Mac geometry, update avoidance, transient AX loss, confirmed removal and movement checks passed; no application UI accessed.")
     exit(0)
 }
 guard CommandLine.arguments.count == 2, let parent = pid_t(CommandLine.arguments[1]) else { exit(2) }
