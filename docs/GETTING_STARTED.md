@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-For Windows 0.4.1. TapNow page-balance transfer and automatic refresh have been verified on Windows; Ideogram still needs live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+This guide includes 0.4.1 preview features. The latest stable installer is 0.3.14 and excludes the browser component. Extended background reliability is being corrected before another stable browser-connection release; Ideogram also still needs live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.4.1.exe`. For an installation-free launch, download `Codex.Gauge-0.4.1-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.14.exe`. For an installation-free launch, download `Codex.Gauge-0.3.14-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
