@@ -11,6 +11,12 @@ const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential'];
+function queryReady(tool,inventory,records){
+  if(tool.id==='codex')return records.some(r=>r.provider==='codex'&&fresh(r));
+  if(['kimi','minimax','zai'].includes(tool.id))return inventory.tools.some(t=>t.id==='agent-relay');
+  if(tool.id==='runway')return tool.connections.some(c=>c.enabled&&['configured','host_available'].includes(c.evidence)&&['mcp','plugin'].includes(c.kind));
+  return tool.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno','recraft'].includes(tool.id)&&c.kind==='mcp'&&c.evidence==='configured'&&(tool.id!=='recraft'||c.source==='Codex')));
+}
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
   constructor(directory, options = {}) {
@@ -43,8 +49,8 @@ class CreditCenter extends EventEmitter {
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      queryReady:t.id==='codex'?this.records.some(r=>r.provider==='codex'&&fresh(r)):['kimi','minimax','zai'].includes(t.id)?this.inventory.tools.some(t=>t.id==='agent-relay'):t.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno'].includes(t.id)&&c.kind==='mcp'&&c.evidence==='configured')),
+    const tools = this.inventory.tools.map(t => ({ ...t, adapter: ['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily','runway','kling','recraft'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      queryReady:queryReady(t,this.inventory,this.records),
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
@@ -80,7 +86,7 @@ class CreditCenter extends EventEmitter {
   ensureUserDateTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!existing)tool.connections=[];if(!tool.connections.some(c=>c.evidence==='user_dates'))tool.connections.push({kind:'manual',source:'User dates',label:id,enabled:true,evidence:'user_dates'});}
   completeOnboarding(){const old=this.onboardingCompleted;this.onboardingCompleted=true;this.persist();if(this.store.error){this.onboardingCompleted=old;this.store.data.onboardingCompleted=old;throw Error('storage_failed');}this.emit('state');}
   setUserDate(input){
-    if(!input||!this.inventory.tools.some(t=>t.id===input.provider))throw Error('invalid_dates');
+    if(!input||!this.inventory.tools.some(t=>t.id===input.provider)&&!Object.hasOwn(providers,input.provider))throw Error('invalid_dates');
     const previous=this.userDates.find(row=>input.id?row.id===input.id:input.recordId&&row.recordId===input.recordId&&row.poolId===input.poolId);
     if(input.id&&!previous)throw Error('invalid_dates');
     const clean=validateUserDate({...input,anchorDate:previous?.monthlyDay===input.monthlyDay?previous.anchorDate:null});
@@ -91,8 +97,9 @@ class CreditCenter extends EventEmitter {
     }
     const old=this.userDates.slice(),row={...clean,id:previous?.id||hash(require('node:crypto').randomUUID()),updatedAt:Date.now()};
     if(!previous&&old.length>=250)throw Error('invalid_dates');
+    const oldInventory=structuredClone(this.inventory);this.ensureUserDateTool(clean.provider);
     this.userDates=[...old.filter(r=>r.id!==row.id),row];this.persist();
-    if(this.store.error){this.userDates=old;this.store.data.userDates=old;this.emit('state');throw Error('storage_failed');}this.emit('state');return row.id;
+    if(this.store.error){this.userDates=old;this.store.data.userDates=old;this.inventory=oldInventory;this.store.data.inventory=oldInventory;this.emit('state');throw Error('storage_failed');}this.emit('state');return row.id;
   }
   removeUserDate(id){const old=this.userDates;if(!old.some(r=>r.id===id))throw Error('invalid_dates');this.userDates=old.filter(r=>r.id!==id);this.persist();if(this.store.error){this.userDates=old;this.store.data.userDates=old;throw Error('storage_failed');}this.emit('state');}
   setMonthlyRule(observationId,itemId,rule){
@@ -106,7 +113,8 @@ class CreditCenter extends EventEmitter {
     const previous = this.records.find(r => r.id === record.id);
     if (previous && previous.fetchedAt > record.fetchedAt) return;
     // Local CLI adapters represent one current login. Never remind for its old account.
-    if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&record.provider==='suno') for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
+    if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&['suno','recraft'].includes(record.provider)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
+    if(record.provider==='runway'&&record.source==='mcp'&&record.connectionRef)for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.id!==record.id&&(!old.connectionRef||old.connectionRef===record.connectionRef))old.status='account_changed';
     const recovered = notify && previous ? recoveryAlerts(previous, record) : [];
     this.records = [...this.records.filter(r => r.id !== record.id), record].slice(-250);
     for (const event of recovered) {
@@ -140,11 +148,16 @@ class CreditCenter extends EventEmitter {
       if (id === 'xyq') rows = await adapters.xyq(this.options);
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
       else if(id==='suno')rows=await require('./codex-mcp-credit.cjs').suno(this.options);
+      else if(['runway','kling','recraft'].includes(id))rows=await require('./creative-providers.cjs')[id](this.options);
       else if (id === 'jimeng') rows = await adapters.jimeng(this.options);
       else if (id === 'relay') rows = await adapters.relay(this.options);
       else if (['firecrawl','deepseek','tavily'].includes(id)) rows = await adapters.securedApiBalance(id, this.options);
       else return;
       if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
+      if(id==='runway'){
+        const active=new Set(rows.map(r=>cleanRecord(r).id));
+        for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.status!=='account_changed'&&!active.has(old.id)){old.status='offline';old.error='query_failed';}
+      }
       for (const input of rows) {
         this.ensureTool(input.provider);
         if (!input.pools.length) { this.statuses[input.provider] = 'query_failed'; for(const old of this.records)if(old.provider===input.provider&&old.source==='relay'){old.status='offline';old.error='query_failed';} continue; }
@@ -156,7 +169,7 @@ class CreditCenter extends EventEmitter {
     } catch (e) {
       if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
       const error = safeError(e); this.statuses[id] = error;
-      for (const r of this.records) if ((r.provider === id || id === 'relay' && r.source === 'relay') && r.source !== 'host') {
+      for (const r of this.records) if ((r.provider === id || id === 'relay' && r.source === 'relay') && r.source !== 'host' && r.status!=='account_changed') {
         r.status = ['login_required','account_changed'].includes(error) ? 'account_changed' : 'offline'; r.error = error;
       }
     } finally { if(generation===this.generation&&this.queryRuns.get(id)===run){this.queryRuns.delete(id);this.busy.delete(id); this.persist(); this.emit('state');} }
@@ -165,10 +178,9 @@ class CreditCenter extends EventEmitter {
     if(this.stopped || !manual&&!this.enabled)return;
     const generation=this.generation;
     this.loadImports();
-    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily'].filter(x => {
+    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft'].filter(x => {
       if(x==='relay')return this.inventory.tools.some(t=>t.id==='agent-relay');
-      return this.inventory.tools.some(t=>t.id===x && t.connections.some(c=> c.enabled &&
-        (['installed','credential_reference'].includes(c.evidence) || ['lovart','suno'].includes(x) && c.kind==='mcp' && c.evidence==='configured')));
+      return this.inventory.tools.some(t=>t.id===x&&queryReady(t,this.inventory,this.records));
     });
     // Limit concurrent upstream reads. Each query has a separate bounded timeout.
     for (let i=0; i<ids.length; i+=3) {

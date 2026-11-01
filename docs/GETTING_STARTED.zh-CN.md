@@ -61,6 +61,10 @@ CLI 是命令行工具，MCP 是供 AI 客户端调用的工具连接，插件�
 | Kimi、MiniMax、ZCode | 另行安装的 Agent Relay 与 Python、对应已有连接 | 以接口返回为准；缺少伴随工具时不会自动安装或派任务 |
 | Firecrawl、Tavily、DeepSeek | 对应 API 凭据 | 接口日期与规则推导分开，余额不一定有到期日 |
 
+0.3.12另有Runway、可灵、Recraft的条件查询入口，分别需要可用的Codex官方应用连接、原可灵CLI登录、Codex中官方Recraft远程会员MCP。本机Runway独立自动调用尚未实连通过，聊天里能查不等于刻度一定能自动查。原授权过期或缺失时保留待确认；刻度不会自动启动交互登录，也不用另行计费的API单位代替会员积分。具体见[版本限制](releases/0.3.12.md)。
+
+订阅表中的发放日可作为独立月度预计保存，无需先接通余额。冲突留待核对，保留现有规则；每月套餐量不当剩余余额，公式算出的会员结束日不当已核实的积分到期日。
+
 Firecrawl、Tavily、DeepSeek 可以复用当前进程的 `FIRECRAWL_API_KEY`、`TAVILY_API_KEY`、`DEEPSEEK_API_KEY`，或 Codex / Cursor / Claude / Gemini / Qwen 的对应已启用 MCP 配置中的变量。Windows 的 Firecrawl 和 DeepSeek 查询还支持当前用户 `~/.codex/private/credentials/<provider>-api-key.dpapi`。这些是可选读取路径，不要求创建这些文件。
 
 没有已有 API 连接时，可自愿使用 **详情 → 连接查询** 输入自己的 API Key。刻度先验证只读查询，再用本机系统加密保存；这不是平台账号登录，也不会创建 Key、购买套餐或扩大权限。也可以不填写，保留待确认状态。不要把 Key、Cookie、配置文件或真实额度截图发到公开 Issue。

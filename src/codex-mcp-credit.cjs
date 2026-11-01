@@ -48,4 +48,4 @@ function sunoRecord(profile,usage,after){
   return{provider:'suno',scope:'codex-mcp:suno:'+hash(identity),account:'Suno MCP',source:'mcp',identityVerified:false,fetchedAt:Date.now(),pools};
 }
 async function suno(options){return readOnlyMcp('suno',['account-me','account-usage'],async call=>{const before=await call('account-me'),usage=await call('account-usage'),after=await call('account-me');return[sunoRecord(before,usage,after)];},options);}
-module.exports={lovart,suno,sunoRecord};
+module.exports={lovart,suno,sunoRecord,readOnlyMcp};

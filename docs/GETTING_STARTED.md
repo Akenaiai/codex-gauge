@@ -61,6 +61,10 @@ Supported automatic balance reads are listed below. Other discovered tools remai
 | Kimi, MiniMax, ZCode | Separately installed Agent Relay, Python and the corresponding existing connections | Dates depend on returned data; Gauge does not install the companion or dispatch tasks |
 | Firecrawl, Tavily, DeepSeek | Matching API credentials | Returned dates and policy-derived dates stay distinct; a balance may have no expiry |
 
+Version 0.3.12 also includes conditional readers for Runway, Kling and Recraft. They require usable original connections: Runway's Codex app, the signed-in Kling CLI, or the official hosted Recraft subscription MCP in Codex. Standalone Runway automatic dispatch has not passed live verification in the local test environment; a working chat tool alone does not prove Gauge can refresh it. An expired or absent authorization remains unconfirmed. Gauge never starts an interactive login automatically or substitutes separately billed API units for membership credits. See the [release limits](releases/0.3.12.md).
+
+Membership-sheet grant days can be entered as independent monthly forecasts even before a balance is connected. Keep conflicting dates for review and preserve existing rules. A monthly allowance is not a remaining balance, and a formula-based membership end date is not a verified credit expiry.
+
 Firecrawl, Tavily and DeepSeek can reuse `FIRECRAWL_API_KEY`, `TAVILY_API_KEY` and `DEEPSEEK_API_KEY` in the current process, or the matching enabled MCP entry in Codex / Cursor / Claude / Gemini / Qwen configuration. On Windows, Firecrawl and DeepSeek queries also support current-user `~/.codex/private/credentials/<provider>-api-key.dpapi` files. These are optional paths, not files you must create.
 
 Without an existing API connection, you may choose **Details → Connect** and enter your own API key. Gauge verifies a read-only request and saves it with local system encryption. This is not a provider account login; it does not create a key, buy a plan or expand permissions. You can leave it unconfigured. Never post keys, cookies, configuration files or real account screenshots in public issues.

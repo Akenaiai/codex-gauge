@@ -2,6 +2,18 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.12: Additional provider readers / 新增平台查询入口
+
+Runway's adapter uses Codex's committed installed-app snapshot and an ephemeral context limited to Runway. It accepts account links from the current tool schema and permits only the fixed account/balance tool; it never starts inference or a generation. Plan and purchased credits are separate from the displayed total. A hashed connection reference plus workspace scope prevents a workspace switch from inheriting bound dates. Previously retired identities stay retired after failed refreshes. **Automatic Runway discovery/dispatch has not passed live verification in the local test environment**: host queries work, but standalone calls encountered discovery 403 and runtime timeout / unknown-tool errors. Failed automatic reads remain unknown; a host snapshot is not upgraded to automatic data.
+
+Kling uses the already installed official China CLI with fixed `account --quiet`, closed stdin and bounded output/time. It never invokes login automatically. Only explicit available-credit fields are accepted; membership expiry is not treated as credit expiry. The interface is limited to personal paid credits, with no invented team or bonus balance. Recraft uses only the official hosted subscription MCP at `https://mcp.recraft.ai/mcp`, calls `get_user`, and checks returned identity before/after. Local API-key MCPs are excluded because API units and membership credits differ. Missing fields, unusable connections and identity changes never become zero balances. These adapters require working original authorizations; they do not add login forms or copy sessions into Gauge.
+
+Known catalog platforms can receive independent user forecast dates before any balance is available. A date-only subscription record creates no balance or automatic connection and stays outside the creative back. Subscription-sheet imports must use only required non-secret fields, retain date precision, avoid importing monthly allowances as balances, preserve disabled/existing rules and leave conflicts unchanged. Spreadsheet formulas and blank purchase dates are not authoritative expiries. Historical/coding membership rows remain independent of coding usage windows and media entitlements.
+
+中文：Runway适配沿用官方已安装连接快照、临时上下文和固定只读工具，套餐与购买积分分开，按连接指纹和工作区隔离；换号旧日期停用，失败也不恢复旧身份。本机真实自动调用尚未通过，保留查询失败，不把聊天快照冒充自动刷新。可灵只运行原CLI的账户查询，不自动登录，个人付费灵感值、团队/赠送权益分开；Recraft只读官方远程会员MCP，拒绝本地API单位混入会员余额。缺字段或失联均不作零余额，无新登录框及平台会话复制。
+
+无余额平台可保存独立本人预计日期，不生成余额、不当已连接、不占背面。订阅表只读必要非秘密列，明确日号作为预计；现有/关闭规则保留，冲突不覆盖，月度套餐量不当当前余额，空购买日期或公式结束日不当实查到期。编程会员日期不混作编程窗口或视频权益恢复。
+
 ## 0.3.11: Balance-only creative preview / 背面只显示有效余额
 
 The creative back includes only tools classified as available or used up from current balance readings. Missing, failed, stale, expired or otherwise unconfirmed readings stay in the full credit center, with their original balances and dates intact. The back has no unconfirmed counter. Hidden tools still refresh normally and reappear after a successful reading; a query in progress keeps the refresh control busy even when its tool is hidden. Expiry priority, daily-gift suppression, and zero-balance styling continue to apply to visible rows.

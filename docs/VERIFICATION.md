@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## 0.3.12 provider readers and independent forecasts
+
+170 automated checks pass. New causal cases cover fixed read-only dispatch, bounded CLI output/auth errors, absent/invalid balances, subscription-vs-API scope, workspace switching followed by failure/restart, retained independent forecasts and absent connections. Native synthetic fixtures verify successful/zero/failed/recovered Runway refresh and authenticated date-entry actions, separately from real platform connectivity.
+
+Live limitations: the host Runway tool returns a balance, while standalone app discovery returns 403 and runtime discovery/dispatch returns timeout or unknown tool. Automatic Runway reads have not succeeded live. The existing Kling CLI authorization is expired; no authorized Recraft MCP was available. No model turn, generation, purchase, browser login, credential copy or account switch was performed. Synthetic responses never enter the real profile or public screenshots as actual account data.
+
+中文：170项检查覆盖只读调用、缺失余额、CLI登录失败、会员/API区分、换工作区后失败及重启、独立预计日期等。本机Runway自动调用未实连通过，可灵原CLI登录过期，Recraft无既有授权；原生合成夹具只验证刷新与界面行为，不代表这些平台实际接通。没有模型/生成/购买或新网页登录，不复制平台凭据。
+
 ## 0.3.11 creative balance filtering
 
 159 automated checks pass, including missing/failed/stale balances, mixed accounts with a current zero balance, hidden-tool refresh and reappearance. The final ASAR passes 44 isolated native interactions in Chinese/dark and English/light at 356px and 320px, covering the flip, available/used-up rows, hidden unknown tools, retained center records, successful refresh, and Codex reopening behavior. Screenshots use synthetic data. This verifies local behavior, not Mac devices or natural future notification delivery.

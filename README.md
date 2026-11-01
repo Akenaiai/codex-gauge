@@ -8,7 +8,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Current version: 0.3.11.** The creative back shows only current balance readings, including available and used-up tools. Unconnected or unconfirmed tools remain in the credit center. [Release notes](docs/releases/0.3.11.md) · [Technical guide](docs/CREDIT_CENTER.md).
+**Current version: 0.3.12.** Adds read-only provider adapters and forecast-only membership dates. Connections must be usable; Runway automatic tool dispatch remains unverified in the local test environment. [Release notes](docs/releases/0.3.12.md) · [Technical guide](docs/CREDIT_CENTER.md).
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
