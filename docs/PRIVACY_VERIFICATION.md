@@ -1,5 +1,13 @@
 # Distribution privacy verification / 分发隐私核对
 
+## 0.4.1 follow-up / TapNow 自动菜单读取复核（2026-11-01）
+
+The candidate keeps the same optional browser permissions and local pairing boundary. TapNow reads only the fixed visible balance span and current-team title; it does not collect other account-menu fields. The installer payload, portable ZIP ASAR/MCP resources and browser component match the tested unpacked candidate. Private-file and developer-home-path checks find no matches. The actual installer-ASAR code passes 18 isolated synthetic-user checks with no inherited developer balances, dates, connections or keys.
+
+The local Windows upgrade preserves the previous pairing key, settings and independent dates. Real TapNow transmission and a bounded five-minute automatic-refresh observation also passed, separately from the packaging and fixture checks. No live account identity is certified. Existing full-history and separate-Windows-user audit limits remain unchanged.
+
+中文：候选版未增加浏览器权限，TapNow 只读取固定余额数值及当前团队标识，不收集账户菜单的其他字段。安装包、ZIP 与组件内容核对一致，未混入私人文件或开发者路径；18 项安装器实际代码的合成用户隔离检查通过。本机升级保留配对密钥、原设置和独立日期。真实 TapNow 余额传输和完整五分钟自动周期已另行通过，不验证账号归属；未重做历史全量审计或单独 Windows 账号登录测试。
+
 ## 0.4.0 preview / 可选浏览器组件复核（2026-11-01）
 
 The Windows candidate installer contains 95 application-payload files and 54 ASAR entries. Its payload matches the tested unpacked build; the portable ZIP's ASAR, MCP resources and browser component match the installer. The component contains only code, a public extension identity key, a generated icon and license. It contains no user pairing key, selected page positions or provider data. Private filename and developer-home-path checks find no matches. The desktop pairing profile is created only in per-user runtime storage after explicit enablement.

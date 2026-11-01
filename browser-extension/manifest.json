@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_name__",
   "description": "__MSG_description__",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzVLKlO5nyz1/akaSN50aH5CW/asWl1Fk/Ak6JkL/1wqqBn7+Zhek/EwAFtEOHr82BjACS6zCn1DMIDL5qq2Mu6JycnG/kd+5jwOQjYNGulmaJZAtrtrAXhcTAOJ0k0ijJRL4PykdTqBPXNMGHwK3jix42xTCpp9ZbRVEHm1hkAR3gGAf4Hx16k7mIHB0z3cW8EYCEtyaJx0muU759j0Il43F61v76rFC370QAm+3wgQh6O5P8+nON+rfq3WFcvZuIB/bqGnqDTiz+fXGuHQAFU5r75PeBSP6AtvjZqLqrMWrxyHALxK6L5Ez/u7zYYsCsCU1CT5lDbTyUz33IBWQmQIDAQAB",
   "permissions": [

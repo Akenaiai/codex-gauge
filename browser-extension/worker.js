@@ -7,16 +7,16 @@ function allowed(provider,url){try{const u=new URL(url);return u.protocol==='htt
 function canonical(url){const u=new URL(url);return u.origin+u.pathname;}
 function safeHome(provider,url){if(!allowed(provider,url))return false;const u=new URL(url);return!u.search&&!u.hash&&(provider==='tapnow'?u.pathname==='/home':['/','/t/explore','/explore','/home'].includes(u.pathname));}
 async function send(route,data){const s=await settings();if(!s.pair)throw Error('not_paired');const r=await fetch(s.pair.endpoint+route,{method:'POST',headers:{Authorization:'Bearer '+s.pair.token,'Content-Type':'application/json','X-Codex-Gauge':'1'},body:JSON.stringify({clientId:s.clientId,...data}),credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('bridge_unavailable');return r.json();}
-async function poll(manualProvider){const s=await settings(),tabs=await owned();return send('/v1/poll',{configured:Object.keys(s.selections||{}).filter(id=>tabs[id]),...(manualProvider?{manualProvider}:{})});}
+async function poll(manualProvider){const s=await settings(),tabs=await owned();return send('/v1/poll',{configured:Object.keys(sites).filter(id=>tabs[id]&&(id==='tapnow'||s.selections?.[id])),...(manualProvider?{manualProvider}:{})});}
 async function fail(provider,error,commandId,boot){await send('/v1/failure',{boot,provider,error,commandId}).catch(()=>{});}
 async function read(provider,commandId,boot,reload=true){
- const tabs=await owned(),s=await settings(),target=tabs[provider],selection=s.selections?.[provider];if(!target||!selection)return fail(provider,'page_closed',commandId,boot);
+ const tabs=await owned(),s=await settings(),target=tabs[provider],selection=s.selections?.[provider],automatic=provider==='tapnow';if(!target||!automatic&&!selection)return fail(provider,'page_closed',commandId,boot);
  try{
-  let tab=await chrome.tabs.get(target.id);if(!safeHome(provider,tab.url)||canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
+  let tab=await chrome.tabs.get(target.id);if(!safeHome(provider,tab.url)||!automatic&&canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
   if(reload){await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(listener);reject(Error('selection_changed'));},45000);function listener(id,info){if(id===target.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);resolve();}}chrome.tabs.onUpdated.addListener(listener);chrome.tabs.reload(target.id).catch(e=>{clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);reject(e);});});}
-  tab=await chrome.tabs.get(target.id);if(!safeHome(provider,tab.url)||canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
-  const results=await chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeRead,args:[selection,reload]});const value=results[0]?.result,amount=gaugeAmount(value?.balance);
-  const after=await chrome.tabs.get(target.id);if(!safeHome(provider,after.url)||canonical(after.url)!==selection.url)throw Error('page_closed');
+  tab=await chrome.tabs.get(target.id);if(!safeHome(provider,tab.url)||!automatic&&canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
+  const results=await chrome.scripting.executeScript({target:{tabId:target.id},func:automatic?gaugeTapNowRead:gaugeRead,args:automatic?[reload]:[selection,reload]});const value=results[0]?.result,amount=gaugeAmount(value?.balance);
+  const after=await chrome.tabs.get(target.id);if(!safeHome(provider,after.url)||!automatic&&canonical(after.url)!==selection.url)throw Error('page_closed');
   await send('/v1/reading',{boot,provider,amount,marker:value.marker,observedAt:Date.now(),commandId});await chrome.storage.local.set({lastError:null});
  }catch(e){await fail(provider,['page_closed','login_required'].includes(e.message)?e.message:'selection_changed',commandId,boot);await chrome.storage.local.set({lastError:e.message});}
 }
@@ -26,7 +26,7 @@ chrome.tabs.onRemoved.addListener(async id=>{const tabs=await owned();let change
 chrome.runtime.onMessage.addListener((m,sender,respond)=>{
  if(sender.id!==chrome.runtime.id)return;
  (async()=>{
-  if(m.type==='state'){const s=await settings(),tabs=await owned();return{paired:!!s.pair,busy,lastError:s.lastError||null,providers:Object.keys(sites).map(id=>({id,opened:!!tabs[id],selected:!!s.selections?.[id]}))};}
+  if(m.type==='state'){const s=await settings(),tabs=await owned();return{paired:!!s.pair,busy,lastError:s.lastError||null,providers:Object.keys(sites).map(id=>({id,opened:!!tabs[id],selected:!!s.selections?.[id],automatic:id==='tapnow'}))};}
   if(m.type==='pair'){
    const p=JSON.parse(m.code);if(p.version!==1||Object.keys(p).sort().join(',')!=='endpoint,token,version'||!/^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(p.endpoint)||!Number.isInteger(Number(new URL(p.endpoint).port))||!/^[A-Za-z0-9_-]{43}$/.test(p.token))throw Error('invalid_pair');
    if(busy)throw Error('busy');const old=await settings();await chrome.storage.local.set({pair:p,clientId:old.clientId||crypto.randomUUID(),lastError:null});try{await poll();}catch(e){if(old.pair)await chrome.storage.local.set({pair:old.pair,clientId:old.clientId});else await chrome.storage.local.remove(['pair','clientId']);throw e;}return{ok:true};

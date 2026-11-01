@@ -2,11 +2,11 @@
 
 [简体中文](GETTING_STARTED.zh-CN.md) · [Home](../README.md) · [Download](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-This guide includes the Windows 0.4.0 source preview. The latest stable installer is 0.3.14 and does not yet include the optional browser component; that preview still needs live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
+For Windows 0.4.1. TapNow page-balance transfer and automatic refresh have been verified on Windows; Ideogram still needs live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
 ## 1. Install and open
 
-1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.3.14.exe`. For an installation-free launch, download `Codex.Gauge-0.3.14-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
+1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.4.1.exe`. For an installation-free launch, download `Codex.Gauge-0.4.1-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.
 2. Windows 10/11 x64 is required. The distribution includes its desktop runtime; Node.js is not needed. Optional Agent Relay queries require that separate tool and Python.
 3. The app is currently unsigned. In PowerShell, run `Get-FileHash -Algorithm SHA256 -LiteralPath 'full path to the download'` and compare it with `SHA256SUMS.txt` from the same release. Matching hashes verify file consistency, not a code signature. Do not disable Windows protections.
 4. Launch Gauge. Open **Credit center · All AI tools** from its notification-area icon, which may be under hidden icons. The Codex gauge panel also has a credit-center button.
@@ -79,7 +79,7 @@ Without an existing API connection, you may choose **Details → Connect** and e
 
 ### Optional TapNow / Ideogram browser connection
 
-Their official member MCPs currently expose no balance tool. Version 0.4.0 includes an optional browser component: **All tools → View → Connect page balance**. Load it in Chrome/Edge, pair locally and select a visible full balance plus persistent account/team marker. It reads only selected positions in its own dedicated tab. The component is off by default, adds no sign-in inside Gauge and does not copy cookies or sessions. Page readings do not verify account identity or refresh dates. See the [complete setup and privacy details](BROWSER_CONNECTION.md).
+Their official member MCPs currently expose no balance tool. Version 0.4.1 includes an optional browser component: **All tools → View → Connect page balance**. Load it in Chrome/Edge, pair locally and open the dedicated tab. TapNow reads the fixed balance and current-team fields automatically; Ideogram needs a visible full balance and persistent account/team marker selected. It reads only these balance/account fields in its own dedicated tab. The component is off by default, adds no sign-in inside Gauge and does not copy cookies or sessions. Page readings do not verify account identity or refresh dates. See the [complete setup and privacy details](BROWSER_CONNECTION.md).
 
 ## 4. Understand observed and estimated dates
 

@@ -22,6 +22,6 @@ Balances, account labels, private date observations and reminder receipts remain
 
 ## Optional browser component / 可选浏览器组件
 
-See the [permission and storage details](docs/BROWSER_CONNECTION.md#what-is-read-and-stored). The component is off by default, uses separate optional site grants for TapNow and Ideogram, reads user-selected visible fields only and refreshes only its own dedicated tabs. It has no cookie, debugger, history or request-interception permissions. Local pairing uses an encrypted key, a pinned extension origin, fixed authenticated messages and per-command freshness checks. Page observations always remain account-unverified. Re-pairing revokes the previous key.
+See the [permission and storage details](docs/BROWSER_CONNECTION.md#what-is-read-and-stored). The component is off by default, uses separate optional site grants for TapNow and Ideogram, reads only fixed visible TapNow balance/team fields or user-selected Ideogram fields and refreshes only its own dedicated tabs. It has no cookie, debugger, history or request-interception permissions. Local pairing uses an encrypted key, a pinned extension origin, fixed authenticated messages and per-command freshness checks. Page observations always remain account-unverified. Re-pairing revokes the previous key.
 
-组件默认关闭，只读用户选定的可见位置，只刷新自己创建的专用标签页；网站权限分开授权，不申请 Cookie、调试器、历史或请求拦截权限。本机连接使用加密密钥、固定扩展来源及带时效的固定认证消息；重新配对会使旧密钥失效。网页余额始终保留账号待核实标记。[详细说明](docs/BROWSER_CONNECTION.zh-CN.md#会读取和保存什么)。
+组件默认关闭，只读 TapNow 固定可见余额 / 团队字段，或 Ideogram 本人点选位置，只刷新自己创建的专用标签页；网站权限分开授权，不申请 Cookie、调试器、历史或请求拦截权限。本机连接使用加密密钥、固定扩展来源及带时效的固定认证消息；重新配对会使旧密钥失效。网页余额始终保留账号待核实标记。[详细说明](docs/BROWSER_CONNECTION.zh-CN.md#会读取和保存什么)。

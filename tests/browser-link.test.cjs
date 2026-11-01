@@ -17,6 +17,11 @@ test('page parsing accepts explicit complete balances including zero, rejecting 
  for(const[text,expected]of[['0',0],['12,345.5 Tapies',12345.5],['积分：42',42],['Credits 19',19]])assert.equal(gaugeAmount(text),expected);
  for(const x of [undefined,null,'','—','1.2k','10/100','套餐1000','$9','-1','已用0','1,2','999999999999999'])assert.throws(()=>gaugeAmount(x),/selection_changed/);
 });
+test('the full TapNow balance label is accepted without treating rates or allowance counters as balances',()=>{
+ assert.equal(gaugeAmount('Tapies 余额：12,345'),12345);
+ assert.equal(gaugeAmount('Tapies balance: 0'),0);
+ for(const value of ['Tapies 余额：12,345 当前汇率 $1=100 Tapies','Tapies 余额：12/100','Tapies 余额：1.2k','Tapies 总配额：200'])assert.throws(()=>gaugeAmount(value),/selection_changed/);
+});
 test('browser records remain user-observed and cannot be upgraded to verified identities',()=>{
  const r=browserRecord({provider:'tapnow',marker:'Demo',amount:0,observedAt:Date.now()},'source');assert.equal(r.source,'browser');assert.equal(r.identityVerified,false);assert.equal(cleanRecord({...r,identityVerified:true}).identityVerified,false);
  for(const extra of [{amount:null},{amount:-1},{amount:NaN},{marker:''},{observedAt:Date.now()-31000},{observedAt:Date.now()+10000}])assert.throws(()=>browserRecord({provider:'tapnow',marker:'Demo',amount:1,observedAt:Date.now(),...extra},'source'),/invalid_response/);

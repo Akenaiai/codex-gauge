@@ -21,7 +21,27 @@ async function gaugeRead(selectors,settle){
  let previous=null,count=0;for(let i=0;i<16;i++){const next=read();if(next&&JSON.stringify(next)===JSON.stringify(previous))count++;else count=0;previous=next;if(next&&count>=2)return next;await pause(750);}throw Error('selection_changed');
 }
 function gaugeAmount(text){
- const m=String(text).trim().match(/^(?:(?:余额|剩余|可用积分|积分|Tapies|Credits)\s*[:：]?\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(?:\s*(?:Tapies|Credits|积分))?$/i);
+ const m=String(text).trim().match(/^(?:(?:Tapies\s*(?:余额|balance)|余额|剩余|可用积分|积分|Tapies|Credits)\s*[:：]?\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(?:\s*(?:Tapies|Credits|积分))?$/i);
  if(!m)throw Error('selection_changed');const n=Number(m[1].replaceAll(',',''));if(!Number.isFinite(n)||n<0||n>1e12)throw Error('selection_changed');return n;
+}
+async function gaugeTapNowRead(settle){
+ if(location.origin!=='https://app.tapnow.ai'||location.pathname!=='/home'||location.search||location.hash)throw Error('page_closed');
+ const pause=ms=>new Promise(r=>setTimeout(r,ms));if(settle)await pause(5000);
+ const visible=e=>{if(!e||e.matches('input,textarea,select')||e.isContentEditable||e.closest('form,[inert],[hidden],[aria-hidden="true"],[aria-busy="true"]'))return false;const r=e.getBoundingClientRect();if(r.width<=0||r.height<=0)return false;for(let n=e;n;n=n.parentElement){const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||s.opacity==='0')return false;}return true;};
+ const one=selector=>{const rows=Array.from(document.querySelectorAll(selector)).filter(visible);return rows.length===1?rows[0]:null;};
+ const menuSelector='[data-testid="common-nav-user-menu"]',balanceSelector='[data-testid="common-nav-user-menu-dropdown"] [data-testid="common-nav-user-menu-balance-quota-card"] > div:first-child > div:first-child > span:first-of-type';
+ let previous=null,count=0,opened=false,anchor=null;
+ for(let i=0;i<32;i++){
+  if(location.origin!=='https://app.tapnow.ai'||location.pathname!=='/home'||location.search||location.hash)throw Error('page_closed');
+  const menu=one(menuSelector),team=one(menuSelector+' [title]');let next=null;
+  if(menu&&team){
+   const marker=(team.getAttribute('title')||'').trim();if(!marker||marker.length>100||anchor&&marker!==anchor)throw Error('selection_changed');anchor=marker;
+   if(menu.getAttribute('aria-expanded')!=='true'){if(opened)throw Error('selection_changed');menu.click();opened=true;}
+   else{const b=one(balanceSelector);if(b){const balance=(b.innerText||'').trim();if(/^(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/.test(balance)&&balance.length<=32)next={balance,marker};}}
+  }
+  if(next&&JSON.stringify(next)===JSON.stringify(previous))count++;else count=0;previous=next;
+  if(next&&count>=2){if(one(menuSelector+' [title]')?.getAttribute('title')?.trim()!==anchor||one(menuSelector)?.getAttribute('aria-expanded')!=='true')throw Error('selection_changed');return next;}await pause(500);
+ }
+ throw Error('selection_changed');
 }
 if(typeof module==='object')module.exports={gaugeAmount};

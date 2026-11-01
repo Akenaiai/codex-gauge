@@ -1,5 +1,11 @@
 # Credit center / 额度中心
 
+## 0.4.1: Automatic TapNow menu / TapNow 自动账户菜单
+
+The TapNow component reopens only the fixed account menu after refreshing its own dedicated home tab. It reads the credit-row amount and current-team title, rejecting changes during sampling. No custom selectors or added permissions are needed for TapNow. Ideogram retains the selected-field flow. Windows live balance transfer and a full five-minute automatic-refresh observation passed; browser identity and dates remain unverified.
+
+中文：TapNow 专用主页刷新后会重新打开固定账户菜单，仅读余额行及当前团队标识；采样中换团队就丢弃本次结果，无需本人点选或新增权限。Ideogram 保留点选方式。Windows 已实测真实余额传入与完整五分钟自动更新，账号归属和日期仍不因此获得验证。
+
 ## 0.4.0: Optional page balance / 可选网页余额
 
 TapNow and Ideogram can use the optional browser component. See the [English setup](BROWSER_CONNECTION.md) and [中文教程](BROWSER_CONNECTION.zh-CN.md). This reads selected visible balances in dedicated tabs; it does not add provider login inside Gauge, reuse website sessions or read dates. `source=browser` observations remain `identityVerified=false`, cannot inherit verified account dates and start offline after restart. Unknown, changed, stale and disconnected readings stay outside the compact back. Zero is retained only after a valid read. Browser pairing is disabled by default and stores its encrypted key only in user data.
