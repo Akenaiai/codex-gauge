@@ -1,5 +1,5 @@
 'use strict';
-const {analyze}=require('./ui/credit-overview.js');
+const {analyze,summarizeRecord}=require('./ui/credit-overview.js');
 const {timing,selectDates,priorityExpiry}=require('./ui/creative-timing.js');
 const media={xyq:['image','video'],jimeng:['image','video'],lovart:['image','video'],runway:['image','video'],tapnow:['image','video'],suno:['music'],chatcut:['video'],adobe:['image','video'],canva:['image','video'],'comfy-local':['image','video']};
 const download=p=>p.resource==='downloads'||/download|下载/i.test(p.id+' '+p.label+' '+p.labelEn);
@@ -10,6 +10,7 @@ function creativePool(provider,p){
 }
 function creativeSnapshot(state={},now=Date.now()){
   const rows=[];
+  const busy=(state.tools||[]).some(t=>(media[t.id]||t.id==='minimax')&&t.querying===true);
   for(const tool of state.tools||[]){
     if(!media[tool.id]&&tool.id!=='minimax')continue;
     const records=(tool.records||[]).map(r=>({...r,pools:r.pools.filter(p=>creativePool(tool.id,p))})).filter(r=>r.pools.length);
@@ -24,6 +25,10 @@ function creativeSnapshot(state={},now=Date.now()){
     // A media entitlement of a coding service is summarized independently.
     const view={...tool,id:tool.id==='minimax'?'creative-minimax':tool.id,records,webDates:(tool.webDates||[]).filter(allowedDate),recordedDates:(tool.recordedDates||[]).filter(allowedDate)};
     const row=analyze(view,state.rules||{},now);
+    // The center may flag mixed accounts as unknown; preview the selected account.
+    row.status=row.record?summarizeRecord(row.record,view.id,state.rules||{},now).status:'unknown';
+    // Unknown readings remain in the credit center, including stale balances.
+    if(!['available','empty'].includes(row.status))continue;
     const dates=row.dates.filter(d=>!d.card),selected=selectDates(dates,now),expiry=priorityExpiry(dates,row.status,now);
     rows.push({id:tool.id,name:tool.name,kinds,status:row.status,amount:row.metric?.amount??null,unit:row.metric?.unit||'credits',label:row.metric?.label||null,labelEn:row.metric?.labelEn||null,
       fetchedAt:row.record?.fetchedAt||null,source:row.record?.source||null,account:row.record?.account||null,accountCount:row.accountCount,
@@ -32,7 +37,7 @@ function creativeSnapshot(state={},now=Date.now()){
       expiryIsPrimary:!!expiry&&expiry.recordId===row.record?.id&&expiry.poolId===row.metric?.id,criticalExpiry:!!expiry&&timing(expiry,now).critical,querying:tool.querying===true,queryStatus:tool.queryStatus||null,urgent:row.urgent});
   }
   rows.sort((a,b)=>Number(b.expiring)-Number(a.expiring)||(a.expiring&&b.expiring?timing(a.priorityExpiry,now).order-timing(b.priorityExpiry,now).order:0)||({available:0,unknown:1,empty:2}[a.status]-{available:0,unknown:1,empty:2}[b.status])||a.name.localeCompare(b.name));
-  return{rows,expiring:rows.filter(r=>r.expiring).length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:rows.filter(r=>r.status==='unknown').length,enabled:state.enabled!==false,busy:rows.some(r=>r.querying)};
+  return{rows,expiring:rows.filter(r=>r.expiring).length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:0,enabled:state.enabled!==false,busy};
 }
 function creativeQueryTargets(state){const ids=(state.tools||[]).filter(t=>['xyq','jimeng','lovart','suno'].includes(t.id)&&t.queryReady).map(t=>t.id);if((state.tools||[]).some(t=>t.id==='minimax'&&t.records?.some(r=>r.pools.some(p=>creativePool('minimax',p)))))ids.push('relay');return ids;}
 module.exports={creativeSnapshot,creativeQueryTargets,creativePool};

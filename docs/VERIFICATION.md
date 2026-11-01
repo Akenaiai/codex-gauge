@@ -1,5 +1,11 @@
 # Verification / 验证记录
 
+## 0.3.11 creative balance filtering
+
+159 automated checks pass, including missing/failed/stale balances, mixed accounts with a current zero balance, hidden-tool refresh and reappearance. The final ASAR passes 44 isolated native interactions in Chinese/dark and English/light at 356px and 320px, covering the flip, available/used-up rows, hidden unknown tools, retained center records, successful refresh, and Codex reopening behavior. Screenshots use synthetic data. This verifies local behavior, not Mac devices or natural future notification delivery.
+
+中文：159项自动检查和最终ASAR内44项隔离原生操作通过。缺失、失败和旧余额收起，有效零余额保留；多账号不合计，其他账号未知不挡住所选账号的有效零余额。隐藏工具仍刷新，成功后自动出现，中心记录、日期和Codex正面保留。覆盖中英明暗及356/320宽度，公开图仅合成数据；不冒充Mac或自然通知验收。
+
 ## 0.3.8 daily expiry suppression / 每日赠送静音（2026-10-30）
 
 - 154 automated checks pass. New cases exercise daily-vs-today distinction, explicit daily/purchased cadence normalization, website/live/user-date paths, bound-pool inheritance, retained balances/date facts and daily renewal independence. Same-day subscription and purchased expiries remain eligible.

@@ -2,6 +2,12 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.11: Balance-only creative preview / 背面只显示有效余额
+
+The creative back includes only tools classified as available or used up from current balance readings. Missing, failed, stale, expired or otherwise unconfirmed readings stay in the full credit center, with their original balances and dates intact. The back has no unconfirmed counter. Hidden tools still refresh normally and reappear after a successful reading; a query in progress keeps the refresh control busy even when its tool is hidden. Expiry priority, daily-gift suppression, and zero-balance styling continue to apply to visible rows.
+
+中文：背面只保留查到有效余额的工具，有积分和已用尽都显示。未接通、失败、过期及其他待确认读数收在额度中心，原余额和日期不删；顶部去掉待确认计数。隐藏工具继续按原机制刷新，查到有效余额自动出现，查询期间刷新按钮保持忙碌状态。可见卡片沿用临期标红置顶、每日赠送到期静音及用尽置灰。
+
 ## 0.3.8: Daily expiry suppression / 每日赠送到期静音
 
 Same-day daily gifts remain balances and date facts, but do not produce expiry notifications or priority/countdowns in compact overviews. Explicit `poolType` / `creditCadence` is normalized before persistence and propagated into events. `daily` denotes the daily same-day gift bucket; `monthly` normalizes to `subscription`. Explicit subscription/purchased/permanent metadata and stated multi-day validity prevent legacy daily-name misclassification. The current date alone is never sufficient for suppression.
