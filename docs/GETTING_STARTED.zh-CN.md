@@ -61,7 +61,15 @@ CLI 是命令行工具，MCP 是供 AI 客户端调用的工具连接，插件�
 | Kimi、MiniMax、ZCode | 另行安装的 Agent Relay 与 Python、对应已有连接 | 以接口返回为准；缺少伴随工具时不会自动安装或派任务 |
 | Firecrawl、Tavily、DeepSeek | 对应 API 凭据 | 接口日期与规则推导分开，余额不一定有到期日 |
 
-0.3.12另有Runway、可灵、Recraft的条件查询入口，分别需要可用的Codex官方应用连接、原可灵CLI登录、Codex中官方Recraft远程会员MCP。本机Runway独立自动调用尚未实连通过，聊天里能查不等于刻度一定能自动查。原授权过期或缺失时保留待确认；刻度不会自动启动交互登录，也不用另行计费的API单位代替会员积分。具体见[版本限制](releases/0.3.12.md)。
+Runway、可灵、Recraft复用Codex中的官方会员MCP。已有连接和授权可直接用；没有时，在原Codex配置下列官方地址并在浏览器完成一次正常授权：
+
+```sh
+codex mcp add runway --url https://mcp.runwayml.com/mcp
+codex mcp add kling --url https://klingai.com/mcp
+codex mcp add recraft --url https://mcp.recraft.ai/mcp
+```
+
+使用原会员账号，选择有积分的工作区。已有同名配置时用 `codex mcp login <名称>` 恢复授权，不覆盖原条目。刻度不新增登录框或复制平台会话，只调用账户余额工具；OAuth范围以官方授权页列出为准。开发者API余额独立，不拿来代替会员积分。Recraft目前只支持明确的当前个人账户摘要，未知/团队格式保持待确认；可灵未配置MCP时仍可复用原CLI，但MCP失败不切到另一个CLI账号。见[连接详情](releases/0.3.13.md)。
 
 订阅表中的发放日可作为独立月度预计保存，无需先接通余额。冲突留待核对，保留现有规则；每月套餐量不当剩余余额，公式算出的会员结束日不当已核实的积分到期日。
 

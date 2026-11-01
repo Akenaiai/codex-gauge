@@ -14,8 +14,8 @@ const errors = ['cli_missing','login_required','account_changed','timeout','quer
 function queryReady(tool,inventory,records){
   if(tool.id==='codex')return records.some(r=>r.provider==='codex'&&fresh(r));
   if(['kimi','minimax','zai'].includes(tool.id))return inventory.tools.some(t=>t.id==='agent-relay');
-  if(tool.id==='runway')return tool.connections.some(c=>c.enabled&&['configured','host_available'].includes(c.evidence)&&['mcp','plugin'].includes(c.kind));
-  return tool.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno','recraft'].includes(tool.id)&&c.kind==='mcp'&&c.evidence==='configured'&&(tool.id!=='recraft'||c.source==='Codex')));
+  if(tool.id==='runway')return tool.connections.some(c=>c.enabled&&c.kind==='mcp'&&c.source==='Codex'&&c.evidence==='configured');
+  return tool.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno','recraft','kling'].includes(tool.id)&&c.kind==='mcp'&&c.evidence==='configured'&&(!['recraft','kling'].includes(tool.id)||c.source==='Codex')));
 }
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
@@ -113,7 +113,8 @@ class CreditCenter extends EventEmitter {
     const previous = this.records.find(r => r.id === record.id);
     if (previous && previous.fetchedAt > record.fetchedAt) return;
     // Local CLI adapters represent one current login. Never remind for its old account.
-    if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&['suno','recraft'].includes(record.provider)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
+    if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&['suno','recraft','kling'].includes(record.provider)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
+    if(record.provider==='kling'&&record.source==='mcp')for(const old of this.records)if(old.provider==='kling'&&old.source==='cli')old.status='account_changed';
     if(record.provider==='runway'&&record.source==='mcp'&&record.connectionRef)for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.id!==record.id&&(!old.connectionRef||old.connectionRef===record.connectionRef))old.status='account_changed';
     const recovered = notify && previous ? recoveryAlerts(previous, record) : [];
     this.records = [...this.records.filter(r => r.id !== record.id), record].slice(-250);

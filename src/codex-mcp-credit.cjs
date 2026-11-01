@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {entriesToml,hash}=require('./catalog.cjs');
 const {Rpc,findCli}=require('./cli.cjs');
 const {value}=require('./credit-model.cjs');
-async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),rpcFactory=()=>new Rpc(findCli())}={}){
+async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),rpcFactory=()=>new Rpc(findCli()),decodeResponse}={}){
   let entries;
   try{entries=entriesToml(fs.readFileSync(path.join(home,'.codex/config.toml'),'utf8'));}catch{throw new Error('cli_missing');}
   if(!entries.some(e=>e.kind==='mcp'&&e.name===serverName&&e.enabled))throw new Error('login_required');
@@ -15,7 +15,7 @@ async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),rpcFactory
     // An ephemeral, non-inference context: no turn/start, messages, persisted
     // user chat, or arbitrary MCP tool calls. Other MCPs/plugins are disabled
     // only in this context, never in the user's config.
-    const result=await rpc.call('thread/start',{ephemeral:true,cwd:os.tmpdir(),config:{mcp_servers:mcp,plugins}},60000);
+    const result=await rpc.call('thread/start',{ephemeral:true,cwd:os.tmpdir(),config:{mcp_servers:mcp,plugins,features:{apps:false}}},60000);
     const threadId=result?.thread?.id;if(typeof threadId!=='string')throw new Error('invalid_response');
     let server;const deadline=Date.now()+40000;
     do{
@@ -30,6 +30,7 @@ async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),rpcFactory
       if(!allowed.includes(tool))throw new Error('query_failed');
       const response=await rpc.call('mcpServer/tool/call',{threadId,server:serverName,tool,arguments:{}},45000);
       if(response.isError)throw new Error('query_failed');
+      if(decodeResponse)return decodeResponse(response);
       if(response.structuredContent)return response.structuredContent;
       try{return JSON.parse(response.content.find(c=>c.type==='text').text);}catch{throw new Error('invalid_response');}
     };

@@ -8,7 +8,7 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**当前版本 0.3.12：** 增加只读查询适配和无余额会员日期记录。连接需可用；本机Runway自动调用仍未实测成功，不把适配代码视为已接通。[版本说明](docs/releases/0.3.12.md) · [进阶说明](docs/CREDIT_CENTER.md)。
+**当前版本 0.3.13：** Runway、可灵、Recraft现通过Codex中的官方会员MCP自动读取，三平台均通过Windows真实连续查询。[版本说明](docs/releases/0.3.13.md)
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)
 

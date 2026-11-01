@@ -1,5 +1,11 @@
 # Verification / 验证记录
 
+## 0.3.13 direct member MCP
+
+173 automated checks pass, including fixed direct Runway dispatch, API/member endpoint isolation, Recraft verified-personal text parsing and structured/JSON rejection, Kling MCP preference, actual camelCase fields, zero balance and no cross-account CLI fallback. Two consecutive real read rounds succeeded for all three providers, with identity checks and new timestamps. Synthetic native fixtures separately cover provider rows, error/zero handling, old-CLI retirement and the original Codex face. Authorization was performed in the original clients' normal browser flow by the user; no key or session was copied into Gauge.
+
+中文：173项检查通过，覆盖直连、API/会员区分、Recraft个人账户文本及拒绝其他格式、可灵MCP优先/实际字段/零值/不跨账号回退。三平台真实连续两轮读取均成功，核对身份并取得新时间戳；合成原生界面与原小仪表另验。用户在原客户端完成授权，刻度不保存新平台会话。Mac及自然通知边界保留。
+
 ## 0.3.12 provider readers and independent forecasts
 
 170 automated checks pass. New causal cases cover fixed read-only dispatch, bounded CLI output/auth errors, absent/invalid balances, subscription-vs-API scope, workspace switching followed by failure/restart, retained independent forecasts and absent connections. Native synthetic fixtures verify successful/zero/failed/recovered Runway refresh and authenticated date-entry actions, separately from real platform connectivity.

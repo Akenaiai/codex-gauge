@@ -2,6 +2,16 @@
 
 For installation and first use, start with the [English tutorial](GETTING_STARTED.md). This page describes adapters, private imports and integration details. 首次安装和使用请先看[中文教程](GETTING_STARTED.zh-CN.md)，本页为适配、私人导入及集成说明。
 
+## 0.3.13: Direct official member MCP / 直连官方会员MCP
+
+Runway now follows the same fixed read-only MCP pattern as Lovart/Suno, with the official `https://mcp.runwayml.com/mcp` URL and `whoami`. The hosted Codex Apps catalog/dispatch path is removed. Kling prefers `https://klingai.com/mcp` and only calls `query_membership_and_credits`; it normalizes returned `userId` and `availableRemainCredits`, checks identity before/after, and retires old CLI readings when the MCP becomes authoritative. An explicit MCP failure cannot fall through to another CLI identity. Only an absent MCP permits the existing CLI fallback.
+
+Recraft's verified response is a text summary. The parser accepts only one text block containing a user ID, an explicitly active personal account, and matching active/listed credit amounts. It discards email/name and includes personal-account identity in scope. Structured/JSON/team/ambiguous summaries are rejected until validated. The reported plan is display metadata; an old spreadsheet plan is never applied to a live balance. Other account dates remain independent user forecasts.
+
+All three require original client OAuth, not a Gauge login or copied session. MCP contexts disable other servers/plugins and hosted Apps only within that context; no model turn, generation or purchase is invoked. OAuth scopes are owned by the official provider's consent screen, while Gauge's call surface stays fixed to account reads. Two live rounds per provider passed on Windows; the original badge and independent forecast rules are checked separately.
+
+中文：Runway改用官方会员MCP的whoami，删除应用目录转接依赖；可灵优先官方MCP账户查询，读取真实userId/availableRemainCredits并核对前后身份，MCP接管后旧CLI读数退出，明确MCP失败不切换账号。Recraft只解析已验证的当前个人账户单一文本摘要，双处余额一致，邮箱姓名丢弃，JSON/团队格式不猜测；套餐按实查显示，旧表格不覆盖余额。授权留在原客户端，刻度无新登录或会话复制；三平台Windows真实连续读取通过，原仪表与预计日期另行核对。
+
 ## 0.3.12: Additional provider readers / 新增平台查询入口
 
 Runway's adapter uses Codex's committed installed-app snapshot and an ephemeral context limited to Runway. It accepts account links from the current tool schema and permits only the fixed account/balance tool; it never starts inference or a generation. Plan and purchased credits are separate from the displayed total. A hashed connection reference plus workspace scope prevents a workspace switch from inheriting bound dates. Previously retired identities stay retired after failed refreshes. **Automatic Runway discovery/dispatch has not passed live verification in the local test environment**: host queries work, but standalone calls encountered discovery 403 and runtime timeout / unknown-tool errors. Failed automatic reads remain unknown; a host snapshot is not upgraded to automatic data.
