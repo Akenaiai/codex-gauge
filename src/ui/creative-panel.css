@@ -23,3 +23,5 @@
 .creative-row-top>div{flex:1;flex-wrap:wrap;gap:2px 7px}
 .creative-status{max-width:50%;white-space:normal;overflow-wrap:anywhere;text-align:right}
 .creative-date-note{white-space:normal;overflow-wrap:anywhere}
+
+[data-flip-surface]{cursor:pointer}[data-flip-surface] button:disabled{cursor:default}

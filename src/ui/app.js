@@ -6,6 +6,8 @@
   const preview = !window.gauge;
   const app = document.getElementById('app');
   let screenName = 'gauge', details = false, newsDetails = false, toast = '', lastRender = '', toastTimer, pointer, suppressClick = false;
+  let flipGesture = null, lastSurfaceFlip = -Infinity;
+  const interactive = 'button,a,input,select,textarea,label,[role="button"],[role="switch"],[contenteditable]:not([contenteditable="false"]),[data-action],[data-setting],[data-preview]';
   const now = Date.now();
   let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false, resetReminders: true, resetNews: true },
     dark: true, status: 'ready', snapshot: { fiveHour: { remaining: 68, minutes: 300, resetsAt: now + 8640000 },
@@ -196,7 +198,7 @@
       failed: t('检查失败，请稍后重试', 'Check failed. Try again later'), unreleased: t('暂时没有已发布的正式版本', 'No stable release is published yet') })[state.update.state] || '';
   }
   function panelMarkup() {
-    return `<section class="panel"><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
+    return `<section class="panel" ${screenName === 'gauge' ? `data-flip-surface title="${t('单击卡片翻面', 'Click the card to flip')}"` : ''}><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
       <button class="flip-switch" data-action="show-creative">${icon('flip')}${t('创作积分','Creative credits')}</button>${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
       <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
@@ -262,10 +264,28 @@
     if (name === 'reset-position') showToast(t('已恢复到默认位置', 'Position reset'));
   }
   function showToast(message) { toast = message; render(true); clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast = ''; render(true); }, 3500); }
+  document.addEventListener('pointerdown', event => {
+    flipGesture = event.button === 0 && event.target.closest('[data-flip-surface]') && !event.target.closest(interactive)
+      ? { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false } : null;
+  });
+  document.addEventListener('pointermove', event => {
+    if (flipGesture?.id === event.pointerId && Math.hypot(event.clientX - flipGesture.x, event.clientY - flipGesture.y) >= 4) flipGesture.moved = true;
+  });
+  document.addEventListener('scroll', () => { if (flipGesture) flipGesture.moved = true; }, true);
+  document.addEventListener('pointercancel', () => { if (flipGesture) flipGesture.moved = true; });
   document.addEventListener('click', event => {
     if (suppressClick) { suppressClick = false; return; }
     const target = event.target.closest('[data-action],[data-setting],[data-preview]');
-    if (!target) return;
+    if (!target) {
+      const gesture = flipGesture; flipGesture = null;
+      const surface = event.target.closest('[data-flip-surface]');
+      if (!surface || screenName !== 'gauge' || event.target.closest(interactive) || surface.closest('[inert]') ||
+          event.button > 0 || event.detail > 1 || gesture?.moved || window.getSelection()?.toString() || Date.now() - lastSurfaceFlip < 500) return;
+      lastSurfaceFlip = Date.now();
+      action(state.settings.panelFace === 'creative' ? 'show-codex' : 'show-creative');
+      return;
+    }
+    flipGesture = null;
     if (target.dataset.setting) action('settings', { [target.dataset.setting]: !state.settings[target.dataset.setting] });
     else if (target.dataset.preview) {
       const name = target.dataset.preview;

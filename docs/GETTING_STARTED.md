@@ -30,7 +30,7 @@ Open **Details → Dates & source** for all pools and timestamps, or **Calendar*
 
 ### Preview only creative credits
 
-Hover over the small Codex badge to expand it, then click **Creative credits**. The card rotates to image, video and music balances with each source's read time and available dates. **Flip back** restores the original coding gauge. The selected face survives reopening; reduced-motion settings disable rotation. Used up and unread/stale stay distinct. Coding windows, search quotas, reset cards and download credits are excluded. The back's refresh queries creative sources; the credit center remains available for full details and date entry.
+Hover over the badge to expand, then click the card content or blank area to flip between Codex usage and creative image/video/music credits. The corner **Creative credits** / **Flip back** buttons also remain available. Fast double clicks flip once; buttons, links, dragging, scrolling and text selection keep their own behavior. Closing and reopening the panel starts on Codex. Reduced-motion preferences disable rotation. Each provider retains its own reading time and known dates; creative refresh queries media sources only. Use the credit center for full details and date editing.
 
 Expiries within seven days move first in red; within 24 hours, or due today with date-only precision, the border is stronger. Used-up tools are gray at the end. Expiry and expected-renewal countdowns appear together. A date-only record uses days/today, with no invented clock time; hover for the full date and source. Reached forecasts require verification. A bonus expiry names its own amount; it does not mean the total balance expires. Stale/unmatched dates stay unconfirmed.
 
