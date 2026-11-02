@@ -8,7 +8,7 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**当前版本 0.4.2：** TapNow 自动读取固定网页余额，无需点选位置；Windows 后台连续 20 分钟实测完成 4 次自动更新，连接心跳持续在线，读取有期限、迟到结果不再发送。保留原 Codex 小仪表和单击翻面，Ideogram 与 Mac 仍待现场验证。[版本说明](docs/releases/0.4.2.md)
+**当前版本 0.4.3：** TapNow 改为读取正常打开的主页，不刷新、不保活、不唤醒休眠标签页。用完即可关闭，额度中心保留上次积分与时间。升级后需重新加载一次原浏览器组件。保留原 Codex 小仪表和单击翻面，Ideogram 与 Mac 仍待现场验证。[版本说明](docs/releases/0.4.3.md)
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)
 
@@ -37,7 +37,7 @@
 
 从[发布页](https://github.com/Akenaiai/codex-gauge/releases)下载安装程序或绿色 ZIP。当前程序**没有 Windows 代码签名**，请核对来源和 SHA-256，不关闭系统保护。
 
-安装版选 `Codex.Gauge.Setup.0.4.2.exe`；免安装版选 `Codex.Gauge-0.4.2-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
+安装版选 `Codex.Gauge.Setup.0.4.3.exe`；免安装版选 `Codex.Gauge-0.4.3-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
 
 需要 Windows 10/11 x64。原 Codex 小仪表还需要 Codex 桌面客户端，以及已经安装并登录的[官方 Codex CLI](https://github.com/openai/codex)，由 CLI 提供本机登录和 Codex 额度数据。打开 Codex 后，仪表会定位到个人头像上方；其他已支持平台可通过自己的连接独立使用额度中心，暂时无法定位头像时仍可从托盘打开。
 

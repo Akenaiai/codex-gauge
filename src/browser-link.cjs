@@ -52,15 +52,17 @@ class BrowserLink extends EventEmitter{
   try{
    let bytes=0,chunks=[];for await(const chunk of req){bytes+=chunk.length;if(bytes>MAX_BODY)return send(413,{error:'too_large'});chunks.push(chunk);}const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
    this.syncPause();if(!this.server||this.server!==authorizedServer||this.key!==authorizedKey||this.boot!==authorizedEpoch)return send(409,{error:'reconnect'});
-   const allowed=req.url==='/v1/poll'?['clientId','configured','manualProvider']:req.url==='/v1/reading'?['clientId','boot','provider','amount','marker','observedAt','commandId']:['clientId','boot','provider','error','commandId'];
+   const allowed=req.url==='/v1/poll'?['clientId','configured','manualProvider','refreshProvider']:req.url==='/v1/reading'?['clientId','boot','provider','amount','marker','observedAt','commandId']:['clientId','boot','provider','error','commandId'];
    if(!data||Array.isArray(data)||Object.keys(data).some(k=>!allowed.includes(k))||!/^[a-f0-9-]{36}$/.test(data.clientId||''))throw Error('invalid_response');
    const ref=hash(data.clientId);if(this.profile.clientRef&&ref!==this.profile.clientRef)return send(403,{error:'wrong_client'});
    if(req.url==='/v1/poll'){
     if(!Array.isArray(data.configured)||data.configured.some(id=>!PROVIDERS.includes(id))||data.configured.length>2)throw Error('invalid_response');
     if(data.manualProvider!=null&&(!PROVIDERS.includes(data.manualProvider)||!data.configured.includes(data.manualProvider)))throw Error('invalid_response');
+    if(data.refreshProvider!=null&&(data.refreshProvider!=='tapnow'||!data.configured.includes(data.refreshProvider)))throw Error('invalid_response');
     if(!this.profile.clientRef){this.profile.clientRef=ref;try{this.save();}catch(e){this.profile.clientRef=null;throw e;}}const priorConnected=this.lastSeen>this.now()-75000;this.lastSeen=this.now();
     for(const id of PROVIDERS){const old=this.providers[id]?.configured;this.providers[id]={...this.providers[id],configured:data.configured.includes(id)};if(old&&!data.configured.includes(id)){this.cancel(id,'page_closed');this.emit('unavailable',id,'page_closed');}else if(!old&&data.configured.includes(id)||!priorConnected&&data.configured.includes(id))this.emit('connected',id);}
     if(data.manualProvider)this.requestRead(data.manualProvider,{manual:true}).catch(()=>{});
+    if(data.refreshProvider&&!this.wasPaused&&!this.suspended){const p=this.providers[data.refreshProvider];if(!p.requestedAt||this.now()-p.requestedAt>=30000){p.requestedAt=this.now();this.requestRead(data.refreshProvider).catch(()=>{});}}
     this.emit('state');return send(200,{boot:this.boot,paused:this.suspended||this.wasPaused,commands:this.suspended?[]:[...this.pending.values()].map(p=>p.command).filter(c=>!this.wasPaused||c.manual)});
    }
    if(!this.profile.clientRef||data.boot!==this.boot)return send(409,{error:'reconnect'});

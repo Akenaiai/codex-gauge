@@ -17,6 +17,14 @@ test('page parsing accepts explicit complete balances including zero, rejecting 
  for(const[text,expected]of[['0',0],['12,345.5 Tapies',12345.5],['积分：42',42],['Credits 19',19]])assert.equal(gaugeAmount(text),expected);
  for(const x of [undefined,null,'','—','1.2k','10/100','套餐1000','$9','-1','已用0','1,2','999999999999999'])assert.throws(()=>gaugeAmount(x),/selection_changed/);
 });
+test('home-page activity requests are rate-limited and respect automatic pause',async t=>{
+ const f=await fixture(t);const first=await f.poll({refreshProvider:'tapnow'});assert.equal(first.commands.length,1);assert.equal(first.commands[0].manual,false);
+ await f.post('/v1/reading',{boot:first.boot,commandId:first.commands[0].id,provider:'tapnow',marker:'Sample workspace',amount:42,observedAt:Date.now()});
+ assert.equal((await f.poll({refreshProvider:'tapnow'})).commands.length,0);
+ f.link.providers.tapnow.requestedAt=Date.now()-31000;f.center.setPreferences({enabled:false});assert.equal((await f.poll({refreshProvider:'tapnow'})).commands.length,0);
+ assert.equal((await f.post('/v1/poll',{configured:[],refreshProvider:'tapnow'})).status,400);
+ assert.equal((await f.post('/v1/poll',{configured:['ideogram'],refreshProvider:'ideogram'})).status,400);
+});
 test('the full TapNow balance label is accepted without treating rates or allowance counters as balances',()=>{
  assert.equal(gaugeAmount('Tapies 余额：12,345'),12345);
  assert.equal(gaugeAmount('Tapies balance: 0'),0);

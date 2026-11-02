@@ -2,36 +2,35 @@
 
 [简体中文](BROWSER_CONNECTION.zh-CN.md) · [First use](GETTING_STARTED.md)
 
-Version 0.4.2 supports TapNow and Ideogram. This is an optional Chrome/Edge component, off by default. These providers' official member MCP catalogs were checked on November 1, 2026 and did not expose a balance query. Authorizing their MCP alone therefore does not make balances available in Gauge.
+Version 0.4.3 supports TapNow and Ideogram through an optional Chrome/Edge component, off by default. The TapNow MCP catalog checked on November 2, 2026 exposes no balance query. Authorizing MCP alone does not supply credits. [Official connector documentation](https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector).
 
 ## Connect your own browser
 
-1. In Gauge, open **All tools → TapNow (or Ideogram) → View → Connect page balance**.
-2. Click **Open component folder**, then **Chrome extensions** or **Edge extensions**. In the browser's extension manager, enable **Developer mode**, choose **Load unpacked**, and select that folder. This is a locally loaded component, not a browser-store listing. Keep the folder in place. After upgrading Gauge, reload the component from the extension manager.
-3. In Gauge, click **Enable & copy pairing code**. Open the Gauge extension icon, paste the code and click **Connect to local Gauge**. Treat this code as a private local connection key; do not send it to anyone.
-4. Select the provider and click **Open dedicated tab**. The browser asks permission for that provider only. Sign in through the provider's normal browser page if needed. Gauge has no account-login form.
-5. **TapNow:** sign in on the dedicated home page. The component opens its fixed account menu and reads the balance row plus the visible current-team marker automatically. No point selection is needed. If the team changes during a read, that observation is discarded. It does not read the other account-menu fields. **Ideogram:** make a complete balance and persistent account/team marker visible, then use **Select balance and account marker** and click both positions in order. Escape cancels selection; prices, abbreviations such as `1.2k` and combined `10 / 100` values are unsupported.
-6. Return to Gauge. A successful reading shows its amount, reading time and **Page reading · Account unverified**. A valid zero is kept as used up. Unsupported or missing readings stay unconfirmed.
+1. Open **All tools → TapNow / Ideogram → View → Connect page balance** in Gauge.
+2. Open the component folder and load it unpacked in Chrome/Edge extensions. This is not a store listing. After updating Gauge, reload the existing extension once; pairing and site grants remain intact.
+3. Use **Enable & copy pairing code**, then paste it into the Gauge browser extension. Keep this private local connection key to yourself.
+4. Select a provider and use the open button to grant that site access. Sign in through the provider’s normal website; Gauge adds no login form.
+5. **TapNow:** use your normally opened, signed-in home page. No dedicated or permanently open tab is needed. The component briefly opens the fixed account menu, samples the balance and team marker, and restores the menu. User interaction takes priority: it aborts that observation and leaves a menu the user took over open. **Ideogram:** keep using a component-created dedicated tab and select the full balance plus a persistent account/team marker. Escape cancels selection.
+6. Successful observations show the amount, observation time and **Page reading · Account unverified**. A valid zero is used up; an unavailable value is never converted into zero.
 
-The account/team marker helps detect a changed selection or account. It does not authenticate the account. If the site does not keep both positions visible, automatic reading cannot be completed; keep using the credit center's independent personal records. Browser observations cannot be bound to verified account dates or confirm that credits have arrived.
+## On-demand reads and recovery
 
-## Refresh and recovery
+- Opening or returning to the TapNow home page requests an automatic read, with activity requests limited to one per 30 seconds. Pausing automatic queries also pauses these requests. Five-minute sampling remains while an eligible home tab is open.
+- TapNow never reloads a page, opens a background tab, keeps a page alive or wakes a discarded tab. Discovery is limited to the permitted TapNow origin.
+- Only the normal `https://app.tapnow.ai/home` page is supported. Canvas, login, query-string and fragment routes are excluded; working canvases are never redirected.
+- Close the page or browser when done. The credit center retains the last amount and time as unconfirmed. The compact creative back still shows only current readings. Your next home visit resumes reads without re-pairing.
+- With multiple home tabs, the active one is preferred, followed by recent use; only one is sampled. Team changes invalidate unstable observations. A subsequent stable observation is still account-unverified.
+- **Read now** remains available during an automatic-query pause. Sleep suspends reads. Sign-out or changed layouts remain unconfirmed. Observation time describes the page reading, not a confirmed server refresh.
+- Ideogram retains its dedicated-tab reload flow. Reopen that dedicated tab after a browser restart; selected positions remain local.
 
-While Gauge is running and automatic queries are enabled, it requests a reading every five minutes. The component polls the local bridge, reloads only its own dedicated tab and reads the fixed TapNow fields or selected Ideogram fields. Keep that tab on the supported home page and keep the browser running. It never refreshes unrelated working tabs. A closed tab, lost sign-in, changed page layout or failed read makes the balance unconfirmed; it does not turn an unknown balance into zero.
-
-**Read now** is a manual check, including when automatic queries are paused. Sleep suspends reads. After restarting the browser or reloading the component, use **Open dedicated tab** again; Ideogram selectors remain local. After restarting Gauge, old page readings start offline until a fresh observation arrives. Check any account/team change yourself. TapNow reads the current team in a subsequent stable observation; Ideogram positions may need selecting again. Neither authenticates account ownership.
-
-Use **Re-pair** in Gauge to revoke an old component connection and generate a new code, or **Turn off page link** to stop the listener. Removing the browser component does not delete Gauge's historical records. Windows is the tested desktop environment; Mac browser integration has not been field-tested.
+No TapNow desktop-client balance source or MCP balance adapter is connected. Any future MCP adapter needs verified read-only semantics, response fields and account scope; new tools are never executed by guessing their names. This change creates no background monitoring task.
 
 ## What is read and stored
 
-- Browser permissions: alarms, local extension storage, scripting and the local `127.0.0.1` bridge. TapNow and Ideogram access is optional and requested separately. There are no cookie, debugger, browsing-history or web-request interception permissions.
-- Page access: only the fixed TapNow balance/current-team fields or user-selected visible Ideogram balance and account/team marker on the dedicated supported page. Inputs, editable fields and hidden page state are not read. No passwords, cookies, site storage or authentication sessions are copied to Gauge.
-- The component saves its pairing key and Ideogram DOM positions locally. Gauge stores an encrypted pairing key and per-user balance observations, including the page's account/team marker. The local bridge is off until enabled, accepts a pinned extension origin and authenticated fixed read messages, and does not expose a general script or URL execution interface.
-- Gauge sends no page balances or account markers to a Gauge server. Normal page reloads still contact the provider and may be visible to it. Site permission grants page access to the component; review the open-source code and grant only sites you intend to connect.
+- Permissions remain alarms, local extension storage, scripting and the localhost bridge, with separate optional site grants. No new all-sites, cookies, history, debugger or request-interception permission.
+- Only fixed visible TapNow balance/team fields or selected visible Ideogram balance/account fields are read. No passwords, site storage, hidden state or copied login sessions.
+- The extension stores its local pairing key and selections. Gauge encrypts its pairing key and stores observations under the current user. The fixed-message local bridge exposes no arbitrary URL or script execution.
+- Re-pairing revokes the old key; disabling closes the listener. Removing the extension does not delete historical observations.
+- Page readings do not authenticate ownership, extract dates or confirm grants, and cannot inherit verified-account dates.
 
-The reader and bridge have automated and isolated native-app checks. A live provider connection additionally needs your own browser installation, site permission, visible fields and successful reading; those steps are not proven by the automated fixtures. Expiry and monthly grant dates keep their existing source labels. This component reads balances only and does not extract page dates or create date rules.
-
-Windows field check: a real TapNow browser balance reached the installed app and matched its creative back. A bounded observation also confirmed a subsequent automatic reading across a full five-minute window without an agent-triggered manual refresh. Account verification, date extraction, live Ideogram reading and Mac support are not established by this check.
-
-Version 0.4.2 background follow-up: a 20-minute Windows run completed 4 automatic readings without browser automation or agent-triggered manual refresh; all sampled heartbeats stayed connected. Sampling runs in the extension worker, page steps are synchronous, and read/picker operations enforce deadlines and their expected home page. A timeout stays unconfirmed and can retry on a later automatic cycle. This is field evidence for this Windows setup, not universal browser or account verification.
+Validation: version 0.4.2 has earlier Windows live balance and twenty-minute background evidence. Version 0.4.3 has isolated regression checks for ordinary-tab discovery, closed/discarded tabs, no reloads, activity throttling, menu restoration and pause. Its new flow still needs real-browser validation after loading the new component; earlier evidence does not prove the new flow. Ideogram and Mac remain without field validation.

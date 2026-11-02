@@ -1,5 +1,12 @@
 # Credit center / 额度中心
 
+## 0.4.3: TapNow on-demand pages / TapNow 按需主页
+
+TapNow discovers existing permitted home tabs, reads on visits and periodically while open, and never reloads or wakes them. Closing keeps historical readings in the center; the compact back continues to show current readings only. Account-menu sampling restores only a menu it opened, unless user input takes over. Ideogram remains unchanged. No new browser permissions or desktop-client/MCP balance source.
+
+中文：TapNow复用已有获准主页，打开/切回及保持打开期间采样，不刷新或唤醒页面。关闭后在额度中心保留历史，小仪表背面沿用有效读数规则；采样恢复自己打开的菜单，用户操作优先。Ideogram保持原流程，无新增权限或客户端/MCP余额来源。以下旧版章节为历史行为，当前以[网页连接说明](BROWSER_CONNECTION.zh-CN.md)为准。
+
+
 ## 0.4.2: Background read deadlines / 后台读取期限
 
 TapNow page injections return synchronous fixed-field snapshots. The extension worker samples and waits within a bounded read, keeps heartbeats polling while busy, and preserves its existing alarm on wakeup. Late settings, scripts and responses cannot send a reading after its deadline. Selected-field reading and picking validate the expected supported home page before DOM access, including after waits and navigation. No extra permissions or embedded login are introduced. Windows field validation: 20 minutes, 4 automatic updates, uninterrupted sampled heartbeats and matching final creative balance.

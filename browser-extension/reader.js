@@ -1,4 +1,4 @@
-/* Runs only when the user starts the picker or the dedicated quota tab is read. */
+/* Reads only supported home pages; TapNow never reloads the user's tab. */
 function gaugePick(kind,labels,deadline=Date.now()+60000,expectedURL){
  return new Promise((resolve,reject)=>{
   if(Date.now()>=deadline)return reject(Error('timeout'));
@@ -28,7 +28,7 @@ function gaugeAmount(text){
  const m=String(text).trim().match(/^(?:(?:Tapies\s*(?:余额|balance)|余额|剩余|可用积分|积分|Tapies|Credits)\s*[:：]?\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(?:\s*(?:Tapies|Credits|积分))?$/i);
  if(!m)throw Error('selection_changed');const n=Number(m[1].replaceAll(',',''));if(!Number.isFinite(n)||n<0||n>1e12)throw Error('selection_changed');return n;
 }
-function gaugeTapNowStep(anchor,deadline){
+function gaugeTapNowStep(anchor,deadline,readKey){
  if(Date.now()>=deadline)return{expired:true};
  if(location.origin!=='https://app.tapnow.ai'||location.pathname!=='/home'||location.search||location.hash)throw Error('page_closed');
  const visible=e=>{if(!e||e.matches('input,textarea,select')||e.isContentEditable||e.closest('form,[inert],[hidden],[aria-hidden="true"],[aria-busy="true"]'))return false;const r=e.getBoundingClientRect();if(r.width<=0||r.height<=0)return false;for(let n=e;n;n=n.parentElement){const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||s.opacity==='0')return false;}return true;};
@@ -36,10 +36,26 @@ function gaugeTapNowStep(anchor,deadline){
  const menuSelector='[data-testid="common-nav-user-menu"]',balanceSelector='[data-testid="common-nav-user-menu-dropdown"] [data-testid="common-nav-user-menu-balance-quota-card"] > div:first-child > div:first-child > span:first-of-type';
  const menu=one(menuSelector),team=one(menuSelector+' [title]');if(!menu||!team)return{pending:true};
  const marker=(team.getAttribute('title')||'').trim();if(!marker||marker.length>100||anchor&&marker!==anchor)throw Error('selection_changed');
- if(menu.getAttribute('aria-expanded')!=='true'){if(anchor)throw Error('selection_changed');if(Date.now()>=deadline)return{expired:true};menu.click();return{pending:true,marker};}
+ let session=globalThis.__gaugeTapNowRead;
+ if(readKey&&session?.key===readKey&&session.interacted)throw Error('selection_changed');
+ if(menu.getAttribute('aria-expanded')!=='true'){
+  if(anchor)throw Error('selection_changed');if(Date.now()>=deadline)return{expired:true};
+  if(readKey){
+   if(session){document.removeEventListener('pointerdown',session.onInput,true);document.removeEventListener('keydown',session.onInput,true);}
+   session={key:readKey,menu,team,marker,interacted:false};session.onInput=e=>{if(e.isTrusted)session.interacted=true;};globalThis.__gaugeTapNowRead=session;
+   document.addEventListener('pointerdown',session.onInput,true);document.addEventListener('keydown',session.onInput,true);
+  }
+  menu.click();return{pending:true,marker};
+ }
  const b=one(balanceSelector);if(!b)return{pending:true,marker};const balance=(b.innerText||'').trim();
  if(!/^(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/.test(balance)||balance.length>32)return{pending:true,marker};
  if(one(menuSelector+' [title]')?.getAttribute('title')?.trim()!==marker)throw Error('selection_changed');
  return Date.now()>=deadline?{expired:true}:{balance,marker};
+}
+function gaugeTapNowFinish(readKey){
+ const s=globalThis.__gaugeTapNowRead;if(!s||s.key!==readKey)return;
+ document.removeEventListener('pointerdown',s.onInput,true);document.removeEventListener('keydown',s.onInput,true);delete globalThis.__gaugeTapNowRead;
+ // Restore only the menu this observation opened, unless the user took over.
+ if(!s.interacted&&location.origin==='https://app.tapnow.ai'&&location.pathname==='/home'&&!location.search&&!location.hash&&s.menu.isConnected&&s.team.isConnected&&s.team.getAttribute('title')?.trim()===s.marker&&s.menu.getAttribute('aria-expanded')==='true')s.menu.click();
 }
 if(typeof module==='object')module.exports={gaugeAmount};

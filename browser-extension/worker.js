@@ -1,13 +1,25 @@
 importScripts('reader.js');
-const sites={tapnow:'https://app.tapnow.ai/home',ideogram:'https://ideogram.ai/'};let busy=false;
+const sites={tapnow:'https://app.tapnow.ai/home',ideogram:'https://ideogram.ai/'};let busy=false,tapTargetId=null;
 const zh=()=>chrome.i18n.getUILanguage().startsWith('zh'),message=(c,e)=>zh()?c:e;
 async function settings(){return{...(await chrome.storage.local.get(['pair','clientId','selections','lastError']))};}
 async function owned(){return(await chrome.storage.session.get('owned')).owned||{};}
+// TapNow uses existing live home tabs, including ones opened normally by the user.
+// Query only the permitted origin; discarded tabs must stay asleep.
+async function targets(){
+ const tabs={...await owned()};delete tabs.tapnow;
+ if(await chrome.permissions.contains({origins:['https://app.tapnow.ai/*']})){
+  const homes=(await chrome.tabs.query({url:'https://app.tapnow.ai/*'})).filter(t=>safeHome('tapnow',t.url)&&!t.discarded&&t.status==='complete');
+  homes.sort((a,b)=>Number(b.active)-Number(a.active)||(b.lastAccessed||0)-(a.lastAccessed||0)||a.id-b.id);
+  if(homes[0])tabs.tapnow={id:homes[0].id};
+ }
+ tapTargetId=tabs.tapnow?.id??null;
+ return tabs;
+}
 function allowed(provider,url){try{const u=new URL(url);return u.protocol==='https:'&&u.origin===new URL(sites[provider]).origin;}catch{return false;}}
 function canonical(url){const u=new URL(url);return u.origin+u.pathname;}
 function safeHome(provider,url){if(!allowed(provider,url))return false;const u=new URL(url);return!u.search&&!u.hash&&(provider==='tapnow'?u.pathname==='/home':['/','/t/explore','/explore','/home'].includes(u.pathname));}
 async function send(route,data,{deadline=Date.now()+15000}={}){const s=await within(settings,deadline);if(!s.pair)throw Error('not_paired');if(Date.now()>=deadline)throw Error('timeout');const r=await within(()=>fetch(s.pair.endpoint+route,{method:'POST',headers:{Authorization:'Bearer '+s.pair.token,'Content-Type':'application/json','X-Codex-Gauge':'1'},body:JSON.stringify({clientId:s.clientId,...data}),credentials:'omit',redirect:'error',signal:AbortSignal.timeout(Math.max(1,Math.min(15000,deadline-Date.now())))}),deadline);if(!r.ok)throw Error('bridge_unavailable');return within(()=>r.json(),deadline);}
-async function poll(manualProvider){const deadline=Date.now()+15000,[s,tabs]=await within(()=>Promise.all([settings(),owned()]),deadline);return send('/v1/poll',{configured:Object.keys(sites).filter(id=>tabs[id]&&(id==='tapnow'||s.selections?.[id])),...(manualProvider?{manualProvider}:{})},{deadline});}
+async function poll(manualProvider,refresh=false){const deadline=Date.now()+15000,[s,tabs]=await within(()=>Promise.all([settings(),targets()]),deadline);return send('/v1/poll',{configured:Object.keys(sites).filter(id=>tabs[id]&&(id==='tapnow'||s.selections?.[id])),...(manualProvider?{manualProvider}:{}),...(refresh&&tabs.tapnow?{refreshProvider:'tapnow'}:{})},{deadline});}
 async function fail(provider,error,commandId,boot){const deadline=Date.now()+10000;await send('/v1/failure',{boot,provider,error,commandId},{deadline}).catch(()=>{});}
 async function within(operation,deadline){
  const left=deadline-Date.now();if(left<=0)throw Error('timeout');let timer;
@@ -15,10 +27,10 @@ async function within(operation,deadline){
 }
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function setError(error){await within(()=>chrome.storage.local.set({lastError:error}),Date.now()+5000).catch(()=>{});}
-async function tapNowValue(target,deadline,reload){
+async function tapNowValue(target,deadline,reload,readKey){
  if(reload)await within(()=>wait(5000),deadline);let anchor=null,previous=null,count=0;
  for(let i=0;i<32;i++){
-  const results=await within(()=>chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeTapNowStep,args:[anchor,deadline]}),deadline),value=results[0]?.result;
+  const results=await within(()=>chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeTapNowStep,args:[anchor,deadline,readKey]}),deadline),value=results[0]?.result;
   if(value?.expired)throw Error('timeout');if(value?.marker){if(anchor&&value.marker!==anchor)throw Error('selection_changed');anchor=value.marker;}
   const next=value?.balance!=null?{balance:value.balance,marker:value.marker}:null;
   if(next&&JSON.stringify(next)===JSON.stringify(previous))count++;else count=0;previous=next;
@@ -27,31 +39,35 @@ async function tapNowValue(target,deadline,reload){
  throw Error('selection_changed');
 }
 async function read(provider,commandId,boot,reload=true){
- const deadline=Date.now()+55000;
+ const deadline=Date.now()+55000;let target;const automatic=provider==='tapnow';if(automatic)reload=false;
  try{
-  const[tabs,s]=await within(()=>Promise.all([owned(),settings()]),deadline),target=tabs[provider],selection=s.selections?.[provider],automatic=provider==='tapnow';if(!target||!automatic&&!selection)throw Error('page_closed');
-  let tab=await within(()=>chrome.tabs.get(target.id),deadline);if(!safeHome(provider,tab.url)||!automatic&&canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
+  const[tabs,s]=await within(()=>Promise.all([targets(),settings()]),deadline),selection=s.selections?.[provider];target=tabs[provider];if(!target||!automatic&&!selection)throw Error('page_closed');
+  let tab=await within(()=>chrome.tabs.get(target.id),deadline);if(tab.discarded||!safeHome(provider,tab.url)||!automatic&&canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
   if(reload)await within(()=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(listener);reject(Error('timeout'));},Math.min(35000,deadline-Date.now()));function listener(id,info){if(id===target.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);resolve();}}chrome.tabs.onUpdated.addListener(listener);chrome.tabs.reload(target.id).catch(e=>{clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);reject(e);});}),deadline);
   tab=await within(()=>chrome.tabs.get(target.id),deadline);if(!safeHome(provider,tab.url)||!automatic&&canonical(tab.url)!==selection.url)throw Error(/login|sign.?in|auth/i.test(tab.url)?'login_required':'page_closed');
-  const value=automatic?await tapNowValue(target,deadline,reload):(await within(()=>chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeRead,args:[selection,reload,deadline,selection.url]}),deadline))[0]?.result;
+  const value=automatic?await tapNowValue(target,deadline,reload,commandId):(await within(()=>chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeRead,args:[selection,reload,deadline,selection.url]}),deadline))[0]?.result;
   if(value?.expired)throw Error('timeout');const amount=gaugeAmount(value?.balance);
-  const after=await within(()=>chrome.tabs.get(target.id),deadline);if(!safeHome(provider,after.url)||!automatic&&canonical(after.url)!==selection.url)throw Error('page_closed');
+  const after=await within(()=>chrome.tabs.get(target.id),deadline);if(after.discarded||!safeHome(provider,after.url)||!automatic&&canonical(after.url)!==selection.url)throw Error('page_closed');
   await send('/v1/reading',{boot,provider,amount,marker:value.marker,observedAt:Date.now(),commandId},{deadline});await setError(null);
  }catch(e){await fail(provider,['page_closed','login_required'].includes(e.message)?e.message:'selection_changed',commandId,boot);await setError(e.message);}
+ finally{if(automatic&&target)await within(()=>chrome.scripting.executeScript({target:{tabId:target.id},func:gaugeTapNowFinish,args:[commandId]}),Date.now()+2000).catch(()=>{});}
 }
-async function tick(){if(busy){await poll().catch(()=>{});return;}busy=true;try{const d=await poll();await Promise.allSettled((d.commands||[]).filter(c=>!d.paused||c.manual).map(c=>read(c.provider,c.id,d.boot,true)));}catch(e){await setError(e.message);}finally{busy=false;}}
+async function tick(refresh=false){if(busy){await poll().catch(()=>{});return;}busy=true;try{const d=await poll(undefined,refresh);await Promise.allSettled((d.commands||[]).filter(c=>!d.paused||c.manual).map(c=>read(c.provider,c.id,d.boot,true)));}catch(e){await setError(e.message);}finally{busy=false;}}
 chrome.alarms.get('gauge-poll').then(alarm=>{if(!alarm)return chrome.alarms.create('gauge-poll',{periodInMinutes:0.5});}).catch(()=>setError('alarm_unavailable'));chrome.alarms.onAlarm.addListener(a=>{if(a.name==='gauge-poll')tick();});
-chrome.tabs.onRemoved.addListener(async id=>{const tabs=await owned();let changed=false;for(const[p,t]of Object.entries(tabs))if(t.id===id){delete tabs[p];changed=true;}if(changed){await chrome.storage.session.set({owned:tabs});await poll().catch(()=>{});}});
+chrome.tabs.onRemoved.addListener(async id=>{const tabs=await owned();let changed=false;for(const[p,t]of Object.entries(tabs))if(t.id===id){delete tabs[p];changed=true;}if(changed)await chrome.storage.session.set({owned:tabs});await poll().catch(()=>{});});
+chrome.tabs.onUpdated.addListener((id,info,tab)=>{if((id===tapTargetId||allowed('tapnow',tab?.url))&&(info.status==='complete'||info.url||info.discarded!==undefined))tick(true);});
+chrome.tabs.onActivated.addListener(info=>{chrome.tabs.get(info.tabId).then(tab=>{if(safeHome('tapnow',tab.url)&&!tab.discarded)tick(true);}).catch(()=>{});});
 chrome.runtime.onMessage.addListener((m,sender,respond)=>{
  if(sender.id!==chrome.runtime.id)return;
  (async()=>{
-  if(m.type==='state'){const s=await settings(),tabs=await owned();return{paired:!!s.pair,busy,lastError:s.lastError||null,providers:Object.keys(sites).map(id=>({id,opened:!!tabs[id],selected:!!s.selections?.[id],automatic:id==='tapnow'}))};}
+  if(m.type==='state'){const s=await settings(),tabs=await targets();return{paired:!!s.pair,busy,lastError:s.lastError||null,providers:Object.keys(sites).map(id=>({id,opened:!!tabs[id],selected:!!s.selections?.[id],automatic:id==='tapnow'}))};}
   if(m.type==='pair'){
    const p=JSON.parse(m.code);if(p.version!==1||Object.keys(p).sort().join(',')!=='endpoint,token,version'||!/^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(p.endpoint)||!Number.isInteger(Number(new URL(p.endpoint).port))||!/^[A-Za-z0-9_-]{43}$/.test(p.token))throw Error('invalid_pair');
    if(busy)throw Error('busy');const old=await settings();await chrome.storage.local.set({pair:p,clientId:old.clientId||crypto.randomUUID(),lastError:null});try{await poll();}catch(e){if(old.pair)await chrome.storage.local.set({pair:old.pair,clientId:old.clientId});else await chrome.storage.local.remove(['pair','clientId']);throw e;}return{ok:true};
   }
   if(!Object.hasOwn(sites,m.provider))throw Error('invalid_provider');
   if(m.type==='open'){
+   if(m.provider==='tapnow'){const prior=(await targets()).tapnow;if(prior){await chrome.tabs.update(prior.id,{active:true});tick(true);return{ok:true};}}
    const tabs=await owned(),prior=tabs[m.provider];if(prior)try{await chrome.tabs.update(prior.id,{active:true});return{ok:true};}catch{}
    const tab=await chrome.tabs.create({url:sites[m.provider],active:true});tabs[m.provider]={id:tab.id};await chrome.storage.session.set({owned:tabs});return{ok:true};
   }
