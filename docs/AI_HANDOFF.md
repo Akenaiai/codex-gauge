@@ -58,3 +58,7 @@ node scripts/verify-package.cjs dist/win-unpacked/resources win32
 ```
 
 这些命令不主动发布；打包依赖下载及Mac签名环境按目标机实际配置处理。真实平台读取仅使用该设备已有授权，不复制Mac/Windows凭据。
+
+## 统一工作流首次实跑
+
+7363842已推送至原PR #3，PR仍为Draft，GitHub确认mergeable=true。Windows完整检查与安装包构建成功。Mac检查、原生自检和打包通过，但签名校验发现electron-builder默认在PR环境跳过签名，留下Electron旧签名与新资源不一致。已将候选构建显式设为允许PR中的ad-hoc签名（identity固定为`-`、关闭证书自动发现、不提供证书秘密），保留严格签名检查；修复后的完整双平台结果以最新Checks为准。此修复不引入发行证书或公证，也不放宽门禁。

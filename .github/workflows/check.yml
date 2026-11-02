@@ -40,6 +40,8 @@ jobs:
         run: npm run build:mac -- --arm64 --publish never -c.mac.identity=- -c.mac.timestamp=none
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # PR candidates use only ad-hoc identity '-' above, never certificate secrets.
+          CSC_FOR_PULL_REQUEST: 'true'
       - name: Verify Mac signature
         if: runner.os == 'macOS'
         run: codesign --verify --deep --strict 'dist/mac-arm64/Codex Gauge.app'
