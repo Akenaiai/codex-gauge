@@ -8,7 +8,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Preview: 0.4.4; stable: 0.4.2.** [Download the on-demand preview](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.4). The new browser flow awaits live validation after extension reload. TapNow now reads from normally opened home tabs without reloading them or keeping a dedicated page alive. Close the page after use; the credit center retains the last amount and time. Reload the existing browser component once after updating. The original Codex gauge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.4.md)
+**Current version: 0.4.4.** Windows live checks confirmed automatic reading from an ordinary home tab, retained history after closing, and resumed reading after reopening. TapNow now reads from normally opened home tabs without reloading them or keeping a dedicated page alive. Close the page after use; the credit center retains the last amount and time. Reload the existing browser component once after updating. The original Codex gauge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.4.md)
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
