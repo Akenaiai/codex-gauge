@@ -15,7 +15,7 @@
     "test": "node --test tests/*.test.cjs",
     "smoke": "node scripts/smoke.cjs",
     "build:win": "npm run build:native && electron-builder --win nsis zip --x64",
-    "build:mac": "electron-builder --mac dmg zip"
+    "build:mac": "npm run build:native && electron-builder --mac dmg zip"
   },
   "devDependencies": {
     "electron": "44.5.1",
@@ -36,16 +36,8 @@
     ],
     "extraResources": [
       {
-        "from": "src/ui/credit-cadence.js",
-        "to": "mcp/src/ui/credit-cadence.js"
-      },
-      {
-        "from": "src/credit-user-dates.cjs",
-        "to": "mcp/src/credit-user-dates.cjs"
-      },
-      {
-        "from": "src/credit-date-observations.cjs",
-        "to": "mcp/src/credit-date-observations.cjs"
+        "from": ".local/package-resources/mcp",
+        "to": "mcp"
       },
       {
         "from": "native/bin",
@@ -55,24 +47,8 @@
         ]
       },
       {
-        "from": "scripts/gauge-mcp.cjs",
-        "to": "mcp/scripts/gauge-mcp.cjs"
-      },
-      {
-        "from": "src/credit-model.cjs",
-        "to": "mcp/src/credit-model.cjs"
-      },
-      {
-        "from": "src/catalog.cjs",
-        "to": "mcp/src/catalog.cjs"
-      },
-      {
-        "from": "src/relay-credit-bridge.py",
-        "to": "adapters/relay-credit-bridge.py"
-      },
-      {
-        "from": "src/credit-policies.cjs",
-        "to": "mcp/src/credit-policies.cjs"
+        "from": ".local/package-resources/adapters",
+        "to": "adapters"
       },
       {
         "from": "browser-extension",
@@ -98,6 +74,15 @@
       "icon": "assets/icon.png",
       "extraResources": [
         {
+          "from": "native/bin",
+          "to": "native",
+          "filter": [
+            "GaugeHostMac.node",
+            "libGaugeHostMac.dylib",
+            "GaugeFollowMac"
+          ]
+        },
+        {
           "from": "browser-extension",
           "to": "browser-extension",
           "filter": [
@@ -106,6 +91,8 @@
         }
       ]
     },
-    "publish": null
+    "publish": null,
+    "beforePack": "./scripts/prepare-package.cjs",
+    "afterPack": "./scripts/verify-package.cjs"
   }
 }

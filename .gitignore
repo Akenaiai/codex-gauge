@@ -14,3 +14,9 @@ settings.json
 *.log
 .env*
 !.env.example
+native/bin/GaugeHostMac
+native/bin/*.node
+native/bin/*.dylib
+native/bin/GaugeFollowMac
+follow-status.json
+follow-pause.json

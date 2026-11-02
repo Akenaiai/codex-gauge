@@ -9,7 +9,7 @@ function parseString(text){
 }
 // Inspect only the named provider's existing MCP environment. Raw values never
 // enter inventory, renderer state, error strings, logs, or public files.
-function configuredKey(provider,{home=os.homedir(),env=process.env}={}){
+function configuredKey(provider,{home=os.homedir(),env=process.env,platform=process.platform}={}){
   const variable=variables[provider];if(!variable)return null;
   if(useful(env[variable]))return{key:env[variable],source:'environment'};
   const file=path.join(home,'.codex/config.toml');let text='';try{text=fs.readFileSync(file,'utf8');}catch{}
@@ -25,7 +25,7 @@ function configuredKey(provider,{home=os.homedir(),env=process.env}={}){
     if(assignment?.[1]!==variable)continue;const key=parseString(assignment[2]);
     if(useful(key))return{key,source:'configured_mcp'};
   }
-  const jsonFiles=[path.join(home,'.cursor/mcp.json'),path.join(home,'.claude.json'),path.join(home,'.gemini/settings.json'),path.join(home,'.qwen/settings.json'),path.join(env.APPDATA||path.join(home,'AppData/Roaming'),'Claude/claude_desktop_config.json')];
+  const jsonFiles=[path.join(home,'.cursor/mcp.json'),path.join(home,'.claude.json'),path.join(home,'.gemini/settings.json'),path.join(home,'.qwen/settings.json'),path.join(env.APPDATA||path.join(home,platform==='darwin'?'Library/Application Support':'AppData/Roaming'),'Claude/claude_desktop_config.json')];
   for(const configFile of jsonFiles)try{
     if(fs.statSync(configFile).size>5e6)continue;
     const data=JSON.parse(fs.readFileSync(configFile,'utf8'));
