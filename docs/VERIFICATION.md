@@ -1,5 +1,9 @@
 # Verification / 验证记录
 
+## 2026-11-02 local cross-platform candidate
+
+Main 2e47865 (0.4.4) + PR #3 07d5cdb: 225 checks pass, 2 Windows-only checks skipped. Mac native compilation/self-test, 8 isolated helper scenarios, arm64 directory packaging, ad-hoc signature verification, packaged dependency/MCP startup and native module loading pass. No real-account reads or new installed-device acceptance; no commit/push/release. See [integration handoff](AI_HANDOFF.md) for conflicts, commands and device gates. Earlier entries below retain their original version-specific scope.
+
 ## 0.3.13 direct member MCP
 
 173 automated checks pass, including fixed direct Runway dispatch, API/member endpoint isolation, Recraft verified-personal text parsing and structured/JSON rejection, Kling MCP preference, actual camelCase fields, zero balance and no cross-account CLI fallback. Two consecutive real read rounds succeeded for all three providers, with identity checks and new timestamps. Synthetic native fixtures separately cover provider rows, error/zero handling, old-CLI retirement and the original Codex face. Authorization was performed in the original clients' normal browser flow by the user; no key or session was copied into Gauge.

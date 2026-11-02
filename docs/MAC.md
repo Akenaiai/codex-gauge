@@ -1,17 +1,38 @@
-# Mac handoff / Mac 接续
+# Mac 支持与集成状态
 
-Windows is the first supported target. The Electron renderer and read-only quota service are platform-neutral; `native/GaugeHost.cs` is Windows-specific.
+2026-11-02：新隔离候选基于main 2e47865 / 0.4.4整合PR #3，自动检查与arm64目录打包通过，未安装、提交、推送或发布。当前证据与待验门禁见 [AI_HANDOFF.md](AI_HANDOFF.md)。下文2026-10-30至11-01的实机结果属于此前0.3.4候选，不能当作新候选已验收。
 
-Mac 接续从本仓库开始，不复制 Windows 用户数据或认证文件。先在 Mac 安装并登录官方 Codex CLI，再 `npm ci && npm start`。当前 main process 在 Mac 使用自由悬浮位置，不冒充头像吸附。
+## 架构
 
-## Remaining checks
+- native/GaugeHostMac.swift 与 GaugeHostAddon.cc 编译为 Node-API 模块和 dylib，在已授权的刻度主进程内读取头像与窗口几何，不创建独立AX权限客户端。
+- 用户在面板启用跟随后才进行窗口观察；macOS负责权限验证。控件树按Electron官方AXManualAccessibility接口启用，不模拟VoiceOver。
+- 仅读取控件角色、名称和几何，不读取聊天正文或AXValue。控件丢失时收起仪表，不回退桌面固定位置。
+- 更新按钮出现、下载或安装时按同侧栏实际控件上缘避让，消失后恢复头像锚点。
+- GaugeTemplate.png和@2x为16pt透明单色模板；生成脚本避免Retina重复缩放并检查四边透明。
+- 额度中心使用跨平台安全存储；Mac Claude Desktop配置路径与Windows分开处理。不会复制Windows用户数据或凭据。
 
-1. Run the real read-only smoke test on the Mac account; verify CLI discovery for Apple Silicon and Intel.
-2. Run the packaged app and test theme, language, tray/menu bar, saved positions, login startup, screen edges, Retina scaling and sleep/resume.
-3. Implement a Mac host observer with a narrow Accessibility permission boundary, if profile anchoring is desired. Get real control names/geometry from the Mac Codex app; never transplant Windows coordinates.
-4. Replace the Mac placeholder host lifecycle (`exists: true`) with actual host process/window observation. Until then, the floating gauge remains available independently of Codex's window.
-5. Build using `npm run build:mac`; signing/notarization is a separate, currently unconfigured release capability.
+## 构建
 
-Windows artifacts do not validate any Mac behavior. Do not mark Mac complete merely because dependencies install or a DMG builds.
+安装Node.js 22.12+和Xcode命令行工具；系统中需要已有Node-API头文件（可用NODE_INCLUDE指定目录）。运行npm ci、npm test、npm run build:mac。当前验证为Apple Silicon，Intel未验证。
 
-Mac 侧待验：真实额度、Apple Silicon/Intel CLI 路径、菜单栏、明暗和语言、位置恢复、开机启动、Retina、多屏、休眠恢复。若继续做头像吸附，再在 Mac 核对当前控件并申请必要权限。Windows 安装包和 Windows 的测试记录都不代表 Mac 验收。
+## 本机经验与发行门槛
+
+原Mac安装已验证头像定位和小仪表显示；系统设置旧授权条目曾表面开启却实际拒绝，重新按应用准确路径添加后恢复。这不是合并版已完成全量界面验收的证据。
+
+原生 GaugeFollowMac 助手现已随包分发，src/mac-startup.cjs 管理当前用户 LaunchAgent，路径由安装位置与用户目录动态解析。设置开关默认关闭，启用时可迁移已识别的旧助手并备份配置；未知同名作业拒绝覆盖；关闭时保留恢复副本。注册失败回退旧文件与旧作业，手动退出按当前宿主进程暂停。本机已实装合并候选并在应用内启用自动启停，现用启动项已迁移到随包助手；旧应用、设置和启动项均保留本机恢复材料。
+
+集成版已通过原生编译与arm64打包/签名检查；自动检查与隔离界面验收详见下节。真实Codex窗口拖动与更新按钮显示期间稳定避让已获用户确认；跨屏、休眠、下载/安装状态切换及按钮消失后的归位仍需分别验收。签名使用本机开发证书，未公证或发布。
+
+## 2026-11-01 更新按钮跳动修正
+
+真实更新按钮出现后，用户反馈仪表反复上移和落回、遮挡下载入口。短扫描原先在超时或AX短暂读不到时直接覆盖缓存并撤销避让；现在侧栏扫描跨轮次保留进度，AX失败/未完成不作为消失证据。保留相对实时头像的已测避让距离，下载/安装标签或重绘时不缩回；至少3次完整可靠扫描且持续缺失1.5秒后才归位，换窗口/宿主重置状态。头像重扫也保留仍有效的缓存，避免分片扫描时闪失。
+
+原生自检已覆盖短暂失败、交替命中/缺失、状态变化、明确消失归位、负坐标移动与窗口重置；124项JS检查122通过/2跳过。修正原生模块已安装本机并验证签名、加载和启停助手运行。用户保持真实更新按钮显示并拖动窗口后确认“已稳定，不再遮挡”，更新按钮显示期间的稳定避让实机验收通过。按钮消失后的归位、下载/安装状态切换仍待对应真实场景确认，未正式发布。
+
+## 合并版后续验收
+
+实装发现并修复共享文件打包遗漏和Mac键盘退出未暂停；当前124项检查122通过/2跳过。安装包新增依赖完整性检查；实际同步额度、原生定位模块加载、⌘Q结束进程并暂停、恢复会话后助手自动拉起均通过；真实窗口拖动、更新按钮显示期间稳定避让与完整Codex退出/重开已获实机确认；按钮消失归位仍待真实场景验收。此前原生启停助手8项真实独立应用场景通过（含手动退出暂停持久化与宿主新会话恢复）。未改变实际Codex或现用刻度的启动项。
+
+开发模式 --center-profile 现在使用显式隔离目录、空的配置环境，并禁用真实Codex额度连接、头像观察及公开消息读取。实际Mac界面已验收额度总览、工具页、中英文切换；运行报告为0工具、0额度记录、观察器未启动。该模式仅开发构建可用，不用更改HOME环境变量。
+
+仓库Check工作流包含Windows/macOS矩阵、原生构建和打包步骤；Mac LaunchAgent回归使用Mac文件系统语义，仅在Mac执行；Windows启动项回归仅在Windows执行。云端结果以[集成PR #3](https://github.com/Akenaiai/codex-gauge/pull/3)的Checks为准。Windows远程执行设备目前不在线，真实Windows桌面行为仍待目标机验收。

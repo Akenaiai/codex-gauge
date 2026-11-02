@@ -34,12 +34,12 @@ function parseQuota(result, now = Date.now()) {
 }
 
 const defaults = Object.freeze({ theme: 'system', language: 'zh-CN', topmost: false,
-  autostart: false, notifications: false, resetReminders: true, resetNews: true, offset: { x: 0, y: 0 }, floating: null });
+  autostart: false, macAnchorEnabled: false, notifications: false, resetReminders: true, resetNews: true, offset: { x: 0, y: 0 }, floating: null });
 function cleanSettings(input = {}) {
   const number = (n, max) => Number.isFinite(n) ? Math.max(-max, Math.min(max, Math.round(n))) : 0;
   return { theme: ['dark', 'light', 'system'].includes(input.theme) ? input.theme : 'system',
     language: ['en', 'zh-CN'].includes(input.language) ? input.language : 'zh-CN',
-    topmost: input.topmost === true, autostart: input.autostart === true, notifications: input.notifications === true,
+    topmost: input.topmost === true, autostart: input.autostart === true, macAnchorEnabled: input.macAnchorEnabled === true, notifications: input.notifications === true,
     resetReminders: input.resetReminders !== false, resetNews: input.resetNews !== false,
     offset: { x: number(input.offset?.x, 1500), y: number(input.offset?.y, 1500) },
     floating: input.floating && Number.isFinite(input.floating.x) && Number.isFinite(input.floating.y)

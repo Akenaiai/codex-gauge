@@ -14,11 +14,13 @@
 
 ![创作积分背面，图中均为合成示例数据](docs/images/creative-panel-zh.png)
 
-**先完成 Windows。** Windows 头像定位已实现；Mac 目前是源码层的自由悬浮预览，尚未实机验证，不等于 Windows 功能已全部适配。
+**先完成 Windows。** Windows 头像定位已实现；Mac 合并候选已包含原生头像吸附、更新按钮避让及随 Codex 启停；本机自动检查与打包通过，真实窗口体验仍待验收，详见 docs/MAC.md。
 
 断连时，头像红色到期标记和置顶临期卡保留上次记录的未到期时间，并标明“上次数据”、记录时间及“实际可用情况待刷新确认”；连接恢复后按新数据更新。
 
 [视觉升级验证与截图](docs/VISUAL_REFRESH.md) · 本分支为界面样式升级，安装包是否可用以发布页为准。
+
+本地跨平台整合候选：基于main 0.4.4整合PR #3，自动检查与arm64目录打包通过，尚未安装或发布。旧Mac候选已有实机验收；新候选证据和剩余设备门禁见[整合记录](docs/AI_HANDOFF.md)。
 
 ## 功能
 
@@ -68,9 +70,11 @@ npm start
 
 Windows 安装依赖时会用系统 .NET Framework 编译小型窗口观察器。它只读窗口几何和已命名的头像控件，随刻度退出。
 
-### Mac 预览与接续
+### Mac 适配与接续
 
-同样的 Git 命令可用于 Mac 自由悬浮版源码预览。当前**尚未实现 Mac 头像吸附和跟随 Codex 开关窗口**，没有申请辅助功能权限，也尚未经过 Mac 实测。CLI 查找覆盖 PATH、常见 Homebrew 和 npm 目录；特殊安装可配置 `CODEX_GAUGE_CLI`。
+合并候选的 Mac 安装包已包含独立启停助手，可在设置开启“随 Codex 启动”。它使用当前用户 LaunchAgent：打开 Codex 时启动刻度，退出 Codex 时关闭刻度；手动退出刻度后暂停到下次 Codex 会话。开关默认关闭，关闭时保留可恢复配置，注册失败回退原有助手。它不需要模型请求，也不代替头像跟随所需的系统权限。
+
+Mac 源码已增加原生头像吸附模块：在刻度面板点击“开启头像跟随”，由用户手动授予系统辅助功能权限后，按真实控件位置跟随窗口。控件丢失时收起仪表，不回退桌面悬浮。自动几何、可见性检查与本机打包已通过；真实 Codex 窗口跟随、跨屏和休眠仍待现场验收。CLI 查找覆盖 PATH、常见 Homebrew 和 npm 目录；特殊安装可配置 `CODEX_GAUGE_CLI`。
 
 在 Mac 上执行 `npm run build:mac` 可以进行本地 DMG/ZIP 构建。当前没有配置 Apple 签名、公证；Windows 安装程序不能用于 Mac。后续适配入口见 [Mac 接续说明](docs/MAC.md)。
 
@@ -108,3 +112,5 @@ AIHOT 是第三方消息源。2026-10-21 核对的[公开使用规则](https://a
 功能参考及部分实现规则来自 [returnk/codex-usage-badge](https://github.com/returnk/codex-usage-badge)。准确版本、借鉴范围和原 MIT 许可见[第三方声明](THIRD_PARTY_NOTICES.md)。本项目重做仪表界面并独立实现桌面架构。
 
 MIT © 2026 阿肯，使用 AI 辅助制作。第三方工具，与 OpenAI 无隶属关系。反馈：[GitHub Issues](https://github.com/Akenaiai/codex-gauge/issues)，或 934026@qq.com。
+
+开发与发布采用[一条主线、两套安装包](docs/CROSS_PLATFORM.md)，统一版本、分别验收；候选构建不等于正式发布。

@@ -53,3 +53,15 @@ test('an unknown face cannot change the current panel', async () => {
   assert.equal((await c.action('panel-face', 'unexpected')).ok, false);
   assert.equal(c.state().settings.panelFace, 'codex');
 });
+
+test('Mac anchor permission state coexists with the creative face and snapshot', () => {
+  const {context:c}=fixture();
+  c.process.platform='darwin';
+  c.host={accessibilityRequired:true,reason:'permission'};
+  c.creativeSnapshot=()=>({records:[{provider:'runway',remaining:12}]});
+  const state=c.state();
+  assert.equal(state.host.accessibilityRequired,true);
+  assert.equal(state.host.reason,'permission');
+  assert.equal(state.creative.records[0].provider,'runway');
+  assert.equal(state.settings.panelFace,'codex');
+});

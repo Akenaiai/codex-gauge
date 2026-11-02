@@ -2,6 +2,7 @@
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 function createStartup(app, root, run = execFile) {
+  if (process.platform === 'darwin') return require('./mac-startup.cjs').createMacStartup(app, root, run);
   const helper = path.join(app.isPackaged ? process.resourcesPath : root, app.isPackaged ? 'native' : 'native/bin', 'GaugeStarter.exe');
   const command = (...args) => new Promise((resolve, reject) => run(helper, args, { windowsHide: true, timeout: 15000 }, error => error ? reject(error) : resolve()));
   return {
