@@ -2,7 +2,7 @@
 
 [简体中文](BROWSER_CONNECTION.zh-CN.md) · [First use](GETTING_STARTED.md)
 
-Version 0.4.3 supports TapNow and Ideogram through an optional Chrome/Edge component, off by default. The TapNow MCP catalog checked on November 2, 2026 exposes no balance query. Authorizing MCP alone does not supply credits. [Official connector documentation](https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector).
+Version 0.4.4 supports TapNow and Ideogram through an optional Chrome/Edge component, off by default. The TapNow MCP catalog checked on November 2, 2026 exposes no balance query. Authorizing MCP alone does not supply credits. [Official connector documentation](https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector).
 
 ## Connect your own browser
 
@@ -33,4 +33,4 @@ No TapNow desktop-client balance source or MCP balance adapter is connected. Any
 - Re-pairing revokes the old key; disabling closes the listener. Removing the extension does not delete historical observations.
 - Page readings do not authenticate ownership, extract dates or confirm grants, and cannot inherit verified-account dates.
 
-Validation: version 0.4.2 has earlier Windows live balance and twenty-minute background evidence. Version 0.4.3 has isolated regression checks for ordinary-tab discovery, closed/discarded tabs, no reloads, activity throttling, menu restoration and pause. Its new flow still needs real-browser validation after loading the new component; earlier evidence does not prove the new flow. Ideogram and Mac remain without field validation.
+Validation: version 0.4.2 has earlier Windows live balance and twenty-minute background evidence. Version 0.4.4 has isolated regression checks for ordinary-tab discovery, closed/discarded tabs, no reloads, activity throttling, menu restoration and pause. Its new flow still needs real-browser validation after loading the new component; earlier evidence does not prove the new flow. Ideogram and Mac remain without field validation.

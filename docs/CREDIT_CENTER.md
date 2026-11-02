@@ -1,6 +1,6 @@
 # Credit center / 额度中心
 
-## 0.4.3: TapNow on-demand pages / TapNow 按需主页
+## 0.4.4: TapNow on-demand pages / TapNow 按需主页
 
 TapNow discovers existing permitted home tabs, reads on visits and periodically while open, and never reloads or wakes them. Closing keeps historical readings in the center; the compact back continues to show current readings only. Account-menu sampling restores only a menu it opened, unless user input takes over. Ideogram remains unchanged. No new browser permissions or desktop-client/MCP balance source.
 

@@ -8,7 +8,9 @@ async function owned(){return(await chrome.storage.session.get('owned')).owned||
 async function targets(){
  const tabs={...await owned()};delete tabs.tapnow;
  if(await chrome.permissions.contains({origins:['https://app.tapnow.ai/*']})){
-  const homes=(await chrome.tabs.query({url:'https://app.tapnow.ai/*'})).filter(t=>safeHome('tapnow',t.url)&&!t.discarded&&t.status==='complete');
+  // Media-heavy home pages can stay loading after their account UI is usable.
+  // The bounded visible-field reader decides readiness; never wake discarded tabs.
+  const homes=(await chrome.tabs.query({url:'https://app.tapnow.ai/*'})).filter(t=>safeHome('tapnow',t.url)&&!t.discarded&&['loading','complete'].includes(t.status));
   homes.sort((a,b)=>Number(b.active)-Number(a.active)||(b.lastAccessed||0)-(a.lastAccessed||0)||a.id-b.id);
   if(homes[0])tabs.tapnow={id:homes[0].id};
  }
