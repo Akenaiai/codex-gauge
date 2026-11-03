@@ -30,6 +30,11 @@
   const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.gauge}</svg>`;
   const button = (action, label, symbol) => `<button class="icon-button" data-action="${action}" aria-label="${esc(label)}" title="${esc(label)}">${icon(symbol)}</button>`;
   const pct = w => w && Number.isFinite(w.remaining) ? Math.floor(w.remaining) : '—';
+  // Match the displayed whole percentage so a visible 20 or 10 changes immediately.
+  const quotaTone = w => !w || !Number.isFinite(w.remaining) || w.remaining < 0 || w.remaining > 100 ? ''
+    : Math.floor(w.remaining) <= 10 ? 'quota-critical' : Math.floor(w.remaining) <= 20 ? 'quota-low' : '';
+  const quotaColor = (w, normal) => quotaTone(w) === 'quota-critical' ? 'var(--quota-critical)'
+    : quotaTone(w) === 'quota-low' ? 'var(--quota-low)' : normal;
   const primary = () => state.snapshot?.fiveHour || state.snapshot?.weekly || state.snapshot?.windows?.[0];
   const stale = () => state.status !== 'ready' || state.snapshot && Date.now() - state.snapshot.fetchedAt > 150000;
   const resetAttention = () => window.resetModel.attention(state.snapshot, state.status === 'ready', state.resetFeed, Date.now());
@@ -86,14 +91,14 @@
   }
   function dial(w, label, small = false) {
     const value = w?.remaining ?? 0;
-    const color = value <= 10 && w ? 'var(--danger)' : small ? 'var(--cool)' : 'var(--accent)';
+    const color = quotaColor(w, small ? 'var(--cool)' : 'var(--accent)');
     let ticks = '';
     for (let i = 0; i <= 40; i++) {
       const a = point(135 + i * 6.75, 70), b = point(135 + i * 6.75, i % 5 === 0 ? 62 : 66);
       ticks += `<path d="M${a}L${b}" stroke="${w && i <= value / 2.5 ? color : 'var(--line)'}" stroke-width="${i % 5 === 0 ? 1.5 : 1}"/>`;
     }
     const a = point(135 + value * 2.7, 54), b = point(135 + value * 2.7, 60);
-    return `<div class="dial ${small ? 'small' : ''}" role="img" aria-label="${esc(label)} ${pct(w)}%">
+    return `<div class="dial ${small ? 'small' : ''} ${quotaTone(w)}" role="img" aria-label="${esc(label)} ${pct(w)}%">
       <svg viewBox="0 0 160 145" aria-hidden="true"><path d="${arc(57, 100)}" fill="none" stroke="var(--subtle)" stroke-width="2"/>
       <path d="${arc(57, value)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>${ticks}
       ${w ? `<path d="M${a}L${b}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>` : ''}
@@ -102,13 +107,15 @@
   }
   function mini() {
     const p = primary(), value = p?.remaining ?? 0, weekly = state.snapshot?.weekly;
-    const color = p && value <= 10 ? 'var(--danger)' : 'var(--accent)';
+    const color = quotaColor(p, 'var(--accent)');
     const expiry = expiringCredit(), reminder = resetAttention() || pendingAnnouncement();
     const reminderLabel = expiry ? (expiry.stale ? t('重置卡即将到期（上次数据），展开查看', 'Reset credit expiring (last reading); open for details') : t('重置卡即将到期，展开查看', 'Reset credit expiring; open for details')) : t('有重置提醒，展开查看', 'Reset reminder; open for details');
-    return `<button class="micro ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(expiry || reminder ? reminderLabel : t('查看 Codex 额度', 'View Codex usage'))}" title="${esc((expiry || reminder ? reminderLabel + ' · ' : '') + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
+    const quotaLabel = quotaTone(p) ? t(`剩余 ${pct(p)}%，${quotaTone(p) === 'quota-critical' ? '额度即将用尽' : '额度偏低'}`, `${pct(p)}% remaining; ${quotaTone(p) === 'quota-critical' ? 'quota nearly depleted' : 'quota low'}`) + (stale() ? t('（上次读数）', ' (last reading)') : '') : '';
+    const label = [quotaLabel, expiry || reminder ? reminderLabel : t('查看 Codex 额度', 'View Codex usage')].filter(Boolean).join(' · ');
+    return `<button class="micro ${quotaTone(p)} ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(label)}" title="${esc(label + ' · ' + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
       <svg viewBox="0 0 46 46" aria-hidden="true"><path d="${arc(19.5, 100, 23)}" fill="none" stroke="var(--line)" stroke-width="1.5"/>
       <path d="${arc(19.5, value, 23)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-      <path d="${arc(16, weekly?.remaining ?? 0, 23)}" fill="none" stroke="var(--cool)" stroke-width="1" opacity=".7"/>
+      <path d="${arc(16, weekly?.remaining ?? 0, 23)}" fill="none" stroke="${quotaColor(weekly, 'var(--cool)')}" stroke-width="1" opacity=".7"/>
       ${[0, 25, 50, 75, 100].map(v => { const a = point(135 + v * 2.7, 20, 23), b = point(135 + v * 2.7, 22, 23); return `<path d="M${a}L${b}" stroke="var(--muted)" stroke-width=".7"/>`; }).join('')}</svg>
       <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${expiry || reminder ? `<span class="reset-dot ${expiry ? 'credit-dot' : ''}" role="img" aria-label="${esc(reminderLabel)}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
   }

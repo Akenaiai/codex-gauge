@@ -10,6 +10,11 @@ body.preview{background:#101316;overflow:auto;height:auto;min-height:100vh;paddi
 
 .credit-last-reading{font-size:10px;line-height:1.6;margin:4px 0;color:var(--muted)}.credit-card.expiring .credit-last-reading{color:var(--expiry-ink);font-weight:500}
 
+/* Low-battery quota colors; credit-expiry markers keep their separate priority. */
+:root{--quota-low:#ffc34d;--quota-critical:#ff7369}
+body.light{--quota-low:#936000;--quota-critical:#bf3028}
+.micro.quota-low .reading,.dial.quota-low .dial-value{color:var(--quota-low)}
+.micro.quota-critical .reading,.dial.quota-critical .dial-value{color:var(--quota-critical)}
 /* Precision instrument surface */
 :root{--bg:#181b1d;--surface:#23282b;--ink:#f4f1e9;--muted:#a1a9ab;--line:#363d40;--subtle:#2c3336;--accent:#dfb878;--cool:#86bdb5;--danger:#ee9484;--shadow:0 18px 48px #0007,0 2px 8px #0004;--expiry-ink:#ffaaa0;--expiry-bg:#382526;--expiry-border:#d87569;--reminder-bg:#322b21;--on-accent:#211d17}
 body.light{--bg:#f6f4ee;--surface:#fffdf8;--ink:#252c2e;--muted:#687477;--line:#d9dcd5;--subtle:#e8e9e2;--accent:#966b30;--cool:#397e77;--danger:#b54438;--shadow:0 18px 44px #25302b1f,0 2px 8px #25302b12;--expiry-ink:#a73229;--expiry-bg:#fff0eb;--expiry-border:#c55b4e;--reminder-bg:#f7eddc;--on-accent:#fffaf1}
