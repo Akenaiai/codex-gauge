@@ -33,7 +33,7 @@ async function handle(message){
   if(!tools.some(t=>t.name===name)||Object.keys(args).some(k=>k!=='provider')||args.provider&&typeof args.provider!=='string')return reply({isError:true,content:[{type:'text',text:'Unsupported read request'}]});
   try {
     const data=snapshot(); const records=(data.records||[]).filter(r=>r.status!=='account_changed');
-    const value=name==='gauge_inventory'?{scannedAt:data.inventory?.scannedAt,tools:(data.inventory?.tools||[]).map(t=>({...t,policy:policyFor(t.id)})),issues:data.inventory?.issues||[]}:
+    const value=name==='gauge_inventory'?{scannedAt:data.inventory?.scannedAt,tools:(data.inventory?.tools||[]).map(t=>({...t,policy:policyFor(t.id),access:data.connectionAccess?.[t.id]||null})),accessObservedAt:data.connectionObservedAt||null,accessIsSnapshot:true,issues:data.inventory?.issues||[]}:
       name==='gauge_balances'?records.filter(r=>!args.provider||r.provider===args.provider).map(r=>({...r,stale:!fresh(r)})):
       [...events(records,data.rules||{}),...observationEvents(data.dateObservations,Date.now(),data.monthlySchedules),...userDateEvents(data.userDates,records)].sort((a,b)=>a.at-b.at).map(e=>e.dateOnly?{...e,at:null}:e);
     return reply({content:[{type:'text',text:JSON.stringify(value)}]});

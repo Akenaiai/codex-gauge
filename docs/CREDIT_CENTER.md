@@ -1,5 +1,9 @@
 # Credit center / 额度中心
 
+Source preview: [Connection capability contract and verification scope](CONNECTION_CAPABILITIES.md). Stable installers remain 0.4.4; this source step adds evidence/state interfaces for subsequent setup work.
+
+源码预览：[接入能力接口与验证边界](CONNECTION_CAPABILITIES.zh-CN.md)。稳定安装版仍为 0.4.4；本步骤补充后续连接流程可复用的依据和状态。
+
 ## 0.4.4: TapNow on-demand pages / TapNow 按需主页
 
 TapNow discovers existing permitted home tabs, reads on visits and periodically while open, and never reloads or wakes them. Closing keeps historical readings in the center; the compact back continues to show current readings only. Account-menu sampling restores only a menu it opened, unless user input takes over. Ideogram remains unchanged. No new browser permissions or desktop-client/MCP balance source.

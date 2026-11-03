@@ -7,7 +7,7 @@ const { EventEmitter } = require('node:events');
 const { createInterface } = require('node:readline');
 const { identity, parseQuota } = require('./domain.cjs');
 
-function findCli(env = process.env, platform = process.platform, arch = process.arch) {
+function findCli(env = process.env, platform = process.platform, arch = process.arch, home = os.homedir()) {
   if (env.CODEX_GAUGE_CLI) {
     if (fs.existsSync(env.CODEX_GAUGE_CLI) && !/\.(cmd|bat|ps1)$/i.test(env.CODEX_GAUGE_CLI)) return env.CODEX_GAUGE_CLI;
     throw new Error('cli_missing');
@@ -16,7 +16,7 @@ function findCli(env = process.env, platform = process.platform, arch = process.
   const triple = `${arch === 'arm64' ? 'aarch64' : 'x86_64'}-${platform === 'win32' ? 'pc-windows-msvc' : 'apple-darwin'}`;
   const platformPackage = `codex-${platform === 'win32' ? 'win32' : 'darwin'}-${arch}`;
   const pathDirs = (env.PATH || '').split(path.delimiter).filter(Boolean);
-  const roots = [...pathDirs, path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'];
+  const roots = [...pathDirs, path.join(home, '.local', 'bin'), ...(platform === 'darwin' ? ['/opt/homebrew/bin', '/usr/local/bin'] : [])];
   if (env.APPDATA) roots.push(path.join(env.APPDATA, 'npm'));
   for (const root of roots) {
     const direct = path.join(root, binary);

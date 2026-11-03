@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {entriesToml,hash}=require('./catalog.cjs');
 const {Rpc,findCli}=require('./cli.cjs');
 const {value}=require('./credit-model.cjs');
-async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),rpcFactory=()=>new Rpc(findCli()),decodeResponse}={}){
+async function readOnlyMcp(serverName,allowed,read,{home=os.homedir(),env=process.env,platform=process.platform,arch=process.arch,rpcFactory=()=>new Rpc(findCli(env,platform,arch,home)),decodeResponse}={}){
   let entries;
   try{entries=entriesToml(fs.readFileSync(path.join(home,'.codex/config.toml'),'utf8'));}catch{throw new Error('cli_missing');}
   if(!entries.some(e=>e.kind==='mcp'&&e.name===serverName&&e.enabled))throw new Error('login_required');

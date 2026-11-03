@@ -7,17 +7,11 @@ const { CreditStore } = require('./credit-store.cjs');
 const { cleanRecord, fresh, validateRule, events, expiryAlerts, recoveryAlerts, renewalAlerts } = require('./credit-model.cjs');
 const adapters = require('./credit-adapters.cjs');
 const {configuredKey}=require('./credit-credentials.cjs');
+const {connectionCatalog,componentCatalog,probeComponents,accessFor}=require('./connection-capabilities.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential','browser_offline','browser_setup_required','page_closed','selection_changed'];
-function queryReady(tool,inventory,records,browser={}){
-  if(['tapnow','ideogram'].includes(tool.id))return !!(browser?.enabled&&browser.paired&&browser.connected&&browser.providers?.[tool.id]?.configured);
-  if(tool.id==='codex')return records.some(r=>r.provider==='codex'&&fresh(r));
-  if(['kimi','minimax','zai'].includes(tool.id))return inventory.tools.some(t=>t.id==='agent-relay');
-  if(tool.id==='runway')return tool.connections.some(c=>c.enabled&&c.kind==='mcp'&&c.source==='Codex'&&c.evidence==='configured');
-  return tool.connections.some(c=>c.enabled&&(['installed','credential_reference'].includes(c.evidence)||['lovart','suno','recraft','kling'].includes(tool.id)&&c.kind==='mcp'&&c.evidence==='configured'&&(!['recraft','kling'].includes(tool.id)||c.source==='Codex')));
-}
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
   constructor(directory, options = {}) {
@@ -47,21 +41,31 @@ class CreditCenter extends EventEmitter {
   }
   persist() {
     Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,userDates:this.userDates,onboardingCompleted:this.onboardingCompleted,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
+    this.store.data.connectionAccess=Object.fromEntries(this.inventory.tools.map(t=>[t.id,this.access(t)]));
+    this.store.data.connectionObservedAt=Date.now();
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => ({ ...t, canBrowser:['tapnow','ideogram'].includes(t.id),adapter: ['tapnow','ideogram'].includes(t.id)?!!this.options.browserState?.()?.enabled:['codex','xyq','jimeng','firecrawl','deepseek','kimi','minimax','zai','lovart','suno','tavily','runway','kling','recraft'].includes(t.id),policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
-      queryReady:queryReady(t,this.inventory,this.records,this.options.browserState?.()),
+    const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+      queryReady:access.query.canAttempt,
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
-      records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) }));
-    return { ...this.inventory, tools, onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
+      records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) });});
+    return { ...this.inventory, tools, connectionCatalog:connectionCatalog(),connectionComponents:componentCatalog(),onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
       events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
       browserLink:this.options.browserState?.(),storageError: this.store.error, revision: this.store.data.revision };
   }
+  access(tool){
+    this.componentProbe ||= probeComponents(this.options);
+    const relayEnabled=this.inventory.tools.some(t=>t.id==='agent-relay'&&t.connections.some(c=>c.enabled&&c.evidence==='configured'&&c.kind==='plugin'&&c.source==='Codex'))||this.inventory.tools.some(t=>['kimi','minimax','zai'].includes(t.id)&&t.connections.some(c=>c.enabled&&c.kind==='cli'&&c.evidence==='installed'))||this.records.some(r=>['kimi','minimax','zai'].includes(r.provider)&&r.source==='relay');
+    let hasCredential=false;try{hasCredential=!!this.options.hasCredential?.(tool.id);}catch{}
+    return accessFor(tool,{probe:this.componentProbe,records:this.records,queryStatus:this.statuses[tool.id]||(['kimi','minimax','zai'].includes(tool.id)?this.statuses.relay:null),browser:this.options.browserState?.(),hasCredential,relayEnabled});
+  }
   rescan() {
+    this.componentProbe=probeComponents(this.options);
     this.inventory = scan({ ...this.options, hostTools: this.store.hostInventory() });
+    if(this.componentProbe.checks.codex_cli&&!this.inventory.tools.some(t=>t.id==='codex')){this.ensureTool('codex');this.inventory.tools.find(t=>t.id==='codex').connections=[{kind:'cli',source:'Local CLI installation',label:'Codex',enabled:true,evidence:'installed'}];}
     for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
     for (const row of this.records){this.ensureTool(row.provider);if(row.source==='browser')this.ensureBrowserTool(row.provider);}
     for(const row of this.userDates)this.ensureUserDateTool(row.provider);
@@ -135,11 +139,12 @@ class CreditCenter extends EventEmitter {
     this.notices = this.notices.filter(e => e.at > Date.now() - 7*86400000).slice(-100);
   }
   updateCodex(state, accountKey) {
+    this.statuses.codex=state.status;
     if (!state.snapshot || !accountKey) {
       for (const r of this.records.filter(r => r.provider === 'codex')) r.status = state.status === 'account_changed' || state.status === 'login_required' ? 'account_changed' : 'offline';
-      this.emit('state'); return;
+      this.persist();this.emit('state'); return;
     }
-    if (state.status !== 'ready') { for (const r of this.records.filter(r => r.provider === 'codex')) r.status = 'offline'; this.emit('state'); return; }
+    if (state.status !== 'ready') { for (const r of this.records.filter(r => r.provider === 'codex')) r.status = 'offline';this.persist(); this.emit('state'); return; }
     const s = state.snapshot;
     try {
       const pools = s.windows.map(w => ({ id: 'window.' + w.minutes, label: w.minutes === 10080 ? '本周额度' : w.minutes === 300 ? '5 小时额度' : w.minutes + ' 分钟周期',
@@ -151,6 +156,7 @@ class CreditCenter extends EventEmitter {
     } catch { }
   }
   async query(id,{manual=false}={}) {
+    if(!['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].includes(id))return;
     if (this.stopped || this.busy.has(id)) return;
     const generation=this.generation,epoch=this.providerEpoch.get(id)||0,run=Symbol();this.queryRuns.set(id,run);
     this.busy.add(id); this.statuses[id] = 'querying'; this.emit('state');
@@ -177,7 +183,8 @@ class CreditCenter extends EventEmitter {
         if (input.reportedStatus && input.reportedStatus !== 'ready') { r.status = 'stale'; r.error = 'query_failed'; }
         this.put(r); this.statuses[r.provider] = r.status;
       }
-      this.statuses[id] = 'ready';
+      if(id!=='relay'&&this.statuses[id]==='querying')this.statuses[id] = rows.length?'ready':'query_failed';
+      if(id==='relay')delete this.statuses.relay;
     } catch (e) {
       if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
       const error = safeError(e); this.statuses[id] = error;
@@ -190,9 +197,10 @@ class CreditCenter extends EventEmitter {
     if(this.stopped || !manual&&!this.enabled)return;
     const generation=this.generation;
     this.loadImports();
-    const ids = id ? [id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].filter(x => {
-      if(x==='relay')return this.inventory.tools.some(t=>t.id==='agent-relay');
-      return this.inventory.tools.some(t=>t.id===x&&queryReady(t,this.inventory,this.records,this.options.browserState?.()));
+    this.componentProbe=probeComponents(this.options);
+    const ids = id ? [['kimi','minimax','zai'].includes(id)?'relay':id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].filter(x => {
+      if(x==='relay')return this.access({id:'kimi',connections:[]}).query.canAttempt;
+      return this.inventory.tools.some(t=>t.id===x&&this.access(t).query.canAttempt);
     });
     // Limit concurrent upstream reads. Each query has a separate bounded timeout.
     for (let i=0; i<ids.length; i+=3) {

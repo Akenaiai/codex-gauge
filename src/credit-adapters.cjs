@@ -39,10 +39,10 @@ async function jsonRequest(url, options = {}) {
 async function xyq(options = {}) {
   const exe = nativePippit(options);
   if (!exe) throw new Error('cli_missing');
-  const identity = await execJson(exe, ['status']);
+  const identity = await execJson(exe, ['status'], options);
   if (identity.logged_in !== true) throw new Error('login_required');
-  const raw = await execJson(exe, ['get-credit-balance']);
-  const after = await execJson(exe, ['status']);
+  const raw = await execJson(exe, ['get-credit-balance'], options);
+  const after = await execJson(exe, ['status'], options);
   if (after.logged_in !== true || identity.uid !== after.uid || identity.team_id !== after.team_id || identity.source !== after.source) throw new Error('account_changed');
   if (raw.total_remain_amount == null) throw new Error('invalid_response');
   const uid = identity.uid;
@@ -50,7 +50,7 @@ async function xyq(options = {}) {
     pools: [{ id: 'effective', label: '可用积分', labelEn: 'Available credits', amount: value(raw.total_remain_amount), unit: 'credits' }] }];
 }
 async function jimeng(options = {}) {
-  const raw = await execJson(findExecutable('dreamina', options), ['user_credit']);
+  const raw = await execJson(findExecutable('dreamina', options), ['user_credit'], options);
   if (raw.total_credit == null || raw.user_id == null) throw new Error('invalid_response');
   return [{ provider: 'jimeng', scope: String(raw.user_id), identityVerified: true, account: raw.vip_level || 'CLI', source: 'cli', fetchedAt: Date.now(),
     pools: [{ id: 'effective', label: '可用积分', labelEn: 'Available credits', amount: value(raw.total_credit), unit: 'credits' }] }];
@@ -102,9 +102,7 @@ async function securedApiBalance(provider, options = {}) {
 async function relay({ home = os.homedir(), env = process.env } = {}) {
   // Reuse the installed companion's query implementation, with before/after
   // identity binding. No scheduler, task dispatch or credential export.
-  const root = path.join(home, '.codex', 'plugins', 'cache', 'personal', 'agent-relay');
-  let versions; try { versions = fs.readdirSync(root).sort((a,b) => b.localeCompare(a,undefined,{numeric:true})); } catch { throw new Error('relay_unavailable'); }
-  const plugin = versions.map(v => path.join(root,v)).find(p => fs.existsSync(path.join(p,'relay','quota.py')));
+  const plugin = require('./connection-capabilities.cjs').relayInstallation({ home });
   const python = findExecutable('python', {home,env});
   if (!plugin || !python) throw new Error('relay_unavailable');
   const manifest = JSON.parse(fs.readFileSync(path.join(plugin,'.codex-plugin','plugin.json'),'utf8'));

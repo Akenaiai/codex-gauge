@@ -198,7 +198,7 @@ function scan({ home = os.homedir(), env = process.env, platform = process.platf
   for (const entry of hostTools) if (entry && typeof entry.name === 'string') add(entry.name, entry.kind === 'mcp' ? 'mcp' : 'plugin', 'Codex connected tools', true, 'host_available');
   const envProviders = { DEEPSEEK_API_KEY: 'deepseek', OPENAI_API_KEY: 'openai-api', FIRECRAWL_API_KEY: 'firecrawl', ARK_API_KEY: 'ark', MINIMAX_API_KEY: 'minimax', MOONSHOT_API_KEY: 'kimi', DASHSCOPE_API_KEY: 'qwen' };
   for (const [key, id] of Object.entries(envProviders)) if (env[key]) add(id, 'api', 'Environment: ' + key, true, 'credential_reference');
-  for (const id of ['deepseek','openai','firecrawl']) {
+  for (const id of platform==='win32'?['deepseek','openai','firecrawl']:[]) {
     if (fs.existsSync(path.join(home,'.codex','private','credentials',id+'-api-key.dpapi'))) add(id === 'openai' ? 'openai-api' : id,'api','Windows secure credential',true,'credential_reference');
   }
   const tools = [...items.values()].sort((a, b) => a.id.localeCompare(b.id));

@@ -6,7 +6,7 @@ window.creditSetup={create({api,t,esc,changed}){
   const errorText=()=>t('保存未完成，请核对日期、账号或本地存储后重试。原记录仍保留。','Could not save. Check dates, account or local storage and retry. Your previous record is preserved.');
   const name=id=>state.tools.find(tool=>tool.id===id)?.name||id;
   const known=tool=>tool.records?.some(r=>!r.stale&&!['manual','host'].includes(r.source));
-  function capability(tool){return known(tool)?t('已读到余额','Balance read'):tool.adapter&&tool.queryReady?t('可尝试自动查询','Automatic query available'):tool.adapter?t('需准备原工具连接','Original connection needed'):t('暂需本人记录','Manual reading needed');}
+  function capability(tool){const status=tool.access?.query.status;return status==='configuration_invalid'?t('连接配置待修正','Connection configuration invalid'):status==='login_required'?t('需要登录原客户端','Sign in to original client'):status==='account_changed'?t('账号变化，需重新查询','Account changed; read again'):status==='component_missing'?t('缺少所需组件','Required component missing'):status==='connection_required'?t('需要配置连接','Connection setup required'):status==='query_failed'?t('查询失败，待核实','Query failed; verify'):known(tool)?t('已读到余额','Balance read'):tool.adapter&&tool.queryReady?t('可尝试自动查询','Automatic query available'):tool.adapter?t('需准备原工具连接','Original connection needed'):t('暂需本人记录','Manual reading needed');}
   function guideContent(){
     if(!guide.open||editor.open)return;
     const focus=document.activeElement?.dataset?.setupKey,scroll=guide.querySelector('.setup-tools')?.scrollTop||0;
