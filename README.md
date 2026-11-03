@@ -1,5 +1,7 @@
 # Codex Gauge
 
+**Windows preview: [0.4.5-preview.1](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.1).** [Scope, verification and isolated acceptance](docs/releases/0.4.5-preview.1.md). Stable remains 0.4.4.
+
 **Source preview:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Stable download remains 0.4.4.
 
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)

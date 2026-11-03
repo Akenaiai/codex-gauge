@@ -1,5 +1,7 @@
 # 刻度 · Codex Gauge
 
+**Windows 预览：[0.4.5-preview.1](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.1)。** [范围、验证与隔离验收方法](docs/releases/0.4.5-preview.1.md)。稳定版仍为 0.4.4。
+
 **源码预览：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。稳定下载仍为 0.4.4。
 
 [English](README.md) · [下载](https://github.com/Akenaiai/codex-gauge/releases) · [源码](https://github.com/Akenaiai/codex-gauge)
