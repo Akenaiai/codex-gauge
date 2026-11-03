@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeTheme, Tray, Menu, nativeImage, Notification, shell, session, powerMonitor, safeStorage, clipboard, net } = require('electron');
 const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const path = require('node:path');
@@ -14,6 +14,7 @@ const { placeBadge, placePanel, clampRect, creditAlerts } = require('./domain.cj
 const { CreditCenter } = require('./credit-center.cjs');
 const {observationNotice}=require('./credit-date-observations.cjs');
 const {CreditSecrets}=require('./credit-credentials.cjs');
+const {OAuthVault,NativeMcp}=require('./native-mcp.cjs');
 const {BrowserLink}=require('./browser-link.cjs');
 const {policyFor}=require('./credit-policies.cjs');
 const {creativeSnapshot,creativeQueryTargets}=require('./creative-credits.cjs');
@@ -34,7 +35,7 @@ let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0
 let badgeRaisedAt = 0;
 let panelFace = 'codex';
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
-let center, centerWindow, creditSecrets, browserLink, browserLinkError;
+let center, centerWindow, creditSecrets, browserLink, browserLinkError, nativeMcp;
 const browserExtensionRoot=()=>app.isPackaged?path.join(process.resourcesPath,'browser-extension'):path.join(ROOT,'browser-extension');
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
@@ -302,7 +303,8 @@ function processCreditReminders() {
 async function start() {
   store = new Store(app.getPath('userData')); quota = new QuotaService(); resetFeed = new ResetFeed();
   creditSecrets=new CreditSecrets(app.getPath('userData'),safeStorage);
-  center = new CreditCenter(app.getPath('userData'),{credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}},browserState:()=>browserLink?.state()||{enabled:false,error:browserLinkError},browserRefresh:(id,options)=>browserLink?browserLink.requestRead(id,options):Promise.reject(Error('browser_setup_required')),browserControl:()=>browserLink?.syncPause()});
+  nativeMcp=new NativeMcp(new OAuthVault(app.getPath('userData'),safeStorage),{fetch:(url,options)=>net.fetch(url,{...options,useSessionCookies:false}),openExternal:url=>shell.openExternal(url)});
+  center = new CreditCenter(app.getPath('userData'),{nativeMcp,credentialProvider:id=>creditSecrets.get(id),saveCredential:(id,key)=>creditSecrets.set(id,key),hasCredential:id=>{try{return creditSecrets.has(id);}catch{return false;}},browserState:()=>browserLink?.state()||{enabled:false,error:browserLinkError},browserRefresh:(id,options)=>browserLink?browserLink.requestRead(id,options):Promise.reject(Error('browser_setup_required')),browserControl:()=>browserLink?.syncPause()});
   try{const manifest=JSON.parse(fs.readFileSync(path.join(browserExtensionRoot(),'manifest.json'),'utf8'));browserLink=new BrowserLink(app.getPath('userData'),safeStorage,{extensionKey:manifest.key,receive:(record,meta)=>center.acceptBrowserReading(record,meta),paused:()=>!center.enabled});browserLink.on('state',broadcast);browserLink.on('connected',id=>{if(center.enabled&&!center.stopped)center.refresh(id);});browserLink.on('unavailable',(id,error)=>{if(!quitting)center.browserUnavailable(id,error);});await browserLink.start();}catch{browserLinkError='browser_component_missing';}
 
   delivery = new NotificationDelivery({ store, Notification, open: openNotificationPanel, changed: () => { if (panel) broadcast(); } });
@@ -334,13 +336,15 @@ async function start() {
         const id = value?.provider;
         if (id && typeof id !== 'string') return { ok: false };
         if (id === 'codex' || !id) { quota.setActive(true); quota.refresh(); }
-        await center.refresh(['kimi','minimax','zai'].includes(id) ? 'relay' : id, {manual:true});
+        await center.refresh(id, {manual:true});
       } else if (name === 'rule') center.setRule(value?.key, value?.rule);
       else if(name==='monthly-rule')center.setMonthlyRule(value?.observationId,value?.itemId,value?.rule);
       else if(name==='user-dates')center.setUserDate(value);
       else if(name==='remove-user-dates')center.removeUserDate(value?.id);
       else if(name==='onboarding-complete')center.completeOnboarding();
       else if(name==='connection-preferences')center.setConnectionPreferences(value);
+      else if(name==='native-connection')center.nativeAction(value?.action,value?.provider);
+      else if(name==='subscription-route')center.setSubscriptionRoute(value?.provider,value?.route);
       else if(name==='connection-source'){
         const url=require('./connection-capabilities.cjs').connectionSource(value?.provider,value?.component);
         if(!url||!url.startsWith('https://'))return{ok:false};await shell.openExternal(url);
@@ -360,7 +364,7 @@ async function start() {
         else return{ok:false};
       }
       else if(name==='credential-page'){
-        const urls={firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
+        const urls={minimax:'https://platform.minimax.io/subscribe/token-plan',firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
         if(!Object.hasOwn(urls,value?.provider))return{ok:false};await shell.openExternal(urls[value.provider]);
       }
       else if(name==='policy-source'){const policy=policyFor(value?.provider);if(!policy)return{ok:false};await shell.openExternal(policy.url);}
@@ -416,5 +420,5 @@ async function start() {
   if (!center.onboardingCompleted || process.argv.includes('--credit-center') || centerProfile) openCenter();
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; center?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; center?.stop(); nativeMcp?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });

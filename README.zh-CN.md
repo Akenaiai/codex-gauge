@@ -10,6 +10,8 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
+**源码预览：** Runway/Recraft 新增系统浏览器中的官方独立授权，MiniMax 国际站新增 Subscription Key 直查，无需 Codex、Relay 或 Python。原路径保留；新账号真实授权与 Mac 待验，这些源码改动尚未进入稳定版 0.4.4 安装包。[连接详情](docs/NATIVE_CONNECTIONS.zh-CN.md)。
+
 **当前版本 0.4.4。** Windows已实测普通主页自动读取、关闭后保留历史、再次打开恢复读取。 TapNow 改为读取正常打开的主页，不刷新、不保活、不唤醒休眠标签页。用完即可关闭，额度中心保留上次积分与时间。升级后需重新加载一次原浏览器组件。保留原 Codex 小仪表和单击翻面，Ideogram 与 Mac 仍待现场验证。[版本说明](docs/releases/0.4.4.md)
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)

@@ -59,6 +59,23 @@ async function apiBalance(provider, key, request = jsonRequest) {
   if (!key) throw new Error('login_required');
   const headers = { Authorization: 'Bearer ' + key, Accept: 'application/json' };
   const base = { provider, scope: 'key:' + (key.startsWith('ref:') ? key.slice(4).toLowerCase().slice(0,20) : hash(key)), identityVerified: false, account: 'API Key', source: 'api', fetchedAt: Date.now() };
+  if (provider === 'minimax') {
+    const raw = await request('https://www.minimax.io/v1/token_plan/remains', { headers: {...headers,'Content-Type':'application/json'} });
+    if (raw.base_resp?.status_code !== 0) throw Error([1004,2049,2057].includes(raw.base_resp?.status_code)?'login_required':'query_failed');
+    const general = raw.model_remains?.filter(x=>x?.model_name==='general');
+    if (general?.length !== 1) throw Error('invalid_response');
+    const item=general[0],pools=[];
+    for(const [prefix,label,labelEn,end] of [['current_interval','当前时段','Current interval','end_time'],['current_weekly','周额度','Weekly quota','weekly_end_time']]){
+      const amount=item[prefix+'_remaining_percent'];
+      if(amount==null)continue;
+      if(typeof amount!=='number'||!Number.isFinite(amount)||amount<0||amount>100)throw Error('invalid_response');
+      const reset=item[end];
+      pools.push({id:prefix,label,labelEn,amount,unit:'percent',resetsAt:Number.isSafeInteger(reset)&&reset>1e11?reset:null});
+    }
+    if(!pools.length)throw Error('invalid_response');
+    // Source binding is to this key, not a verified personal/team identity.
+    return [{...base,account:'MiniMax international · Subscription Key',fetchedAt:Date.now(),pools}];
+  }
   if (provider === 'firecrawl') {
     const raw = await request('https://api.firecrawl.dev/v2/team/credit-usage', { headers });
     if (raw.success !== true || raw.data?.remainingCredits == null) throw new Error('invalid_response');
@@ -83,7 +100,7 @@ async function apiBalance(provider, key, request = jsonRequest) {
 }
 async function securedApiBalance(provider, options = {}) {
   const env = options.env || process.env, key = options.credentialProvider?.(provider) || configuredKey(provider,options)?.key;
-  if (key) return apiBalance(provider,key);
+  if (key) return apiBalance(provider,key,options.request||jsonRequest);
   const file = path.join(options.home || os.homedir(),'.codex','private','credentials',provider+'-api-key.dpapi');
   if (process.platform !== 'win32' || !fs.existsSync(file) || !['firecrawl','deepseek'].includes(provider)) throw new Error('login_required');
   const endpoint = provider === 'firecrawl' ? 'https://api.firecrawl.dev/v2/team/credit-usage' : 'https://api.deepseek.com/user/balance';

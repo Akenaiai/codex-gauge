@@ -18,9 +18,11 @@
 ## 当前依赖
 
 - Codex 额度沿用原仪表与本机 Codex CLI 账号。ChatGPT 编程订阅与 OpenAI API 分别计量。
-- Suno、Runway、Recraft 及原 Lovart 路径仍需本机 Codex CLI；托管 MCP 服务运行在平台端。引导为已核实的 Suno、Runway、Recraft 地址展示手动 Codex 命令，正确的已有连接名称与配置应保留。登录仍由原客户端完成。
+- Runway/Recraft 可点击 **在官方页面连接**，在系统浏览器亲自确认账号与权限后返回刻度，此路径无需 Codex、Relay 或 Python。可取消本次授权、重新授权/切换账号、断开本机连接，或明确选择改用原 Codex 连接。平台可能授予较宽权限，界面事先说明；刻度仅调用账户/额度工具。详见[独立连接与验证范围](NATIVE_CONNECTIONS.zh-CN.md)。
+- Suno 与原 Lovart 路径仍需本机 Codex CLI；Runway/Recraft 原 Codex 路径继续可用。托管 MCP 服务运行在平台端。引导为已核实的 Suno、Runway、Recraft 地址展示手动 Codex 命令，正确的已有连接名称与配置应保留。登录仍由原客户端完成。
 - 可灵沿用中国站 MCP 或 CLI 路径。公开中国站安装入口尚未核实，引导不猜入口、不换全球站地址。
-- Kimi、MiniMax、Z.AI 编程额度仍需单独的 Agent Relay 插件、Python 和刻度随附桥接。公开 Relay 安装器尚未核实。编程额度不证明视频、通用 API 或会员权益。
+- MiniMax 国际站可 **连接 Subscription Key**，无需额外组件，仅读取通用订阅周期额度，不代替按量余额或视频权益；旧 Relay 路径保留。换 Key 使用独立来源，失败不切换 Relay 身份。
+- Kimi、Z.AI 与旧 MiniMax 编程额度仍需单独的 Agent Relay 插件、Python 和刻度随附桥接。公开 Relay 安装器尚未核实。编程额度不证明视频、通用 API 或会员权益。
 - DeepSeek、Firecrawl、Tavily 在原加密连接表单使用已有 API Key。免费 API 账号可使用已支持查询，聊天会员另计。正常 API 路径无需 Codex、Relay 或 Python。
 - TapNow、Ideogram 复用原可选浏览器组件说明，由本人安装、配对与授权。网页读数账号身份待核实；Ideogram 真实读取仍待验。
 
@@ -30,4 +32,4 @@
 
 `credit-center.json` 保留原版本和字段，新增 `connectionPreferences` 保存步骤与平台选择。`tools[].followed` 控制显示，`userFollowed` 单独表达主动选择，旧用户默认可见不新增空白总览行。有效实查自动记住显示，使用 `userChoice: false`；明确勾选或隐藏使用 `true`。这些偏好不保存凭据。隐藏仅影响视图，原提醒与后台查询继续。
 
-检查覆盖空白用户、中断重启、有效与零读数自动纳入、明确隐藏与恢复、旧缓存库存、记录引用和原徽章设置保留、无效输入与保存失败回退。Windows Electron 检查使用生产渲染与 preload、隔离真实中心和合成上游，实际执行交互，截图只作辅助。平台新登录、干净实体电脑完整安装和 Mac 实测仍是独立验证。本次没有实现独立远程 OAuth，也没有发布稳定安装包。
+检查覆盖空白用户、中断重启、有效与零读数自动纳入、明确隐藏与恢复、旧缓存库存、记录引用和原徽章设置保留、无效输入与保存失败回退。Windows Electron 检查使用生产渲染与 preload、隔离真实中心和合成上游，实际执行交互，截图只作辅助。平台新登录、干净实体电脑完整安装和 Mac 实测仍是独立验证。源码现已提供独立 OAuth，协议与 Windows 隔离界面/系统加密检查和真实平台授权分别记录；本项没有发布稳定安装包。

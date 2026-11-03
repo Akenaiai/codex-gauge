@@ -1,5 +1,13 @@
 # Verification / 验证记录
 
+## Independent connections — source preview (2026-11-03)
+
+Runway/Recraft native OAuth and MiniMax international Subscription Key readers have 22 targeted protocol/source-isolation tests, alongside the existing 237 checks. Windows Electron validation exercises 35 production renderer/preload interactions with a real center/native client/loopback callbacks/OS encryption and synthetic upstream data. A separate actual `main.cjs` launch in empty home/PATH passes 14 startup/IPC checks. Chinese/English, light/dark and 700/1050px guide layouts were checked. No daily profile or installer was replaced.
+
+Live Runway/Recraft public metadata and public-client registration succeeded; the probe stopped before browser authorization. Real new provider consent/credits and MiniMax key verification remain pending. Mac hardware and physical clean-install/upgrade acceptance remain separate. Read-only tools, callback/issuer validation, denial/cancel/timeouts, refresh invalidation, key/team switching, encryption, existing-account commit rollback, suspend/late replies, disconnected restart and manual-record preservation are synthetic protocol/runtime checks, not authenticated platform receipts. See [connection details](NATIVE_CONNECTIONS.md).
+
+中文：22项独立连接检查与原237项覆盖分别保留；Windows 35项生产界面/真实回调与系统加密、14项实际主进程空白启动通过，上游是合成数据。两平台公开元数据/客户端注册是实网回执，未打开授权；本人真实新授权、MiniMax Key、Mac与完整安装待验。未替换0.4.4，未生成或新增监控。[中文说明](NATIVE_CONNECTIONS.zh-CN.md)。
+
 ## 0.3.13 direct member MCP
 
 173 automated checks pass, including fixed direct Runway dispatch, API/member endpoint isolation, Recraft verified-personal text parsing and structured/JSON rejection, Kling MCP preference, actual camelCase fields, zero balance and no cross-account CLI fallback. Two consecutive real read rounds succeeded for all three providers, with identity checks and new timestamps. Synthetic native fixtures separately cover provider rows, error/zero handling, old-CLI retirement and the original Codex face. Authorization was performed in the original clients' normal browser flow by the user; no key or session was copied into Gauge.

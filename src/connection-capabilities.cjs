@@ -20,8 +20,10 @@ Object.assign(profiles.lovart, { entry: 'https://www.lovart.ai/', sources: ['htt
 Object.assign(profiles.suno, { entry: 'https://suno.com/mcp', endpoint: 'https://api.suno.com/mcp', sources: ['https://help.suno.com/en/articles/14486145'], limits: text('歌曲与下载积分分开；公开 handle 不作为稳定账号身份；续费日不是积分发放证明。', 'Song/download credits are separate; public handles are not stable identity; billing renewal is not a grant receipt.') });
 Object.assign(profiles.runway, { entry: 'https://help.runwayml.com/hc/en-us/articles/51931843164691-Connecting-to-Runway-MCP', endpoint: 'https://mcp.runwayml.com/mcp', sources: ['https://help.runwayml.com/hc/en-us/articles/51931843164691-Connecting-to-Runway-MCP'], limits: text('官方会员 MCP 当前团队积分，区别于 Runway Developer API 账户。', 'Official member MCP credits for the current team, separate from a Runway Developer API account.') });
 Object.assign(profiles.recraft, { entry: 'https://www.recraft.ai/docs/mcp-reference/remote-server', endpoint: 'https://mcp.recraft.ai/mcp', sources: ['https://www.recraft.ai/docs/mcp-reference/remote-server'], limits: text('官方会员 MCP 当前个人空间；本地 API MCP 的计费额度不适用此适配。', 'Official member MCP current personal space; local API MCP billing units do not use this adapter.') });
+for(const id of ['runway','recraft'])profiles[id].nativeOAuth=true;
 define(['kling'], { route: 'kling', quotaKind: 'personal_paid_credits', components: ['codex_cli'], auth: 'original_client', remote: true, endpoint: 'https://klingai.com/mcp', endpointEvidence: 'existing_adapter', entry: null, sources: ['https://kling.ai/app/mcp/guide'], limits: text('优先原 Codex 中国站 MCP，否则原可灵中国站 CLI；只读个人空间付费灵感值。官方全球站说明不能替代中国站安装来源（本次未核实），两站不可互换；赠送和团队权益不在此范围。', 'Prefers existing Codex China MCP, otherwise existing Kling China CLI; reads personal paid credits. Official global guidance does not verify China installation instructions (unverified here); endpoints are not interchangeable. Bonus/team entitlements are outside this scope.') });
 define(['kimi', 'minimax', 'zai'], { route: 'relay', quotaKind: 'coding_subscription', components: ['agent_relay', 'python', 'relay_bridge'], auth: 'original_client', entry: null, sources: [], evidence: 'adapter_contract', limits: text('依赖另外安装的 Agent Relay 只读桥接与 Python；缓存名称不足以证明组件完整。编程订阅不等于视频、通用 API 或本人填写的会员记录。', 'Requires separately installed Agent Relay read bridge and Python; a cache name alone is insufficient. Coding subscription is separate from video, general API and user-entered membership.') });
+profiles.minimax={...profiles.minimax,entry:'https://platform.minimax.io/subscribe/token-plan',sources:['https://platform.minimax.io/subscribe/token-plan'],evidence:'official',nativeSubscriptionKey:true,limits:text('可直接填写本人 MiniMax 国际站 Subscription Key，查询通用订阅周期额度，无需 Codex、Relay 或 Python；原 Relay 路径保留。普通按量 API Key、国内站、视频权益与 MiniMax Code 登录不可混用。','Enter your MiniMax international Subscription Key to read general subscription windows without Codex, Relay or Python. Existing Relay remains available. Pay-as-you-go keys, China region, video entitlement and MiniMax Code sign-in are separate.')};
 define(['deepseek', 'firecrawl', 'tavily'], { route: 'api', quotaKind: 'api_balance', components: [], auth: 'api_key', remote: true });
 Object.assign(profiles.deepseek, { entry: 'https://platform.deepseek.com/', sources: ['https://api-docs.deepseek.com/api/get-user-balance'], limits: text('API 赠金与充值余额分开；不是聊天会员。Windows 私有 DPAPI 后备需要 PowerShell。', 'API grant and purchased balances are separate from chat membership. Windows private DPAPI fallback requires PowerShell.') });
 Object.assign(profiles.firecrawl, { entry: 'https://www.firecrawl.dev/app', sources: ['https://docs.firecrawl.dev/api-reference/endpoint/credit-usage'], limits: text('对应 API Key 的团队积分；账期结束不自动当作积分到期。Windows 私有 DPAPI 后备需要 PowerShell。', 'Team credits for the API key; billing-period end is not automatically expiry. Windows private DPAPI fallback requires PowerShell.') });
@@ -83,9 +85,9 @@ function probeComponents(options = {}) {
     powershell: native(findExecutable('pwsh', { home, env, platform }) || findExecutable('powershell', { home, env, platform })),
   };
   const api = {};
-  for (const id of ['deepseek', 'firecrawl', 'tavily']) {
+  for (const id of ['deepseek', 'firecrawl', 'tavily','minimax']) {
     const key = !!configuredKey(id, { home, env });
-    const dpapi = platform === 'win32' && id !== 'tavily' && file(path.join(home, '.codex/private/credentials', id + '-api-key.dpapi'));
+    const dpapi = platform === 'win32' && ['deepseek','firecrawl'].includes(id) && file(path.join(home, '.codex/private/credentials', id + '-api-key.dpapi'));
     api[id] = { key, dpapi };
   }
   let config = '', entries = []; try { config = fs.readFileSync(path.join(home, '.codex/config.toml'), 'utf8'); entries = entriesToml(config); } catch { }
@@ -99,12 +101,16 @@ function probeComponents(options = {}) {
   return { checkedAt: Date.now(), platform, checks, api, mcp, mcpErrors };
 }
 
-function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}, hasCredential = false, relayEnabled = false, now = Date.now() } = {}) {
+function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}, hasCredential = false, native = null, subscriptionRoute = null, relayEnabled = false, now = Date.now() } = {}) {
   const profile = profileFor(tool.id), p = probe || { platform: process.platform, checks: {}, api: {}, mcp: {} };
   const supported = profile.route !== 'unsupported' && profile.os.includes(p.platform);
   let route = profile.route, required = [...profile.components], connected = false;
-  const configurationError = p.mcpErrors?.[tool.id] || null;
-  if (route === 'kling') {
+  let configurationError = p.mcpErrors?.[tool.id] || null;
+  if(native&&(native.selected||profile.nativeOAuth&&!p.mcp[tool.id]&&!configurationError)){
+    route='native_mcp';required=[];connected=native.connected;configurationError=null;
+  } else if(tool.id==='minimax'&&subscriptionRoute!=='relay'&&(subscriptionRoute==='direct'||hasCredential||p.api?.minimax?.key||!relayEnabled)){
+    route='subscription_api';required=[];connected=!!(hasCredential||p.api?.minimax?.key);
+  } else if (route === 'kling') {
     const useMcp = p.mcp.kling || configurationError;
     route = useMcp ? 'codex_mcp' : 'cli'; required = [useMcp ? 'codex_cli' : 'kling_cli'];
     connected = !configurationError;
@@ -127,7 +133,7 @@ function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}
   const reading = !active.length ? records.some(r => r.provider === tool.id && r.status === 'account_changed') ? 'account_changed' : 'none'
     : !automatic.length ? 'recorded' : !current.length ? 'stale' : !known.length || known.some(pool => pool.amount == null) ? 'unknown' : known.some(pool => pool.amount > 0) ? 'available' : 'zero';
   const failure = queryStatus && !['ready', 'querying', 'connecting', 'offline', 'stale'].includes(queryStatus) ? queryStatus : null;
-  const error = failure || configurationError || latest?.error || (reading === 'account_changed' ? 'account_changed' : null);
+  const error = (route==='native_mcp'?native?.error:null) || failure || configurationError || latest?.error || (reading === 'account_changed' ? 'account_changed' : null);
   let status = !supported ? 'unsupported' : !componentReady ? 'component_missing' : !connected ? 'connection_required' : route === 'browser' && !browser.connected ? 'offline' : 'query_available';
   if (canAttempt && current.length) status = 'ready';
   if (canAttempt && reading === 'stale') status = 'stale';
@@ -135,6 +141,7 @@ function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}
   if (error && supported && componentReady && connected) status = ['login_required', 'account_changed'].includes(error) ? error : 'query_failed';
   if (configurationError) status = 'configuration_invalid';
   if (queryStatus === 'querying') status = 'querying';
+  if(native?.pending)status='connecting';
   const authorization = ['login_required','account_changed'].includes(error) ? 'required' : current.length ? current.every(r => r.identityVerified) ? 'verified' : 'identity_unverified' : 'unconfirmed';
   return { schemaVersion: 1, profile, discovery: { found: !!tool.connections?.length, evidence: tool.connections || [] },
     components: { ready: componentReady, checks, missing, checkedAt: p.checkedAt || null },

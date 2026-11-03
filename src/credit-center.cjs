@@ -12,13 +12,14 @@ const {cleanPreferences,followed,patchPreferences}=require('./connection-prefere
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
-const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential','browser_offline','browser_setup_required','page_closed','selection_changed'];
+const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential','browser_offline','browser_setup_required','page_closed','selection_changed','permission_denied','authorization_pending','authorization_cancelled','authorization_denied'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
   constructor(directory, options = {}) {
     super(); const existingInstallation=['credit-center.json','settings.json'].some(file=>fs.existsSync(path.join(directory,file)));this.store = new CreditStore(directory); this.options = options; this.busy = new Set(); this.statuses = {}; this.stopped = false; this.generation = 0;
     this.providerEpoch=new Map();this.queryRuns=new Map();this.connectRuns=new Map();this.connecting=new Set();
     const data = this.store.data;
+    this.subscriptionRoutes={};if(['direct','relay'].includes(data.subscriptionRoutes?.minimax))this.subscriptionRoutes.minimax=data.subscriptionRoutes.minimax;
     this.records = [];
     this.dateObservations=cleanObservations(data.dateObservations);
     this.userDates=cleanUserDates(data.userDates);
@@ -41,8 +42,25 @@ class CreditCenter extends EventEmitter {
     this.inventory = data.inventory && Array.isArray(data.inventory.tools) && data.inventory.tools.every(t=>t&&typeof t.id==='string'&&typeof t.name==='string'&&Array.isArray(t.connections)&&t.connections.every(c=>c&&typeof c.kind==='string'&&typeof c.source==='string'&&typeof c.label==='string')) ? data.inventory : { tools: [], sources: [], issues: [], scannedAt: null };
     for(const r of this.dateObservations)this.ensureObservationTool(r.provider);
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
+    options.nativeMcp?.on('state',()=>this.emit('state'));
+    options.nativeMcp?.on('connected',(id,rows)=>{
+      if(this.stopped)throw Error('authorization_cancelled');
+      if(this.store.error)throw Error('storage_failed');
+      const verified=rows.map(row=>cleanRecord(row));
+      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),preferences:structuredClone(this.connectionPreferences),notices:structuredClone(this.notices),data:structuredClone(this.store.data),status:this.statuses[id]};
+      this.invalidateProvider(id);
+      this.retireProvider(id);
+      for(const row of verified)this.put(row,false);
+      this.ensureTool(id);this.statuses[id]='ready';this.rescan();
+      if(this.store.error){this.records=old.records;this.inventory=old.inventory;this.connectionPreferences=old.preferences;this.notices=old.notices;this.store.data=old.data;if(old.status===undefined)delete this.statuses[id];else this.statuses[id]=old.status;throw Error('storage_failed');}
+      this.emit('state');
+    });
+    options.nativeMcp?.on('disconnected',id=>{
+      this.invalidateProvider(id);this.retireProvider(id);this.statuses[id]='login_required';this.persist();this.emit('state');
+    });
   }
   persist() {
+    this.store.data.subscriptionRoutes=this.subscriptionRoutes;
     this.store.data.connectionPreferences=this.connectionPreferences;
     Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,userDates:this.userDates,onboardingCompleted:this.onboardingCompleted,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     this.store.data.connectionAccess=Object.fromEntries(this.inventory.tools.map(t=>[t.id,this.access(t)]));
@@ -50,7 +68,7 @@ class CreditCenter extends EventEmitter {
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, followed:followed(this.connectionPreferences,t.id),userFollowed:this.connectionPreferences.platforms[t.id]?.userChoice===true&&followed(this.connectionPreferences,t.id),membershipInput:this.connectionPreferences.platforms[t.id]?.membership||'unknown', access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+    const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, nativeConnection:this.options.nativeMcp?.state(t.id),followed:followed(this.connectionPreferences,t.id),userFollowed:this.connectionPreferences.platforms[t.id]?.userChoice===true&&followed(this.connectionPreferences,t.id),membershipInput:this.connectionPreferences.platforms[t.id]?.membership||'unknown', access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek','minimax'].includes(t.id),
       queryReady:access.query.canAttempt,
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
@@ -64,13 +82,14 @@ class CreditCenter extends EventEmitter {
     this.componentProbe ||= probeComponents(this.options);
     const relayEnabled=this.inventory.tools.some(t=>t.id==='agent-relay'&&t.connections.some(c=>c.enabled&&c.evidence==='configured'&&c.kind==='plugin'&&c.source==='Codex'))||this.inventory.tools.some(t=>['kimi','minimax','zai'].includes(t.id)&&t.connections.some(c=>c.enabled&&c.kind==='cli'&&c.evidence==='installed'))||this.records.some(r=>['kimi','minimax','zai'].includes(r.provider)&&r.source==='relay');
     let hasCredential=false;try{hasCredential=!!this.options.hasCredential?.(tool.id);}catch{}
-    return accessFor(tool,{probe:this.componentProbe,records:this.records,queryStatus:this.statuses[tool.id]||(['kimi','minimax','zai'].includes(tool.id)?this.statuses.relay:null),browser:this.options.browserState?.(),hasCredential,relayEnabled});
+    return accessFor(tool,{probe:this.componentProbe,records:this.records,queryStatus:this.statuses[tool.id]||(['kimi','minimax','zai'].includes(tool.id)?this.statuses.relay:null),browser:this.options.browserState?.(),hasCredential,native:this.options.nativeMcp?.state(tool.id),subscriptionRoute:this.subscriptionRoutes[tool.id],relayEnabled});
   }
   rescan() {
     this.componentProbe=probeComponents(this.options);
     this.inventory = scan({ ...this.options, hostTools: this.store.hostInventory() });
     if(this.componentProbe.checks.codex_cli&&!this.inventory.tools.some(t=>t.id==='codex')){this.ensureTool('codex');this.inventory.tools.find(t=>t.id==='codex').connections=[{kind:'cli',source:'Local CLI installation',label:'Codex',enabled:true,evidence:'installed'}];}
-    for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
+    for(const id of ['firecrawl','tavily','deepseek','minimax'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
+    for(const id of ['runway','recraft'])if(this.options.nativeMcp?.state(id)?.selected){this.ensureTool(id);if(!this.options.nativeMcp.state(id).connected)this.retireProvider(id);this.inventory.tools.find(t=>t.id===id).connections.push({kind:'mcp',source:'Gauge native OAuth',label:id,enabled:true,evidence:'credential_reference'});}
     for (const row of this.records){this.ensureTool(row.provider);if(row.source==='browser')this.ensureBrowserTool(row.provider);}
     for(const row of this.userDates)this.ensureUserDateTool(row.provider);
     for(const id of Object.keys(this.connectionPreferences.platforms))this.ensureFollowedTool(id);
@@ -184,13 +203,18 @@ class CreditCenter extends EventEmitter {
     } catch { }
   }
   async query(id,{manual=false}={}) {
-    if(!['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].includes(id))return;
+    if(!['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram','minimax'].includes(id))return;
     if (this.stopped || this.busy.has(id)) return;
+    if(this.options.nativeMcp?.state(id)?.pending)return;
     const generation=this.generation,epoch=this.providerEpoch.get(id)||0,run=Symbol();this.queryRuns.set(id,run);
     this.busy.add(id); this.statuses[id] = 'querying'; this.emit('state');
     try {
       let rows;
-      if (id === 'xyq') rows = await adapters.xyq(this.options);
+      if(id==='minimax'){this.subscriptionRoutes.minimax='direct';this.persist();if(this.store.error)throw Error('storage_failed');}
+      if (this.options.nativeMcp?.state(id)?.pending)throw Error('authorization_pending');
+      if (this.options.nativeMcp?.state(id)?.selected)rows=await this.options.nativeMcp.read(id);
+      else if (id === 'minimax')rows=await adapters.securedApiBalance(id,this.options);
+      else if (id === 'xyq') rows = await adapters.xyq(this.options);
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
       else if(id==='suno')rows=await require('./codex-mcp-credit.cjs').suno(this.options);
       else if(['runway','kling','recraft'].includes(id))rows=await require('./creative-providers.cjs')[id](this.options);
@@ -205,9 +229,11 @@ class CreditCenter extends EventEmitter {
         for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.status!=='account_changed'&&!active.has(old.id)){old.status='offline';old.error='query_failed';}
       }
       for (const input of rows) {
+        if(id==='relay'&&input.provider==='minimax'&&this.access({id:'minimax',connections:[]}).query.route==='subscription_api')continue;
         this.ensureTool(input.provider);
         if (!input.pools.length) { this.statuses[input.provider] = 'query_failed'; for(const old of this.records)if(old.provider===input.provider&&old.source==='relay'){old.status='offline';old.error='query_failed';} continue; }
         const r = cleanRecord(input);
+        if(r.provider==='minimax'&&r.source==='api')for(const old of this.records)if(old.provider==='minimax'&&old.source==='relay')old.status='account_changed';
         if (input.reportedStatus && input.reportedStatus !== 'ready') { r.status = 'stale'; r.error = 'query_failed'; }
         this.put(r); this.statuses[r.provider] = r.status;
       }
@@ -216,7 +242,7 @@ class CreditCenter extends EventEmitter {
     } catch (e) {
       if (this.stopped || generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0)) return;
       const error = safeError(e); this.statuses[id] = error;
-      for (const r of this.records) if ((r.provider === id || id === 'relay' && r.source === 'relay') && r.source !== 'host' && r.status!=='account_changed') {
+      for (const r of this.records) if ((r.provider === id || id === 'relay' && r.source === 'relay') && !['host','manual'].includes(r.source) && r.status!=='account_changed') {
         r.status = ['login_required','account_changed'].includes(error) ? 'account_changed' : 'offline'; r.error = error;
       }
     } finally { if(generation===this.generation&&this.queryRuns.get(id)===run){this.queryRuns.delete(id);this.busy.delete(id); this.persist(); this.emit('state');} }
@@ -226,8 +252,9 @@ class CreditCenter extends EventEmitter {
     const generation=this.generation;
     this.loadImports();
     this.componentProbe=probeComponents(this.options);
-    const ids = id ? [['kimi','minimax','zai'].includes(id)?'relay':id] : ['xyq','jimeng','relay','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].filter(x => {
+    const ids = id ? [['kimi','minimax','zai'].includes(id)&&this.access({id,connections:[]}).query.route!=='subscription_api'?'relay':id] : ['xyq','jimeng','relay','minimax','firecrawl','deepseek','lovart','suno','tavily','runway','kling','recraft','tapnow','ideogram'].filter(x => {
       if(x==='relay')return this.access({id:'kimi',connections:[]}).query.canAttempt;
+      if(x==='minimax'&&this.access({id:x,connections:[]}).query.route!=='subscription_api')return false;
       return this.inventory.tools.some(t=>t.id===x&&this.access(t).query.canAttempt);
     });
     // Limit concurrent upstream reads. Each query has a separate bounded timeout.
@@ -247,30 +274,47 @@ class CreditCenter extends EventEmitter {
     this.emit('state');
   }
   async connect(provider,key,{replaceRecordId=null}={}){
-    if(!['firecrawl','tavily','deepseek'].includes(provider)||typeof key!=='string')throw new Error('invalid_credential');
+    if(!['firecrawl','tavily','deepseek','minimax'].includes(provider)||typeof key!=='string')throw new Error('invalid_credential');
     if(replaceRecordId&&!this.records.some(r=>r.id===replaceRecordId&&r.provider===provider&&r.source==='host'))throw new Error('invalid_account');
     if(this.store.error)throw new Error('storage_failed');
     const generation=this.generation,attempt=Symbol();this.connectRuns.set(provider,attempt);this.connecting.add(provider);this.emit('state');
     try{
-      const rows=await adapters.apiBalance(provider,key.trim()),verified=rows.map(row=>cleanRecord(row));
+      const rows=await adapters.apiBalance(provider,key.trim(),this.options.request||adapters.jsonRequest),verified=rows.map(row=>cleanRecord(row));
       if(this.stopped||generation!==this.generation||this.connectRuns.get(provider)!==attempt)throw new Error('query_failed');
       if(!this.options.saveCredential)throw new Error('credential_storage_failed');
-      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),preferences:structuredClone(this.connectionPreferences),notices:structuredClone(this.notices),bindings:structuredClone(this.snapshotBindings),data:structuredClone(this.store.data),status:this.statuses[provider]};
+      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),preferences:structuredClone(this.connectionPreferences),notices:structuredClone(this.notices),bindings:structuredClone(this.snapshotBindings),routes:{...this.subscriptionRoutes},data:structuredClone(this.store.data),status:this.statuses[provider]};
       let undo,saved=false;
       try{
         undo=this.options.saveCredential(provider,key.trim());saved=true;
         this.providerEpoch.set(provider,(this.providerEpoch.get(provider)||0)+1);this.queryRuns.delete(provider);this.busy.delete(provider);
+        if(provider==='minimax'){this.subscriptionRoutes.minimax='direct';this.retireProvider(provider);}
         for(const r of verified)this.put(r,false);this.ensureTool(provider);this.statuses[provider]='ready';
         if(replaceRecordId){this.snapshotBindings[replaceRecordId]=verified[0].id;const replaced=this.records.find(r=>r.id===replaceRecordId);if(replaced)replaced.status='account_changed';}
         const tool=this.inventory.tools.find(t=>t.id===provider);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Encrypted local credential',label:provider,enabled:true,evidence:'credential_reference'});
         this.persist();if(this.store.error)throw new Error('storage_failed');
       }catch(error){
         if(saved){try{if(typeof undo!=='function')throw Error();undo();}catch{this.emit('state');throw new Error('credential_commit_partial');}}
-        this.records=old.records;this.inventory=old.inventory;this.connectionPreferences=old.preferences;this.notices=old.notices;this.snapshotBindings=old.bindings;this.store.data=old.data;
+        this.records=old.records;this.inventory=old.inventory;this.connectionPreferences=old.preferences;this.notices=old.notices;this.snapshotBindings=old.bindings;this.subscriptionRoutes=old.routes;this.store.data=old.data;
         if(old.status===undefined)delete this.statuses[provider];else this.statuses[provider]=old.status;
         this.emit('state');throw error;
       }
     }finally{if(this.connectRuns.get(provider)===attempt){this.connectRuns.delete(provider);this.connecting.delete(provider);this.emit('state');}}
+  }
+  invalidateProvider(id){this.providerEpoch.set(id,(this.providerEpoch.get(id)||0)+1);this.queryRuns.delete(id);this.busy.delete(id);}
+  retireProvider(id){for(const r of this.records)if(r.provider===id&&!['manual','host'].includes(r.source))r.status='account_changed';}
+  setSubscriptionRoute(id,route){
+    if(id!=='minimax'||!['direct','relay'].includes(route))throw Error('unsupported');
+    const previous={routes:{...this.subscriptionRoutes},records:structuredClone(this.records),status:this.statuses[id]};
+    this.subscriptionRoutes[id]=route;this.retireProvider(id);this.statuses[id]='login_required';this.persist();
+    if(this.store.error){this.subscriptionRoutes=previous.routes;this.records=previous.records;this.statuses[id]=previous.status;throw Error('storage_failed');}
+    this.invalidateProvider(id);this.emit('state');
+  }
+  nativeAction(action,id){
+    if(!['runway','recraft'].includes(id)||!this.options.nativeMcp)throw Error('unsupported');
+    if(action==='connect'){if(this.store.error)throw Error('storage_failed');this.invalidateProvider(id);this.options.nativeMcp.begin(id);}
+    else if(action==='cancel')this.options.nativeMcp.cancel(id);
+    else if(action==='disconnect'||action==='legacy')this.options.nativeMcp.disconnect(id,action==='legacy');
+    else throw Error('unsupported');
   }
   setPreferences({ enabled = this.enabled, reminders = this.reminders }) {
     const oldEnabled=this.enabled,oldReminders=this.reminders;
@@ -311,6 +355,6 @@ class CreditCenter extends EventEmitter {
     this.timer = setInterval(() => { if (this.enabled) this.refresh(); }, 5*60000);
     this.ticks = setInterval(() => this.tick(), 30000);
   }
-  stop() { this.stopped = true; this.generation++; this.busy.clear();this.queryRuns.clear();this.connectRuns.clear();this.connecting.clear(); clearInterval(this.timer); clearInterval(this.ticks); }
+  stop() { this.stopped = true; for(const id of ['runway','recraft'])this.options.nativeMcp?.cancel(id);this.generation++; this.busy.clear();this.queryRuns.clear();this.connectRuns.clear();this.connecting.clear(); clearInterval(this.timer); clearInterval(this.ticks); }
 }
 module.exports = { CreditCenter };

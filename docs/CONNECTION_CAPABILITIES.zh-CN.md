@@ -2,19 +2,19 @@
 
 [English](CONNECTION_CAPABILITIES.md) · [额度中心](CREDIT_CENTER.md)
 
-当前源码已提供[首次连接流程](NEW_USER_CONNECTIONS.zh-CN.md)，复用下方能力契约。本次未替换稳定版 0.4.4 安装包；独立远程 OAuth 和正式更名不在本项范围。
+当前源码已提供[首次连接流程](NEW_USER_CONNECTIONS.zh-CN.md)，复用下方能力契约。本次未替换稳定版 0.4.4 安装包；源码现已包含 Runway/Recraft 独立 OAuth 与 MiniMax 国际站 Subscription Key 读取；正式更名仍不在范围。详见[独立连接](NATIVE_CONNECTIONS.zh-CN.md)。
 
 ## 后续连接流程的接口
 
 `CreditCenter.state()` 增加：
 
 - `connectionCatalog`：平台说明，包含自动适配及暂不支持的平台。字段包括 `provider`、`route`、`quotaKind`、`os`、`components`、`auth`、`entry`、`sources`、`checkedOn` 和双语 `limits`。`entry: null` 表示没有提供已核实的安装入口。`evidence: adapter_contract` 表示依据现有本地实现，不能冒充公开安装文档已验证。
-- `connectionComponents`：组件 ID、双语名称、已核实的官方安装来源及是否随刻度提供。远程 MCP 服务运行在平台端；**当前适配**仍依赖本机 Codex CLI 客户端，不要求另装一个本地平台服务器。
+- `connectionComponents`：组件 ID、双语名称、已核实的官方安装来源及是否随刻度提供。远程 MCP 服务运行在平台端；兼容适配仍依赖本机 Codex CLI；Runway/Recraft 另有刻度独立 OAuth 路径，无额外组件，不要求另装一个本地平台服务器。
 - `tools[].access`（`schemaVersion: 1`）：分别表达发现、组件、授权、查询与读数。原 `adapter` 仍表示有适配，`queryReady` 表示具备尝试现有只读路径的条件，均不证明登录成功或还有余额。
 
 `tools` 包含实际发现、已有记录及本人主动关注的平台占位；空白用户为空列表，不将全部支持平台铺满首页。
 
-`access.components` 保存文件存在性及缺失组件 ID，不运行安装器、不执行任意发现的程序、不导入 Relay 模块、不打开账户页、不解密凭据。文件存在不保证可运行；重新发现或刷新会复查组件和配置，时间在 `checkedAt`。API 仅暴露凭据引用状态；DPAPI 后备需 Windows 和 PowerShell，要求原生执行文件的读取器不会把 shell 包装脚本当可用组件。
+`access.components` 保存文件存在性及缺失组件 ID，不运行安装器、不执行任意发现的程序、不导入 Relay 模块、不打开账户页、不解密凭据。独立 OAuth 状态在主进程单独读取，仅将保存状态和固定错误码传给界面。文件存在不保证可运行；重新发现或刷新会复查组件和配置，时间在 `checkedAt`。API 仅暴露凭据引用状态；DPAPI 后备需 Windows 和 PowerShell，要求原生执行文件的读取器不会把 shell 包装脚本当可用组件。
 
 `access.authorization.status` 为 `unconfirmed`、`required`、`verified` 或 `identity_unverified`，有读数时保留核对时间。配置、Skill、缓存、宿主连接名称和加密文件都不是已登录证明。网页、Lovart、Suno 等缺少稳定身份的真实读数仍标身份待核实。本人会员或日期填写不证明真实权益（`membershipInputVerifiesQuota: false`），不会生成余额。
 
@@ -34,11 +34,12 @@
 | 小云雀 | 原生 CLI；当前个人或团队有效积分 | [官方 CLI](https://github.com/Pippit-dev/cli) |
 | 即梦 / Dreamina | 原生 CLI 账号积分 | [官方安装概述](https://dreamina.capcut.com/tools/dreamina-cli)；地区与账号由原客户端确定 |
 | Suno | 原 Codex MCP；歌曲、下载分项 | [官方 MCP FAQ](https://help.suno.com/en/articles/14486145)；账单续费不是积分到账证明 |
-| Runway | Codex 与托管会员 MCP；当前团队 | [官方会员 MCP](https://help.runwayml.com/hc/en-us/articles/51931843164691-Connecting-to-Runway-MCP)；Developer API 独立 |
-| Recraft | Codex 与托管会员 MCP；当前个人账户 | [官方 MCP](https://www.recraft.ai/docs/mcp-reference/remote-server)；本地 API MCP、未知或团队文本不替代此余额 |
+| Runway | 刻度独立 OAuth 或原 Codex 托管会员 MCP；当前团队 | [官方会员 MCP](https://help.runwayml.com/hc/en-us/articles/51931843164691-Connecting-to-Runway-MCP)；Developer API 独立 |
+| Recraft | 刻度独立 OAuth 或原 Codex 托管会员 MCP；当前个人账户 | [官方 MCP](https://www.recraft.ai/docs/mcp-reference/remote-server)；本地 API MCP、未知或团队文本不替代此余额 |
 | 可灵 | 原中国站 MCP 经 Codex，否则原中国站 CLI | [官方全球站说明](https://kling.ai/app/mcp/guide)核实个人付费额度范围；**不能据此核实中国站安装入口**，该入口留空，原适配地址不改 |
 | Lovart | 原 Codex 命名 MCP；总量，身份待核实 | [官方积分规则](https://www.lovart.ai/statement/lovart-subscribe-faq)；公开安装说明仍未核实 |
-| Kimi / MiniMax / Z.AI | 独立 Relay 配套插件、Python、随包桥接；编程订阅 | 现有本地适配契约，不宣称已核实公开 Relay 安装器；MiniMax 视频及本人会员记录独立 |
+| Kimi / Z.AI；MiniMax 旧路径 | 独立 Relay 配套插件、Python、随包桥接；编程订阅 | 现有本地适配契约，不宣称已核实公开 Relay 安装器；MiniMax 视频及本人会员记录独立 |
+| MiniMax 独立查询 | 国际站 Subscription Key；通用订阅周期，无额外组件 | [官方额度接口](https://platform.minimax.io/subscribe/token-plan)；不推断按量余额与视频权益 |
 | DeepSeek / Firecrawl / Tavily | API Key，不依赖 Codex | [DeepSeek 余额](https://api-docs.deepseek.com/api/get-user-balance/)、[Firecrawl 积分](https://docs.firecrawl.dev/api-reference/endpoint/credit-usage)、[Tavily 用量](https://docs.tavily.com/documentation/api-reference/endpoint/usage)；不当作聊天会员 |
 | TapNow / Ideogram | 本人安装并配对刻度浏览器组件、已授权可见页面 | [已有网页连接](BROWSER_CONNECTION.zh-CN.md)；MCP 可见不代表已实现余额读取。TapNow 复用已有主页，Ideogram 真实读取待验 |
 
@@ -47,3 +48,5 @@
 ## 验证边界
 
 `tests/connection-capabilities.test.cjs` 覆盖空白用户、缓存及 Skill、缺组件、包装脚本、真实配置与宿主目录的区别、存在 CLI 但可灵 MCP 错误或歧义、加密引用、网页配置与离线、未知与零、旧读数、授权失效、账号切换及快照兼容。网络与授权案例使用合成输入。Windows 实际运行、界面检查及只读现场观察在本机任务回执单独记录。`os` 表达已实现分支，不是 Mac 实机验收；本项不声称新平台登录成功、干净实体电脑安装通过或未来新向导全流程已通过。
+
+新增 `connectionCatalog[].nativeOAuth`、`nativeSubscriptionKey`，及 `tools[].nativeConnection`（`selected`、`connected`、`pending`、固定 `error`）。`connected` 仅表示保存了加密授权，不证明当前有效。实际路径为 `native_mcp`、`subscription_api` 或原兼容路径。明确断开后仍保留独立路径选择，重启不自动换回旧身份；由本人点击“改用原 Codex 连接”才回旧路径。MiniMax 保存 `subscriptionRoutes.minimax`，密钥移除或失败不自动恢复 Relay 身份；“改用原 Relay 连接”是明确选择。OAuth 凭据不进入中心状态或 MCP 快照。

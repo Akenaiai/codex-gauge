@@ -14,3 +14,6 @@ settings.json
 *.log
 .env*
 !.env.example
+
+credit-oauth.json
+credit-oauth.json.tmp

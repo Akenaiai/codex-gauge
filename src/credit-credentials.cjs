@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {canonical,entriesToml}=require('./catalog.cjs');
-const variables={firecrawl:'FIRECRAWL_API_KEY',tavily:'TAVILY_API_KEY',exa:'EXA_API_KEY',deepseek:'DEEPSEEK_API_KEY'};
+const variables={firecrawl:'FIRECRAWL_API_KEY',tavily:'TAVILY_API_KEY',exa:'EXA_API_KEY',deepseek:'DEEPSEEK_API_KEY',minimax:'MINIMAX_SUBSCRIPTION_KEY'};
 function useful(value){return typeof value==='string'&&value.length>=16&&value.length<=2000&&!/your[_ -]|replace[_ -]|example|placeholder|<[^>]+>|\$\{|^\*+$|^\.\.\.$/i.test(value);}
 function parseString(text){
   const s=text.trim();if(s.startsWith('"'))try{return JSON.parse(s.replace(/\s+#.*$/,''));}catch{return null;}
@@ -42,6 +42,6 @@ class CreditSecrets{
   has(provider){return !!this.read()[provider];}
   get(provider){if(!Object.hasOwn(variables,provider))return null;const value=this.read()[provider];if(!value)return null;if(!this.crypto?.isEncryptionAvailable())throw new Error('credential_storage_failed');try{return this.crypto.decryptString(Buffer.from(value,'base64'));}catch{throw new Error('credential_storage_failed');}}
   write(data){fs.mkdirSync(this.directory,{recursive:true});const target=path.join(this.directory,'credit-secrets.json'),temp=target+'.tmp';fs.writeFileSync(temp,JSON.stringify(data),{mode:0o600});fs.renameSync(temp,target);}
-  set(provider,key){if(!['firecrawl','tavily','deepseek'].includes(provider)||!useful(key))throw new Error('invalid_credential');if(!this.crypto?.isEncryptionAvailable()||this.crypto.getSelectedStorageBackend?.()==='basic_text')throw new Error('credential_storage_failed');const previous=this.read(),data={...previous};data[provider]=this.crypto.encryptString(key).toString('base64');this.write(data);return()=>this.write(previous);}
+  set(provider,key){if(!['firecrawl','tavily','deepseek','minimax'].includes(provider)||!useful(key))throw new Error('invalid_credential');if(!this.crypto?.isEncryptionAvailable()||this.crypto.getSelectedStorageBackend?.()==='basic_text')throw new Error('credential_storage_failed');const previous=this.read(),data={...previous};data[provider]=this.crypto.encryptString(key).toString('base64');this.write(data);return()=>this.write(previous);}
 }
 module.exports={variables,useful,parseString,configuredKey,CreditSecrets};

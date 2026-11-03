@@ -4,6 +4,12 @@ Source preview: [Connection capability contract and verification scope](CONNECTI
 
 源码预览：[接入能力接口与验证边界](CONNECTION_CAPABILITIES.zh-CN.md)。稳定安装版仍为 0.4.4；本步骤补充后续连接流程可复用的依据和状态。
 
+## Native connections (source preview) / 独立连接（源码预览）
+
+Runway/Recraft offer independent official-browser OAuth with allowlisted account reads. MiniMax international supports a Subscription Key for general subscription windows. These paths need no Codex, Relay or Python; original paths remain. New grants/keys do not inherit another source’s account-bound dates. Native OAuth credentials stay in the main process and OS-encrypted local storage. Failed reads never switch identities. [English details](NATIVE_CONNECTIONS.md) · [中文说明](NATIVE_CONNECTIONS.zh-CN.md). This is source work, not a new stable installer.
+
+Runway/Recraft 可在系统浏览器完成独立官方授权；MiniMax 国际站可填写 Subscription Key 查通用订阅周期，无需 Codex、Relay 或 Python。原路径保留，新授权/Key 不继承另一来源的账号绑定日期；失败不换身份。稳定安装包未替换。
+
 ## 0.4.4: TapNow on-demand pages / TapNow 按需主页
 
 TapNow discovers existing permitted home tabs, reads on visits and periodically while open, and never reloads or wakes them. Closing keeps historical readings in the center; the compact back continues to show current readings only. Account-menu sampling restores only a menu it opened, unless user input takes over. Ideogram remains unchanged. No new browser permissions or desktop-client/MCP balance source.
