@@ -30,6 +30,23 @@ test('credits exclude used, expired and unknown expiry entries; missing metadata
   assert.equal(s.creditCount, 1); assert.equal(s.credits.length, 1); assert.notEqual(s.credits[0].key, 'a');
   assert.equal(parseQuota({ rateLimits: { primary: window(50, 300) } }).creditCount, null);
 });
+
+test('account balance remains separate from exhausted quota and reset credits', () => {
+  const s = parseQuota({ rateLimits: { primary: window(100, 10080), credits: { balance: '12345.6789', hasCredits: true, unlimited: false } }, rateLimitResetCredits: { availableCount: 3 } }, NOW);
+  assert.equal(s.weekly.remaining, 0);
+  assert.equal(s.creditCount, 3);
+  assert.deepEqual(s.balance, { amount: 12345.6789, available: true, unlimited: false });
+  const selected = parseQuota({ rateLimitsByLimitId: { codex: { primary: window(100, 300) }, other: { credits: { balance: '999' } } }, rateLimits: { credits: { balance: '888' } } }, NOW);
+  assert.equal(selected.balance.amount, null);
+});
+
+test('unknown balance never becomes zero; explicit zero and unlimited retain their meanings', () => {
+  for (const balance of [undefined, null, '', ' ', 'invalid', '-1', true, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(parseQuota({ rateLimits: { primary: window(100, 300), credits: { balance } } }, NOW).balance.amount, null);
+  }
+  assert.equal(parseQuota({ rateLimits: { primary: window(100, 300), credits: { balance: '0', hasCredits: false } } }, NOW).balance.amount, 0);
+  assert.deepEqual(parseQuota({ rateLimits: { primary: window(100, 300), credits: { unlimited: true, hasCredits: true } } }, NOW).balance, { amount: null, unlimited: true, available: true });
+});
 test('notifications isolate accounts and stages, ignore stale observations', () => {
   const snapshot = { fetchedAt: NOW, credits: [{ key: 'credit', expiresAt: NOW + 36 * 3600000 }] };
   const alerts = creditAlerts(snapshot, 'account-one', {}, NOW);

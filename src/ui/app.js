@@ -11,7 +11,7 @@
   const now = Date.now();
   let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false, resetReminders: true, resetNews: true },
     dark: true, status: 'ready', snapshot: { fiveHour: { remaining: 68, minutes: 300, resetsAt: now + 8640000 },
-      weekly: { remaining: 34, minutes: 10080, resetsAt: now + 276480000 }, credits: [{ key: 'demo', expiresAt: now + 129600000 }], creditCount: 1, fetchedAt: now },
+      weekly: { remaining: 34, minutes: 10080, resetsAt: now + 276480000 }, balance: { amount: 12345.67, available: true, unlimited: false }, credits: [{ key: 'demo', expiresAt: now + 129600000 }], creditCount: 1, fetchedAt: now },
     host: { exists: true, anchored: true, platform: 'win32' }, resetFeed: { status: 'ready', events: [], checkedAt: now, fetchedAt: now }, update: { state: 'idle' }, version: '0.2.1', demo: true };
   const t = (cn, en) => state.settings.language === 'zh-CN' ? cn : en;
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -138,6 +138,19 @@
     return days > 0 ? t(`最近一张还有约 ${days} 天 ${hours} 小时到期`, `Next expires in ~${days}d ${hours}h`)
       : t(`最近一张还有约 ${hours} 小时到期`, `Next expires in ~${hours}h`);
   }
+  function balanceCard(s) {
+    const balance = s.balance, amount = balance?.amount;
+    const known = Number.isFinite(amount) && amount >= 0;
+    const number = balance?.unlimited ? t('不限量', 'Unlimited') : !known ? '—'
+      : amount > 0 && amount < 1 ? '<1' : Math.floor(amount).toLocaleString(state.settings.language);
+    const lastReading = stale();
+    const hint = lastReading ? t('上次读取的余额', 'Last balance reading')
+      : !known && !balance?.unlimited ? t('余额暂未读到', 'Balance unavailable')
+      : balance?.available === false && amount > 0 ? t('可用情况待刷新确认', 'Availability awaiting refresh')
+      : t('用于套餐限额之外的使用', 'For usage beyond plan limits');
+    const exact = known ? amount.toLocaleString(state.settings.language, { maximumFractionDigits: 10 }) : number;
+    return `<div class="balance-card ${lastReading ? 'balance-stale' : ''}"><div class="balance-info"><h2>${t('额度余额', 'CREDIT BALANCE')}</h2><p>${hint}</p></div><strong class="balance-amount" title="${esc(t('额度余额：', 'Credit balance: ') + exact)}">${esc(number)}</strong></div>`;
+  }
   function creditCard(s) {
     const expiry = expiringCredit();
     const lastReading = state.status !== 'ready' || !window.resetModel.freshQuota(s, Date.now());
@@ -171,7 +184,6 @@
     const firstLabel = first?.minutes === 10080 ? t('本周', 'THIS WEEK') : first?.minutes === 300 ? t('5 小时', '5 HOURS') : t(`${first?.minutes ?? '—'} 分钟`, `${first?.minutes ?? '—'} MIN`);
     const secondLabel = five ? t('本周', 'THIS WEEK') : t('5 小时', '5 HOURS');
     const a = time(first), b = time(second);
-    const closest = Math.min(...[five, week].filter(Boolean).map(w => w.remaining));
     const unknown = !five && !week;
     const priorityCredit = !!expiringCredit(), priorityNews = pendingAnnouncement(), priorityReset = urgentReset();
     return `<div class="eyebrow"><span>${t('剩余额度', 'REMAINING USAGE')}</span><span class="status ${stale() ? 'warn' : ''}"><i></i>${state.demo ? t('示例数据', 'DEMO DATA') : stale() ? t('上次读数', 'LAST READING') : t('已同步', 'LIVE')}</span></div>
@@ -180,7 +192,7 @@
       <div class="dials">${dial(first, firstLabel)}${dial(second, secondLabel, true)}</div>
       <div class="resets"><div><div class="reset-time">${a.time}</div><div class="reset-hint">${a.hint}</div></div><div><div class="reset-time">${b.time}</div><div class="reset-hint">${b.hint}</div></div></div>
       ${!priorityReset ? resetPlanning(s) : ''}
-      <div class="readout"><div><h2>${t('可用余量', 'AVAILABLE CAPACITY')}</h2><p>${t('以较少的周期为参考', 'Based on the more limited window')}</p></div><div class="range" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<span class="${i < Math.ceil(closest / 100 * 18) ? 'on' : ''}"></span>`).join('')}</div></div>
+      ${balanceCard(s)}
       ${!priorityCredit ? creditCard(s) : ''}${!priorityNews ? newsContent() : ''}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}
       ${state.host.platform === 'darwin' ? `<div class="notice">${t('Mac 预览版：当前为自由悬浮，头像定位尚待 Mac 实机适配。', 'Mac preview: floating mode. Profile anchoring needs on-device adaptation.')}</div>` : ''}`;

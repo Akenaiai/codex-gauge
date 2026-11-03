@@ -4,11 +4,11 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const resetModel = require('../src/ui/reset-model.js');
 const NOW = 1800000000000;
-async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400000, newsStatus = 'announced', kind = 'direct_reset', precision = 'deadline', sourceStatus = 'ready', creditHours = null, age = 0, view = 'panel', notificationDelivery } = {}) {
+async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400000, newsStatus = 'announced', kind = 'direct_reset', precision = 'deadline', sourceStatus = 'ready', creditHours = null, age = 0, view = 'panel', notificationDelivery, balance = null } = {}) {
   const app = { innerHTML: '' };
   const weekly = { remaining: 80, minutes: 10080, resetsAt: NOW + 5400000 };
   const state = { settings: { language, resetNews: true, resetReminders: true }, dark: true, status, notificationDelivery,
-    snapshot: { windows: [weekly], weekly, credits: creditHours == null ? [] : [{ expiresAt: NOW + creditHours * 3600000 }], creditCount: creditHours == null ? 0 : 1, fetchedAt: NOW - age }, host: { platform: 'win32', anchored: true },
+    snapshot: { windows: [weekly], weekly, balance, credits: creditHours == null ? [] : [{ expiresAt: NOW + creditHours * 3600000 }], creditCount: creditHours == null ? 0 : 1, fetchedAt: NOW - age }, host: { platform: 'win32', anchored: true },
     update: { state: 'idle' }, version: '0.2.0', resetFeed: { status: sourceStatus, fetchedAt: NOW, checkedAt: NOW,
       events: [{ id: 'demo', type: kind, status: newsStatus, kindKnown: true, scopeKnown: false, precision, until, updatedAt: NOW, confirmation: 'source_post', sourceUrl: 'https://x.com/example/status/123' }] } };
   const noop = () => {};
@@ -20,6 +20,27 @@ async function render({ language = 'zh-CN', status = 'ready', until = NOW + 5400
   await Promise.resolve();
   return app.innerHTML;
 }
+
+test('balance replaces duplicate capacity meter and remains separate from reset cards', async () => {
+  for (const language of ['zh-CN', 'en']) {
+    const html = await render({ language, balance: { amount: 12345.67, available: true }, creditHours: 84 });
+    assert.ok(html.includes('12,345'));
+    assert.ok(html.includes(language === 'en' ? 'CREDIT BALANCE' : '额度余额'));
+    assert.ok(html.includes(language === 'en' ? 'reset credits' : '次重置机会'));
+    assert.ok(!html.includes('class="range"') && !html.includes('AVAILABLE CAPACITY') && !html.includes('可用余量'));
+  }
+});
+
+test('balance UI distinguishes unknown, zero, tiny remainder, unlimited and old readings', async () => {
+  assert.match(await render(), /balance-amount[^>]*>—</);
+  assert.match(await render({ balance: { amount: 0 } }), /balance-amount[^>]*>0</);
+  assert.match(await render({ balance: { amount: .25 } }), /balance-amount[^>]*>&lt;1</);
+  assert.ok((await render({ balance: { unlimited: true }, language: 'en' })).includes('Unlimited'));
+  for (const options of [{ status: 'offline' }, { age: 180000 }]) {
+    const html = await render({ ...options, balance: { amount: 12345 }, language: 'en' });
+    assert.ok(html.includes('Last balance reading') && html.includes('12,345'));
+  }
+});
 test('notification failure, exhaustion and uncertain delivery have distinct bilingual notices', async () => {
   const notificationDelivery = { failed: 2, exhausted: 1, unknown: 1, storageError: true };
   const cn = await render({ notificationDelivery }), en = await render({ language: 'en', notificationDelivery });

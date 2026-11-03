@@ -2,15 +2,15 @@
 
 [English](GETTING_STARTED.md) · [返回首页](../README.zh-CN.md) · [下载安装包](https://github.com/Akenaiai/codex-gauge/releases/latest)
 
-适用于 Windows 0.4.5。TapNow 改为已有主页按需读取，Ideogram 仍待真实平台验证。刻度保留原 Codex 小仪表，并提供统一的 AI 额度中心。**不需要注册刻度账号，也不需要在刻度里额外登录各个平台。** 查询沿用你自己电脑上的已有连接。Runway/Recraft 可从刻度打开官方浏览器授权，MiniMax 国际站可填写 Subscription Key；其他工具按对应指引在原客户端或 CLI 完成登录，也可以先跳过。
+适用于 Windows 0.4.6。TapNow 改为已有主页按需读取，Ideogram 仍待真实平台验证。刻度保留原 Codex 小仪表，并提供统一的 AI 额度中心。**不需要注册刻度账号，也不需要在刻度里额外登录各个平台。** 查询沿用你自己电脑上的已有连接。Runway/Recraft 可从刻度打开官方浏览器授权，MiniMax 国际站可填写 Subscription Key；其他工具按对应指引在原客户端或 CLI 完成登录，也可以先跳过。
 
 ## 首次连接
 
-Windows 0.4.5 提供可接续的平台选择、逐平台连接说明、可跳过会员备注和隐藏恢复。有效当前读数自动进入看板，明确隐藏会保留。详见[首次连接](NEW_USER_CONNECTIONS.zh-CN.md)。稳定版 0.4.5 下载已包含此流程。
+Windows 0.4.6 提供可接续的平台选择、逐平台连接说明、可跳过会员备注和隐藏恢复。有效当前读数自动进入看板，明确隐藏会保留。详见[首次连接](NEW_USER_CONNECTIONS.zh-CN.md)。稳定版 0.4.6 下载已包含此流程。
 
 ## 1. 安装并打开
 
-1. 打开上方发布页，在 **Assets** 下载 `Codex.Gauge.Setup.0.4.5.exe`。需要免安装运行时选 `Codex.Gauge-0.4.5-win.zip`，完整解压后运行其中的 `Codex Gauge.exe`。后续版本以发布页文件名为准。GitHub 的 **Source code** ZIP 是源码，需要开发环境才能运行。
+1. 打开上方发布页，在 **Assets** 下载 `Codex.Gauge.Setup.0.4.6.exe`。需要免安装运行时选 `Codex.Gauge-0.4.6-win.zip`，完整解压后运行其中的 `Codex Gauge.exe`。后续版本以发布页文件名为准。GitHub 的 **Source code** ZIP 是源码，需要开发环境才能运行。
 2. 系统要求是 Windows 10/11 x64。安装包已包含桌面运行环境，无需另装 Node.js；可选的 Agent Relay 查询需要另外安装该工具及 Python。
 3. 当前安装包没有 Windows 代码签名。可将下载文件右键复制路径，在 PowerShell 运行 `Get-FileHash -Algorithm SHA256 -LiteralPath '下载文件的完整路径'`，与同一发布页的 `SHA256SUMS.txt` 比较。这只能验证文件是否一致，不等于代码签名；不要关闭系统保护。
 4. 运行刻度。从任务栏通知区域的刻度图标打开 **额度中心 · 全部 AI 工具**；图标可能收在隐藏图标菜单中。已有 Codex 小面板也有进入额度中心的按钮。

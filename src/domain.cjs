@@ -28,9 +28,18 @@ function parseQuota(result, now = Date.now()) {
     .sort((a, b) => a.expiresAt - b.expiresAt);
   const count = Number.isInteger(source?.availableCount) && source.availableCount >= 0
     ? source.availableCount : Array.isArray(source?.credits) ? credits.length : null;
+  // Account credit balance is separate from quota percentages and reset cards.
+  const rawBalance = limits.credits?.balance;
+  const amount = typeof rawBalance === 'number' ? rawBalance
+    : typeof rawBalance === 'string' && /^\d+(?:\.\d+)?$/.test(rawBalance.trim()) ? Number(rawBalance) : null;
+  const balance = {
+    amount: amount !== null && Number.isFinite(amount) && amount >= 0 && amount <= Number.MAX_SAFE_INTEGER ? amount : null,
+    unlimited: limits.credits?.unlimited === true,
+    available: typeof limits.credits?.hasCredits === 'boolean' ? limits.credits.hasCredits : null
+  };
   return { windows, fiveHour: windows.find(w => w.minutes === 300) || null,
     weekly: windows.find(w => w.minutes === 10080) || null,
-    credits, creditCount: count, fetchedAt: now };
+    credits, creditCount: count, balance, fetchedAt: now };
 }
 
 const defaults = Object.freeze({ theme: 'system', language: 'zh-CN', topmost: false,
