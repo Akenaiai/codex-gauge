@@ -1,8 +1,8 @@
 # 刻度 · Codex Gauge
 
-**Windows 预览：[0.4.5-preview.1](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.1)。** [范围、验证与隔离验收方法](docs/releases/0.4.5-preview.1.md)。稳定版仍为 0.4.4。
+**Windows 预览：[0.4.5-preview.2](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.2)。** [范围、验证与隔离验收方法](docs/releases/0.4.5-preview.2.md)。稳定版仍为 0.4.4。
 
-**源码预览：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。稳定下载仍为 0.4.4。
+**Windows 预览：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。稳定下载仍为 0.4.4。
 
 [English](README.md) · [下载](https://github.com/Akenaiai/codex-gauge/releases) · [源码](https://github.com/Akenaiai/codex-gauge)
 
@@ -12,7 +12,7 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**源码预览：** Runway/Recraft 新增系统浏览器中的官方独立授权，MiniMax 国际站新增 Subscription Key 直查，无需 Codex、Relay 或 Python。原路径保留；新账号真实授权与 Mac 待验，这些源码改动尚未进入稳定版 0.4.4 安装包。[连接详情](docs/NATIVE_CONNECTIONS.zh-CN.md)。
+**Windows 预览：** Runway/Recraft 新增系统浏览器中的官方独立授权，MiniMax 国际站新增 Subscription Key 直查，无需 Codex、Relay 或 Python。原路径保留；Runway/Recraft 已完成 Windows 真实授权和升级后刷新，MiniMax 可选 Subscription Key 与 Mac 待验；稳定版 0.4.4 尚不包含这些变化。[连接详情](docs/NATIVE_CONNECTIONS.zh-CN.md)。
 
 **当前版本 0.4.4。** Windows已实测普通主页自动读取、关闭后保留历史、再次打开恢复读取。 TapNow 改为读取正常打开的主页，不刷新、不保活、不唤醒休眠标签页。用完即可关闭，额度中心保留上次积分与时间。升级后需重新加载一次原浏览器组件。保留原 Codex 小仪表和单击翻面，Ideogram 与 Mac 仍待现场验证。[版本说明](docs/releases/0.4.4.md)
 
@@ -30,7 +30,7 @@
 
 - 52 像素小仪表跟随 Windows Codex 头像。悬停展开，点击固定面板。
 - 按实际接口显示 5 小时、本周额度。只有周额度时自动放到主位；没有返回的信息保持未知。
-- 源码预览：类似手机低电量，显示余量 ≤20% 时数字及对应圆弧变为琥珀黄，≤10% 时变红。阈值跟随界面显示的整数百分比，各额度周期独立变色，恢复额度后回到原色；小仪表布局及独立的重置卡到期标记保持。已发布安装包尚未包含此项。
+- Windows 预览：类似手机低电量，显示余量 ≤20% 时数字及对应圆弧变为琥珀黄，≤10% 时变红。阈值跟随界面显示的整数百分比，各额度周期独立变色，恢复额度后回到原色；小仪表布局及独立的重置卡到期标记保持。0.4.5-preview.2 已包含此项，稳定版 0.4.4 保持原状。
 - 显示重置时间、重置机会及到期详情。重置卡按“几天几小时”显示剩余时间，例如 84 小时显示为“3 天 12 小时”。可选静默到期通知，按账户、卡片和阶段去重。
 - 将下次周期重置倒计时和剩余百分比放在一起。余量 ≥30% 时，在重置前 2 小时、1 小时内分别静默提醒一次，按账户、周期和阶段去重；小仪表显示暖金色提醒标记。
 - 有效预告和临近的周期重置会提到仪表上方，用醒目的橙金色卡片展示。可用重置卡剩余 48 小时内置顶为红色临期卡，24 小时内进一步加强提示，小仪表也显示红色标记；过期时间和旧读数仍保留明确的更新状态。

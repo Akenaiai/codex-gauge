@@ -2,7 +2,7 @@
 // Usage: node scripts/packaged-acceptance.cjs <exe> <new-evidence-directory>
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
-const {spawn}=require('node:child_process');
+const {spawn,spawnSync}=require('node:child_process');
 const asar=require('@electron/asar');
 const exe=path.resolve(process.argv[2]),out=path.resolve(process.argv[3]);
 if(fs.existsSync(out))throw Error('Evidence directory must be new');fs.mkdirSync(out,{recursive:true});
@@ -31,7 +31,13 @@ async function launch(name,centerFlag=false){
  const click=async sel=>{await js(`document.querySelector(${JSON.stringify(sel)}).click()`);await delay(180);};
  const state=()=>js('window.creditCenter.state()');
  async function screenshot(label){const r=await client.call('Page.captureScreenshot');fs.writeFileSync(path.join(out,label+'.png'),Buffer.from(r.data,'base64'));}
- async function stop(){try{await js('window.close()');}catch{}client.ws.close();for(let i=0;i<60&&child.exitCode===null;i++)await delay(100);if(child.exitCode===null)child.kill();await delay(300);}
+ async function stop(){
+  // Closing the center only hides it. Close the test application before reusing its profile.
+  try{await Promise.race([client.call('Browser.close'),delay(1000)]);}catch{}
+  client.ws.close();for(let i=0;i<60&&child.exitCode===null;i++)await delay(100);
+  if(child.exitCode===null){if(process.platform==='win32')spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});else child.kill();}
+  await delay(500);
+ }
  return {home,data,js,click,state,screenshot,stop,targets,client};
 }
 async function main(){
@@ -69,4 +75,4 @@ async function main(){
  await a.stop();check(hash(pair)===pairHash,'Browser pairing reference preserved byte-for-byte');const stored=JSON.parse(fs.readFileSync(path.join(data,'settings.json')));check(stored.ledger['synthetic-reminder']===true&&stored.settings.language==='en'&&stored.settings.autostart===false,'Original badge settings and reminder ledger preserved');
  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:checks.length,checks,exeSha256:hash(exe),asarSha256:hash(path.join(path.dirname(exe),'resources/app.asar')),scope:'Actual packaged main/preload/UI; empty tool PATH and synthetic legacy profile on Windows host. No provider OAuth, paid requests, physical clean-machine install, OS installer execution or Mac validation.'},null,2));console.log(JSON.stringify({passed:checks.length}));
 }
-main().catch(e=>{fs.writeFileSync(path.join(out,'error.txt'),e.stack);console.error(e.message);process.exitCode=1;}).finally(()=>{for(const c of children)if(c.exitCode===null)c.kill();});
+main().catch(e=>{fs.writeFileSync(path.join(out,'error.txt'),e.stack);console.error(e.message);process.exitCode=1;}).finally(()=>{for(const c of children)if(c.exitCode===null){if(process.platform==='win32')spawnSync('taskkill',['/PID',String(c.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});else c.kill();}});

@@ -41,6 +41,6 @@ Suno 官方远程地址已核实，但本环境未验证其独立授权发现，
 
 **2026-11-03** 已实查 Runway/Recraft 的公开资源元数据、授权服务元数据和公开客户端注册，在打开授权页前停止。这是真实公开协议回执，不是登录或余额实测。独立合成测试覆盖拒绝/取消/超时、非法回调/错误服务、权限不足、刷新失效、加密、换账号、旧账号保存失败回退、休眠/迟到响应、重启及 MiniMax 来源隔离。Windows Electron 检查使用生产 renderer/preload、真实中心/独立客户端/回调/系统加密与合成上游，用户目录和 PATH 为空；合成余额不进入日常资料。
 
-还需本人分别确认 Runway/Recraft 的新官方授权，或填写目标 MiniMax 国际站 Subscription Key，然后取得真实额度回执。Mac 实现不等于实机验证。干净实体电脑安装和旧用户升级属于后续交付检查；本项没有替换安装包或日常安装。
+**2026-11-03 后续验收**：Runway/Recraft 的独立官方授权与真实额度读取已在 Windows 通过，包括从 0.4.4 实际升级到 0.4.5-preview.2 前后的主动刷新；设置、历史记录 ID、日期规则和浏览器配对均保留。可选的 MiniMax 国际站 Subscription Key 路径仍待真实 Key 检查；原 Relay 查询保留并已在升级后验证。另一台干净实体电脑与 Mac 实机仍未验。详见[预览版本证据](releases/0.4.5-preview.2.md)。
 
 来源核对日期 **2026-11-03**：[Runway 会员 MCP](https://help.runwayml.com/hc/en-us/articles/51931843164691-Connecting-to-Runway-MCP)、[Recraft 远程 MCP](https://www.recraft.ai/docs/mcp-reference/remote-server)、[MiniMax 官方订阅额度接口](https://platform.minimax.io/subscribe/token-plan)、[Suno MCP FAQ](https://help.suno.com/en/articles/14486145)、[MCP 授权规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)。

@@ -1,8 +1,8 @@
 # Codex Gauge
 
-**Windows preview: [0.4.5-preview.1](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.1).** [Scope, verification and isolated acceptance](docs/releases/0.4.5-preview.1.md). Stable remains 0.4.4.
+**Windows preview: [0.4.5-preview.2](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.2).** [Scope, verification and isolated acceptance](docs/releases/0.4.5-preview.2.md). Stable remains 0.4.4.
 
-**Source preview:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Stable download remains 0.4.4.
+**Windows preview:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Stable download remains 0.4.4.
 
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)
 
@@ -12,7 +12,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Source preview:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Real new-account authorization and Mac checks remain pending; these source changes are not in the stable 0.4.4 installer. [Connection details](docs/NATIVE_CONNECTIONS.md).
+**Windows preview:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Runway/Recraft authorization and refresh passed on Windows, including after a real upgrade. The optional MiniMax Subscription Key and Mac checks remain pending; these changes are not in stable 0.4.4. [Connection details](docs/NATIVE_CONNECTIONS.md).
 
 **Current version: 0.4.4.** Windows live checks confirmed automatic reading from an ordinary home tab, retained history after closing, and resumed reading after reopening. TapNow now reads from normally opened home tabs without reloading them or keeping a dedicated page alive. Close the page after use; the credit center retains the last amount and time. Reload the existing browser component once after updating. The original Codex gauge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.4.md)
 
@@ -28,7 +28,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
 - Shows the 5-hour and weekly windows actually returned by Codex. Weekly-only accounts put their weekly value first. Missing data stays unknown.
-- Source preview: battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Not yet included in the published installers.
+- Windows preview: battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Included in 0.4.5-preview.2; stable 0.4.4 is unchanged.
 - Shows reset times, available reset credits and expiry details. Credit expiry countdowns use days and hours (for example, 84 hours appears as 3d 12h). Optional silent expiry reminders, deduplicated by account and credit.
 - Pairs the next scheduled reset countdown with the remaining percentage. With at least 30% remaining, silent reminders fire within 2 hours and 1 hour of the reset, once per account, window and stage. An amber mark on the small gauge points to reminders.
 - Active announcements and imminent scheduled resets move above the dials in prominent amber cards. Available reset credits expiring within 48 hours move to the top in red, with a stronger treatment within 24 hours and a red marker on the small gauge. During disconnections, the red credit-expiry marker and priority card retain the last known unexpired deadline, with a last-reading timestamp and an availability-awaiting-refresh label. Elapsed deadlines await refreshed data.
