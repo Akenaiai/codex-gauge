@@ -1,0 +1,22 @@
+#connections-dialog{width:min(900px,calc(100vw - 32px));padding:26px;overflow:hidden;display:none}
+#connections-dialog[open]{display:flex;flex-direction:column;max-height:92vh}
+#connections-dialog h2{margin:8px 0 0;font-size:25px}
+#connections-dialog .flow-content{min-height:150px;overflow:auto;overscroll-behavior:contain;padding:4px 3px;scrollbar-width:thin}
+.flow-steps{display:flex;gap:8px;margin:22px 0 16px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.flow-steps button{flex:1;font-size:12px;background:transparent;border-color:transparent}
+.flow-steps button[aria-current=step]{color:var(--accent);border-color:var(--accent);background:var(--soft)}
+.flow-toolbar{display:flex;gap:12px;margin:0 0 16px}.flow-toolbar input{flex:1;min-width:0}.flow-toolbar select{max-width:45%}
+.flow-catalog{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+#connections-dialog label.flow-choice{margin:0;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:13px;cursor:pointer;min-width:0}
+#connections-dialog .flow-choice.chosen{background:var(--soft);border-color:var(--accent)}
+#connections-dialog .flow-choice input{width:17px;flex-shrink:0}.flow-choice strong{font-size:13px}.flow-choice small,.flow-memberships small,.flow-components small,.flow-platforms small{display:block;color:var(--muted);font-size:11px;line-height:1.6;margin-top:4px;overflow-wrap:anywhere}
+.flow-choice span{min-width:0}.flow-connected{display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px}
+.flow-platforms{display:flex;flex-direction:column;gap:8px}.flow-platforms button{text-align:left;overflow-wrap:anywhere}.flow-platforms button[aria-pressed=true]{border-color:var(--accent);background:var(--soft)}
+.flow-instructions h3{font-size:15px;margin:3px 0 14px}.flow-instructions pre{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--bg);border-radius:8px;user-select:text}.flow-instructions summary{font-size:12px;cursor:pointer;color:var(--accent);margin:12px 0}.flow-instructions details p{margin:12px 0}
+.flow-components{list-style:none;padding:0;margin:0 0 18px}.flow-components li{padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;font-size:12px}.flow-components li>small{flex-basis:100%}
+.flow-query{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 10px}.flow-query button{font-size:12px}
+#connections-dialog .flow-limits{border-left:2px solid var(--gold);padding-left:12px}.flow-memberships label{grid-template-columns:minmax(0,1fr) minmax(135px,185px);gap:20px;border-bottom:1px solid var(--line);padding-bottom:16px;align-items:center}
+#connections-dialog .dialog-actions{flex-shrink:0;flex-wrap:wrap;margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
+.detail-connection-actions{border-top:1px solid var(--line);padding:16px 0;display:flex;gap:8px;flex-wrap:wrap}.detail-connection-actions small{color:var(--muted);width:100%;font-size:11px}
+@media(max-width:760px){#connections-dialog{padding:20px}.flow-connected{grid-template-columns:150px minmax(0,1fr);gap:14px}.flow-catalog{grid-template-columns:1fr 1fr}.flow-steps{gap:2px}.flow-steps button{padding:8px 4px}.flow-memberships label{gap:10px}#connections-dialog h2{font-size:22px}}
+@media(max-width:560px){.flow-catalog{grid-template-columns:1fr}.flow-connected{display:block}.flow-platforms{flex-direction:row;overflow:auto;margin-bottom:18px}.flow-platforms button{min-width:145px}.flow-memberships label{grid-template-columns:1fr}.flow-toolbar{flex-wrap:wrap}}

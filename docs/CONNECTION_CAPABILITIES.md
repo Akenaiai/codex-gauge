@@ -2,13 +2,13 @@
 
 [简体中文](CONNECTION_CAPABILITIES.zh-CN.md) · [Credit center](CREDIT_CENTER.md)
 
-This source change adds connection evidence for the existing adapters. It does not replace the stable 0.4.4 installer or add a new setup wizard, native remote OAuth client, installation action or product rename.
+The current source includes the [first-connection flow](NEW_USER_CONNECTIONS.md), using the capability contract below. It retains the stable 0.4.4 installer; native independent remote OAuth and product renaming are outside this change.
 
 ## Contract for the next setup flow
 
 `CreditCenter.state()` now includes:
 
-- `tools`: only discovered tools and existing user records. A blank user has an empty list; the supported-provider list never populates the home view.
+- `tools`: discovered tools, existing user records and explicitly followed platform placeholders. A blank user has an empty list; the supported-provider list never populates the home view.
 - `connectionCatalog`: descriptive platform profiles, including unsupported providers. Each has `provider`, `route`, `quotaKind`, `os`, `components`, `auth`, `entry`, `sources`, `checkedOn`, and bilingual `limits`. `entry: null` means no verified installation entry is provided. Some profiles use `evidence: adapter_contract` for locally implemented behavior rather than verified public installation documentation.
 - `connectionComponents`: component IDs, bilingual names, official installation references where verified, and whether Gauge bundles the component. A remote MCP service runs at the provider; the **current adapter** still requires a local Codex CLI client. Installing a local provider MCP server is not required for those hosted services.
 - `tools[].access` (`schemaVersion: 1`): independent discovery, component, authorization, query and reading evidence. Existing `adapter` and `queryReady` fields remain compatible: they mean an implemented adapter and permission to **attempt** its existing read path, respectively. They do not prove authentication or a remaining balance.

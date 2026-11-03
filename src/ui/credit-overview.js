@@ -50,7 +50,7 @@
     return{tool,id:tool.id,name:tool.name,status,metric:selected?.metric||null,meter:selected?.meter??null,record:selected?.record||null,reason:selected?.reason??'missing',accountCount:records.length,availableAccounts:summaries.filter(s=>s.status==='available').length,dates,deadline:priority||dates[0]||null,urgent:near.length>0,urgentKind:priority?.kind||null,hasReading:records.length>0};
   }
   function build(state,now=Date.now()){
-    const rows=(state.tools||[]).filter(t=>t.records?.length||t.dateObservations?.length||t.userDates?.length||t.adapter&&(t.queryStatus||t.querying)).map(t=>analyze(t,state.rules||{},now));
+    const rows=(state.tools||[]).filter(t=>t.followed!==false&&(t.userFollowed===true||t.records?.length||t.dateObservations?.length||t.userDates?.length||t.adapter&&(t.queryStatus||t.querying))).map(t=>analyze(t,state.rules||{},now));
     rows.sort((a,b)=>Number(b.urgent)-Number(a.urgent)||(a.urgent&&b.urgent?Number(b.urgentKind==='expiry')-Number(a.urgentKind==='expiry')||a.deadline.at-b.deadline.at:0)||({empty:0,available:1,unknown:2}[a.status]-{empty:0,available:1,unknown:2}[b.status])||a.name.localeCompare(b.name));
     return{rows,total:rows.length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:rows.filter(r=>r.status==='unknown').length,urgent:rows.filter(r=>r.urgent).length};
   }

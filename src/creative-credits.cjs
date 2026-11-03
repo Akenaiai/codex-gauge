@@ -12,6 +12,7 @@ function creativeSnapshot(state={},now=Date.now()){
   const rows=[];
   const busy=(state.tools||[]).some(t=>(media[t.id]||t.id==='minimax')&&t.querying===true);
   for(const tool of state.tools||[]){
+    if(tool.followed===false)continue;
     if(!media[tool.id]&&tool.id!=='minimax')continue;
     const records=(tool.records||[]).map(r=>({...r,pools:r.pools.filter(p=>creativePool(tool.id,p))})).filter(r=>r.pools.length);
     const kinds=media[tool.id]||['video'];

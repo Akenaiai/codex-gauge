@@ -1,5 +1,7 @@
 # Codex Gauge
 
+**Source preview:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Stable download remains 0.4.4.
+
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)
 
 A desktop AI credit center with a small, precision-styled Codex usage gauge above your profile. See which tools have quota, which are used up and which have approaching deadlines. The original hover panel keeps Codex capacity, resets and reset credits close at hand.

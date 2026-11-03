@@ -4,6 +4,10 @@
 
 For Windows 0.4.4. TapNow uses existing home tabs on demand; Ideogram remains without live provider validation. Gauge keeps the original Codex badge and adds an AI credit center. **No Gauge account or additional provider sign-in inside Gauge is required.** Queries use connections on your own computer. If a tool is not signed in, sign in through its original client or CLI, or skip it for now.
 
+## Source preview: first connections
+
+The current source adds a resumable platform chooser, per-platform setup instructions, optional membership notes and hide/restore controls. Current measured quotas appear automatically; explicit hiding is retained. See [First connections](NEW_USER_CONNECTIONS.md). The stable 0.4.4 download still uses the guide described below.
+
 ## 1. Install and open
 
 1. On the release page, expand **Assets** and download `Codex.Gauge.Setup.0.4.4.exe`. For an installation-free launch, download `Codex.Gauge-0.4.4-win.zip`, extract the entire archive and run `Codex Gauge.exe`. Later releases may have different version numbers. GitHub's **Source code** ZIP requires a development environment.

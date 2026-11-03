@@ -1,5 +1,7 @@
 # 刻度 · Codex Gauge
 
+**源码预览：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。稳定下载仍为 0.4.4。
+
 [English](README.md) · [下载](https://github.com/Akenaiai/codex-gauge/releases) · [源码](https://github.com/Akenaiai/codex-gauge)
 
 统一查看本机 AI 工具额度的桌面看板，一眼区分有额度、已用尽和临期工具。原来贴在 Codex 头像上方的小仪表继续保留，悬停可看剩余额度、重置时间和可用重置卡。

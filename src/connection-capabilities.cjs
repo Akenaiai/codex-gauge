@@ -49,6 +49,13 @@ function componentCatalog() {
     ['browser_extension', '刻度浏览器组件', 'Gauge browser extension', null, true],
   ].map(([id, zh, en, entry, bundled]) => ({ id, name: text(zh, en), entry, bundled, checkedOn }));
 }
+function connectionSource(provider,component){
+  if(!Object.hasOwn(providers,provider))return null;
+  const p=profileFor(provider);
+  if(component==null)return p.entry||null;
+  const allowed=[...p.components,...(p.route==='kling'?['kling_cli']:[]),...(p.route==='api'?['powershell']:[])];
+  return allowed.includes(component)?componentCatalog().find(c=>c.id===component)?.entry||null:null;
+}
 function file(p) { try { return fs.statSync(p).isFile(); } catch { return false; } }
 function native(p) { return !!p && !/\.(cmd|bat|ps1)$/i.test(p); }
 function relayInstallation({ home = os.homedir() } = {}) {
@@ -136,4 +143,4 @@ function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}
     reading: { status: reading, fetchedAt: latest?.fetchedAt || null, source: latest?.source || null, identityVerified: latest?.identityVerified === true },
     membershipInputVerifiesQuota: false };
 }
-module.exports = { profileFor, connectionCatalog, componentCatalog, probeComponents, accessFor, relayInstallation };
+module.exports = { profileFor, connectionCatalog, componentCatalog, connectionSource, probeComponents, accessFor, relayInstallation };

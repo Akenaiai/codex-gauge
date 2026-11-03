@@ -340,6 +340,11 @@ async function start() {
       else if(name==='user-dates')center.setUserDate(value);
       else if(name==='remove-user-dates')center.removeUserDate(value?.id);
       else if(name==='onboarding-complete')center.completeOnboarding();
+      else if(name==='connection-preferences')center.setConnectionPreferences(value);
+      else if(name==='connection-source'){
+        const url=require('./connection-capabilities.cjs').connectionSource(value?.provider,value?.component);
+        if(!url||!url.startsWith('https://'))return{ok:false};await shell.openExternal(url);
+      }
       else if(name==='connect')await center.connect(value?.provider,value?.key,{replaceRecordId:value?.replaceRecordId||null});
       else if(name==='browser-link-pair'){if(!browserLink)return{ok:false};clipboard.writeText(await browserLink.pairingCode());}
       else if(name==='browser-link-reset'){if(!browserLink)return{ok:false};clipboard.writeText(await browserLink.resetPairing());}
@@ -408,7 +413,7 @@ async function start() {
   }
   reminderTimer = setInterval(() => { processCreditReminders(); processResetReminders(); }, 30000);
   activation.ready();
-  if (process.argv.includes('--credit-center') || centerProfile) openCenter();
+  if (!center.onboardingCompleted || process.argv.includes('--credit-center') || centerProfile) openCenter();
   app.on('activate', () => openPanel(true, true));
 }
 app.on('before-quit', () => { quitting = true; center?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });

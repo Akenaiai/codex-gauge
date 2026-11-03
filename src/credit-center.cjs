@@ -8,6 +8,7 @@ const { cleanRecord, fresh, validateRule, events, expiryAlerts, recoveryAlerts, 
 const adapters = require('./credit-adapters.cjs');
 const {configuredKey}=require('./credit-credentials.cjs');
 const {connectionCatalog,componentCatalog,probeComponents,accessFor}=require('./connection-capabilities.cjs');
+const {cleanPreferences,followed,patchPreferences}=require('./connection-preferences.cjs');
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
@@ -22,6 +23,7 @@ class CreditCenter extends EventEmitter {
     this.dateObservations=cleanObservations(data.dateObservations);
     this.userDates=cleanUserDates(data.userDates);
     this.onboardingCompleted=data.onboardingCompleted===true||data.onboardingCompleted==null&&(existingInstallation||data.records.length>0||this.dateObservations.length>0);
+    this.connectionPreferences=cleanPreferences(data.connectionPreferences,this.onboardingCompleted);
     this.monthlySchedules={};
     for(const [key,rule]of Object.entries(data.monthlySchedules||{}))if(this.dateObservations.some(o=>['lovart','xyq','jimeng'].includes(o.provider)&&o.items.some(p=>key===o.id+'/'+p.id&&['monthly','subscription'].includes(p.id)&&p.kind!=='never')))try{this.monthlySchedules[key]=validateMonthlyRule(rule);}catch{}
     for (const r of Array.isArray(data.records) ? data.records : []) try {
@@ -29,6 +31,7 @@ class CreditCenter extends EventEmitter {
       const clean = cleanRecord({ ...r, scope: r.scope });
       this.records.push(enrichSchedules({ ...clean, id: r.id, scope: r.scope, status: r.source==='browser'&&r.status!=='account_changed'?'offline':['ready','offline','account_changed','stale'].includes(r.status) ? r.status : 'offline', error: r.source==='browser'?'browser_offline':r.error ? 'query_failed' : null }));
     } catch { }
+    for(const r of this.records)this.followReading(r);
     this.customTools = data.customTools && typeof data.customTools === 'object' && !Array.isArray(data.customTools) ? data.customTools : {};
     this.rules = {};
     this.snapshotBindings={};
@@ -40,18 +43,19 @@ class CreditCenter extends EventEmitter {
     this.enabled = data.enabled !== false; this.reminders = data.reminders !== false;
   }
   persist() {
+    this.store.data.connectionPreferences=this.connectionPreferences;
     Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,userDates:this.userDates,onboardingCompleted:this.onboardingCompleted,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
     this.store.data.connectionAccess=Object.fromEntries(this.inventory.tools.map(t=>[t.id,this.access(t)]));
     this.store.data.connectionObservedAt=Date.now();
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
-    const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
+    const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, followed:followed(this.connectionPreferences,t.id),userFollowed:this.connectionPreferences.platforms[t.id]?.userChoice===true&&followed(this.connectionPreferences,t.id),membershipInput:this.connectionPreferences.platforms[t.id]?.membership||'unknown', access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek'].includes(t.id),
       queryReady:access.query.canAttempt,
       userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) });});
-    return { ...this.inventory, tools, connectionCatalog:connectionCatalog(),connectionComponents:componentCatalog(),onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
+    return { ...this.inventory, tools, connectionPreferences:this.connectionPreferences,connectionCatalog:connectionCatalog().map(p=>({...p,name:providers[p.provider].name,nameEn:({xyq:'Pippit',jimeng:'Dreamina','wanxiang':'Tongyi Wanxiang',quark:'Quark','hailuo-audio':'Hailuo Audio','capcut-hub':'CapCut Hub','kimi-subscription':'Kimi membership','minimax-subscription':'MiniMax Token Plan',ark:'Volcengine Ark',zai:'Z.AI'})[p.provider]||providers[p.provider].name})),connectionComponents:componentCatalog(),onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
       records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
       events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
       browserLink:this.options.browserState?.(),storageError: this.store.error, revision: this.store.data.revision };
@@ -69,10 +73,32 @@ class CreditCenter extends EventEmitter {
     for(const id of ['firecrawl','tavily','deepseek'])if(configuredKey(id,this.options)||this.options.hasCredential?.(id)){this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!tool.connections.some(c=>c.evidence==='credential_reference'))tool.connections.push({kind:'api',source:'Existing local credential',label:id,enabled:true,evidence:'credential_reference'});}
     for (const row of this.records){this.ensureTool(row.provider);if(row.source==='browser')this.ensureBrowserTool(row.provider);}
     for(const row of this.userDates)this.ensureUserDateTool(row.provider);
+    for(const id of Object.keys(this.connectionPreferences.platforms))this.ensureFollowedTool(id);
     this.loadImports(); this.persist(); this.emit('state'); return this.state();
   }
   ensureTool(id) {
     if (!this.inventory.tools.some(t => t.id === id)) { const p = providers[id]; this.inventory.tools.push({ id, name: this.customTools[id]?.name || p?.name || id, category: p?.category || '其他工具', categoryEn: p?.categoryEn || 'Other tools', connections: [{ kind: 'api', source: 'Credit source', label: id, enabled: true, evidence: 'observed' }] }); }
+  }
+  ensureFollowedTool(id){
+    if(!this.inventory.tools.some(t=>t.id===id)){
+      this.ensureTool(id);this.inventory.tools.find(t=>t.id===id).connections=[];
+    }
+  }
+  followReading(record){
+    // A current measured amount (including zero) can introduce a platform.
+    // Explicit follow/hide always wins; old snapshots and failed reads cannot.
+    const choice=this.connectionPreferences.platforms[record.provider];
+    if(choice?.userChoice!==true&&fresh(record)&&!record.error&&!['manual','host'].includes(record.source)&&record.pools.some(p=>p.unit!=='cards'&&p.entitlement!=='not_in_plan'&&Number.isFinite(p.amount)&&p.amount>=0)){
+      this.connectionPreferences.platforms[record.provider]={...choice,followed:true,membership:choice?.membership||'unknown',userChoice:false};
+    }
+  }
+  setConnectionPreferences(input){
+    const valid=id=>Object.hasOwn(providers,id)||this.inventory.tools.some(t=>t.id===id)||Object.hasOwn(this.connectionPreferences.platforms,id);
+    const next=patchPreferences(this.connectionPreferences,input,valid),old=this.connectionPreferences,inventory=structuredClone(this.inventory);
+    this.connectionPreferences=next;if(input.provider)this.ensureFollowedTool(input.provider);
+    this.persist();
+    if(this.store.error){this.connectionPreferences=old;this.store.data.connectionPreferences=old;this.inventory=inventory;this.store.data.inventory=inventory;throw Error('storage_failed');}
+    this.emit('state');
   }
   loadImports() {
     const previous=JSON.stringify(this.dateObservations);
@@ -87,7 +113,7 @@ class CreditCenter extends EventEmitter {
       this.put(r, false); this.ensureTool(r.provider);
     } catch { }
   }
-  ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});}
+  ensureObservationTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!existing)t.connections=[];if(!t.connections.some(c=>c.evidence==='web_observation'))t.connections.push({kind:'web',source:'Recorded account page',label:id,enabled:true,evidence:'web_observation'});if(!Object.hasOwn(this.connectionPreferences.platforms,id))this.connectionPreferences.platforms[id]={followed:true,membership:'unknown',userChoice:false};}
   ensureUserDateTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!existing)tool.connections=[];if(!tool.connections.some(c=>c.evidence==='user_dates'))tool.connections.push({kind:'manual',source:'User dates',label:id,enabled:true,evidence:'user_dates'});}
   acceptBrowserReading(input,{manual=false}={}){
     if(this.stopped||!this.enabled&&!manual||!['tapnow','ideogram'].includes(input?.provider)||input.source!=='browser'||input.identityVerified!==false)throw Error('invalid_response');
@@ -110,9 +136,10 @@ class CreditCenter extends EventEmitter {
     }
     const old=this.userDates.slice(),row={...clean,id:previous?.id||hash(require('node:crypto').randomUUID()),updatedAt:Date.now()};
     if(!previous&&old.length>=250)throw Error('invalid_dates');
-    const oldInventory=structuredClone(this.inventory);this.ensureUserDateTool(clean.provider);
+    const oldInventory=structuredClone(this.inventory),oldPreferences=structuredClone(this.connectionPreferences);this.ensureUserDateTool(clean.provider);
+    if(!Object.hasOwn(this.connectionPreferences.platforms,clean.provider))this.connectionPreferences.platforms[clean.provider]={followed:true,membership:'unknown'};
     this.userDates=[...old.filter(r=>r.id!==row.id),row];this.persist();
-    if(this.store.error){this.userDates=old;this.store.data.userDates=old;this.inventory=oldInventory;this.store.data.inventory=oldInventory;this.emit('state');throw Error('storage_failed');}this.emit('state');return row.id;
+    if(this.store.error){this.connectionPreferences=oldPreferences;this.store.data.connectionPreferences=oldPreferences;this.userDates=old;this.store.data.userDates=old;this.inventory=oldInventory;this.store.data.inventory=oldInventory;this.emit('state');throw Error('storage_failed');}this.emit('state');return row.id;
   }
   removeUserDate(id){const old=this.userDates;if(!old.some(r=>r.id===id))throw Error('invalid_dates');this.userDates=old.filter(r=>r.id!==id);this.persist();if(this.store.error){this.userDates=old;this.store.data.userDates=old;throw Error('storage_failed');}this.emit('state');}
   setMonthlyRule(observationId,itemId,rule){
@@ -132,6 +159,7 @@ class CreditCenter extends EventEmitter {
     if(record.provider==='runway'&&record.source==='mcp'&&record.connectionRef)for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.id!==record.id&&(!old.connectionRef||old.connectionRef===record.connectionRef))old.status='account_changed';
     const recovered = notify && previous ? recoveryAlerts(previous, record) : [];
     this.records = [...this.records.filter(r => r.id !== record.id), record].slice(-250);
+    this.followReading(record);
     for (const event of recovered) {
       if (!this.notices.some(n => n.key === event.key)) this.notices.push(event);
       if (this.reminders && this.rules[event.recordId+'/'+event.poolId]?.notify !== false) this.emit('alert', event);
@@ -227,7 +255,7 @@ class CreditCenter extends EventEmitter {
       const rows=await adapters.apiBalance(provider,key.trim()),verified=rows.map(row=>cleanRecord(row));
       if(this.stopped||generation!==this.generation||this.connectRuns.get(provider)!==attempt)throw new Error('query_failed');
       if(!this.options.saveCredential)throw new Error('credential_storage_failed');
-      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),notices:structuredClone(this.notices),bindings:structuredClone(this.snapshotBindings),data:structuredClone(this.store.data),status:this.statuses[provider]};
+      const old={records:structuredClone(this.records),inventory:structuredClone(this.inventory),preferences:structuredClone(this.connectionPreferences),notices:structuredClone(this.notices),bindings:structuredClone(this.snapshotBindings),data:structuredClone(this.store.data),status:this.statuses[provider]};
       let undo,saved=false;
       try{
         undo=this.options.saveCredential(provider,key.trim());saved=true;
@@ -238,7 +266,7 @@ class CreditCenter extends EventEmitter {
         this.persist();if(this.store.error)throw new Error('storage_failed');
       }catch(error){
         if(saved){try{if(typeof undo!=='function')throw Error();undo();}catch{this.emit('state');throw new Error('credential_commit_partial');}}
-        this.records=old.records;this.inventory=old.inventory;this.notices=old.notices;this.snapshotBindings=old.bindings;this.store.data=old.data;
+        this.records=old.records;this.inventory=old.inventory;this.connectionPreferences=old.preferences;this.notices=old.notices;this.snapshotBindings=old.bindings;this.store.data=old.data;
         if(old.status===undefined)delete this.statuses[provider];else this.statuses[provider]=old.status;
         this.emit('state');throw error;
       }
@@ -258,11 +286,12 @@ class CreditCenter extends EventEmitter {
     const provider = input.provider && this.inventory.tools.some(t => t.id === input.provider) ? input.provider : 'manual-' + hash(input.name.trim());
     const record = cleanRecord({ provider, scope:'manual:'+input.account.trim(), identityVerified:false, account:input.account.trim(), source:'manual', fetchedAt:Date.now(),
       pools:[{id:'manual',label:'本人记录',labelEn:'Manual reading',amount:input.amount,unit:input.unit}] });
-    const previousRecords=this.records.slice(),previousInventory=structuredClone(this.inventory),previousCustom=structuredClone(this.customTools);
+    const previousRecords=this.records.slice(),previousInventory=structuredClone(this.inventory),previousCustom=structuredClone(this.customTools),previousPreferences=structuredClone(this.connectionPreferences);
     this.ensureTool(provider); const tool = this.inventory.tools.find(t => t.id === provider);
     if (provider.startsWith('manual-')) { this.customTools[provider]={name:input.name.trim()};tool.name = input.name.trim(); tool.category = '本人补充'; tool.categoryEn = 'Manually added'; }
+    if(!Object.hasOwn(this.connectionPreferences.platforms,provider))this.connectionPreferences.platforms[provider]={followed:true,membership:'unknown'};
     this.put(record, false); this.persist();
-    if(this.store.error){this.records=previousRecords;this.inventory=previousInventory;this.customTools=previousCustom;this.emit('state');throw new Error('storage_failed');}
+    if(this.store.error){this.connectionPreferences=previousPreferences;this.store.data.connectionPreferences=previousPreferences;this.records=previousRecords;this.inventory=previousInventory;this.customTools=previousCustom;this.emit('state');throw new Error('storage_failed');}
     this.emit('state');
   }
   tick() {
