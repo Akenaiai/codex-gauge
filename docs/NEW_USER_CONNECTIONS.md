@@ -1,8 +1,8 @@
-# First connections (source preview)
+# First connections (Windows 0.4.5)
 
 [简体中文](NEW_USER_CONNECTIONS.zh-CN.md) · [Capabilities and sources](CONNECTION_CAPABILITIES.md) · [Stable installer guide](GETTING_STARTED.md)
 
-This flow is available in the current source. The stable 0.4.4 installer has not been replaced by this intermediate change.
+This flow is included in the stable Windows 0.4.5 installer.
 
 1. A new installation opens the credit center and platform chooser. Existing installations keep their previous view without a forced welcome screen. **Add / manage platforms** opens the same manager later.
 2. Current measured quotas enter the overview automatically, including verified zero balances. Cache, Skills, configuration alone, failed queries and unknown amounts cannot auto-add a platform. You can also follow a platform before connecting it; its row stays unconfirmed.
@@ -32,4 +32,4 @@ The capability catalog lists the exact sources and limits checked on **2026-11-0
 
 `credit-center.json` retains its existing version and fields. Additive `connectionPreferences` stores flow position and per-platform choices. `tools[].followed` controls visibility; `userFollowed` separately identifies explicit choices, so legacy visibility does not create empty overview rows. Automatic successful readings remember visibility with `userChoice: false`; explicit checkbox changes use `true`. No credentials are stored in these preferences. Hiding is a view preference and leaves reminders and background queries unchanged.
 
-Tests cover blank profiles, interruption/restart, automatic successful/zero reads, explicit hide/restore, old cache-only inventories, unchanged record references and badge settings, invalid input and failed-save rollback. Windows Electron checks use the production renderer/preload with an isolated real center and synthetic upstream responses; they exercise actions rather than relying on screenshots. Live provider login, an end-to-end new physical-machine install and Mac validation remain separate work. Native OAuth protocol and Windows isolated UI/OS-encryption checks are separate from real provider user authorization. The current source adds native connections; no stable installer release is provided by this step.
+Tests cover blank profiles, interruption/restart, automatic successful/zero reads, explicit hide/restore, old cache-only inventories, unchanged record references and badge settings, invalid input and failed-save rollback. Windows Electron checks use the production renderer/preload with an isolated real center and synthetic upstream responses; they exercise actions rather than relying on screenshots. Runway/Recraft official authorization and MiniMax international Subscription Key reads passed on Windows, including encrypted persistence and refresh after restarting the installed app. A separate clean physical machine and Mac validation remain separate work. See the [0.4.5 stable release](releases/0.4.5.md).

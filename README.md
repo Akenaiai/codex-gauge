@@ -1,8 +1,8 @@
 # Codex Gauge
 
-**Windows preview: [0.4.5-preview.2](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5-preview.2).** [Scope, verification and isolated acceptance](docs/releases/0.4.5-preview.2.md). Stable remains 0.4.4.
+**Windows stable: [0.4.5](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.5).** [Scope, verification and isolated acceptance](docs/releases/0.4.5.md). Stable release.
 
-**Windows preview:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Stable download remains 0.4.4.
+**Windows stable:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Included in the 0.4.5 installer.
 
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)
 
@@ -12,9 +12,9 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Windows preview:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Runway/Recraft authorization and refresh passed on Windows, including after a real upgrade. MiniMax international Subscription Key reads, encrypted storage and refresh after restart also passed. Mac checks remain pending; these changes are not in stable 0.4.4. [Connection details](docs/NATIVE_CONNECTIONS.md).
+**Windows stable:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Runway/Recraft authorization and refresh passed on Windows, including after a real upgrade. MiniMax international Subscription Key reads, encrypted storage and refresh after restart also passed. Mac checks remain pending; these changes are included in stable 0.4.5. [Connection details](docs/NATIVE_CONNECTIONS.md).
 
-**Current version: 0.4.4.** Windows live checks confirmed automatic reading from an ordinary home tab, retained history after closing, and resumed reading after reopening. TapNow now reads from normally opened home tabs without reloading them or keeping a dedicated page alive. Close the page after use; the credit center retains the last amount and time. Reload the existing browser component once after updating. The original Codex gauge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.4.md)
+**Current version: 0.4.5.** Includes low-quota colors, resumable connection setup, and verified Runway/Recraft/MiniMax direct readers. TapNow keeps its on-demand reading from normally opened home tabs; closing them preserves the last amount and timestamp. If upgrading from a version earlier than 0.4.4, reload the existing browser component once. The original badge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.5.md)
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
@@ -28,7 +28,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
 - Shows the 5-hour and weekly windows actually returned by Codex. Weekly-only accounts put their weekly value first. Missing data stays unknown.
-- Windows preview: battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Included in 0.4.5-preview.2; stable 0.4.4 is unchanged.
+- Battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Included in 0.4.5.
 - Shows reset times, available reset credits and expiry details. Credit expiry countdowns use days and hours (for example, 84 hours appears as 3d 12h). Optional silent expiry reminders, deduplicated by account and credit.
 - Pairs the next scheduled reset countdown with the remaining percentage. With at least 30% remaining, silent reminders fire within 2 hours and 1 hour of the reset, once per account, window and stage. An amber mark on the small gauge points to reminders.
 - Active announcements and imminent scheduled resets move above the dials in prominent amber cards. Available reset credits expiring within 48 hours move to the top in red, with a stronger treatment within 24 hours and a red marker on the small gauge. During disconnections, the red credit-expiry marker and priority card retain the last known unexpired deadline, with a last-reading timestamp and an availability-awaiting-refresh label. Elapsed deadlines await refreshed data.
@@ -42,7 +42,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 Download the setup executable or portable ZIP from [Releases](https://github.com/Akenaiai/codex-gauge/releases). The app is **not code-signed**. Verify the release source and SHA-256 checksum; do not disable Windows protections.
 
-Choose `Codex.Gauge.Setup.0.4.4.exe` for installation, or fully extract `Codex.Gauge-0.4.4-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
+Choose `Codex.Gauge.Setup.0.4.5.exe` for installation, or fully extract `Codex.Gauge-0.4.5-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
 
 You need Windows 10/11 x64. The original Codex badge additionally needs the Codex desktop app and an installed, signed-in [official Codex CLI](https://github.com/openai/codex). The CLI supplies authentication and current Codex quota data. Keep Codex open for the attached gauge. Other supported providers can use the credit center independently through their own connections; if the profile cannot be located, the tray still opens the panel.
 

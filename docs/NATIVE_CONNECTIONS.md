@@ -1,8 +1,8 @@
-# Independent connections (source preview)
+# Independent connections (Windows 0.4.5)
 
 [简体中文](NATIVE_CONNECTIONS.zh-CN.md) · [First connections](NEW_USER_CONNECTIONS.md) · [Capabilities](CONNECTION_CAPABILITIES.md)
 
-These readers are implemented in source. The stable 0.4.4 installer is unchanged. They add no runtime package, local server installation, scheduled job or model request.
+These readers are included in the stable Windows 0.4.5 installer. They add no runtime package, local server installation, scheduled job or model request.
 
 | Platform | Independent route | Scope and remaining validation |
 |---|---|---|

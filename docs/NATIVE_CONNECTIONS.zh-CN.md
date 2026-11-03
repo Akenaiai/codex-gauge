@@ -1,8 +1,8 @@
-# 独立连接（源码预览）
+# 独立连接（Windows 0.4.5）
 
 [English](NATIVE_CONNECTIONS.md) · [首次连接](NEW_USER_CONNECTIONS.zh-CN.md) · [能力目录](CONNECTION_CAPABILITIES.zh-CN.md)
 
-以下能力已在源码实现，稳定版 0.4.4 安装包保持原样。没有新增运行时依赖包、本地服务器安装、定时任务或模型请求。
+以下能力已包含在 Windows 0.4.5 正式稳定版安装包中。没有新增运行时依赖包、本地服务器安装、定时任务或模型请求。
 
 | 平台 | 独立路径 | 范围与待验 |
 |---|---|---|
