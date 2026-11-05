@@ -25,3 +25,25 @@
 .creative-date-note{white-space:normal;overflow-wrap:anywhere}
 
 [data-flip-surface]{cursor:pointer}[data-flip-surface] button:disabled{cursor:default}
+
+/* Creative expiry is separate from Codex reset cards; only the last-day label is red. */
+.creative-row.is-expiring{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.creative-row.is-expiring .creative-deadline{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.creative-row.is-expiring .creative-status,.creative-row.is-expiring .expiry .creative-countdown,.creative-row.is-expiring .expiry .creative-pool{color:var(--accent)}
+.creative-row.is-expiring.expiry-is-primary .creative-amount{color:var(--ink)}
+.creative-row.is-expiring .creative-status{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.creative-row.is-expiring.is-critical .creative-status,.creative-row.is-expiring.is-critical .expiry .creative-countdown{color:var(--expiry-ink);background:var(--expiry-bg)}
+.creative-row.expiry-watch{border-left-width:1px}.creative-row.expiry-soon{border-left-width:3px}
+.creative-priority-note{font-size:10px;color:var(--accent);line-height:1.6;margin:0 0 9px}
+.creative-summary span:first-child strong{color:var(--accent)}.creative-summary span:nth-child(2) strong{color:var(--cool)}
+.creative-reminder-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;margin-top:7px}
+.creative-reminder-actions .text-button{font-size:9px;color:var(--muted);padding:3px 0}
+.creative-entry-count{font-size:9px;min-width:15px;padding:1px 4px;border-radius:5px;background:var(--reminder-bg);color:var(--accent)}
+.micro-wrap .creative-dot{position:absolute;bottom:0;left:-2px;width:16px;height:16px;border:2px solid var(--bg);border-radius:5px;display:grid;place-items:center;background:var(--accent);color:var(--bg);cursor:pointer}
+.micro-wrap .creative-dot .icon{width:11px;height:11px}.micro-wrap .creative-dot.is-critical{background:var(--expiry-border);color:#fff}
+.creative-reminder-dialog{width:min(310px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:18px;font-size:12px;box-shadow:var(--shadow)}
+.creative-reminder-dialog::backdrop{background:#0007}.creative-reminder-dialog h2{font-size:15px;margin:0 0 10px}.creative-reminder-dialog p{font-size:11px;line-height:1.7;color:var(--muted)}
+.creative-reminder-dialog label{display:grid;gap:7px;margin-top:14px}.creative-reminder-dialog input{width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:9px;font:inherit}
+.creative-reminder-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:16px}.creative-reminder-dialog .dialog-error{color:var(--danger)}
+
+.micro-wrap{position:relative;width:52px;height:52px;flex-shrink:0}.micro-wrap .creative-dot{bottom:1px;left:0;padding:0}.micro-wrap .creative-dot .icon{position:static;inset:auto}

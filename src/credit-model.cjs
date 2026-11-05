@@ -1,6 +1,7 @@
 'use strict';
 const { hash } = require('./catalog.cjs');
 const {creditType,isDailyCredit,suppressExpiry}=require('./ui/credit-cadence.js');
+const creativeExpiry=require('./ui/creative-expiry.js');
 const FRESH_MS = 5 * 60000;
 const numeric = n => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 function time(v) { return Number.isSafeInteger(v) && v > 0 ? v : null; }
@@ -60,9 +61,9 @@ function events(records, rules = {}, now = Date.now()) {
   }
   return result.sort((a,b) => a.at - b.at);
 }
-function expiryAlerts(records, rules = {}, now = Date.now()) {
+function expiryAlerts(records, rules = {}, now = Date.now(), preferences = {}) {
   return events(records, rules, now).filter(e => e.kind === 'expiry' && !suppressExpiry(e) && e.notify && (!e.stale || ['manual','host'].includes(e.recordSource) && e.source === 'user') &&
-    (!['relay','cli','mcp'].includes(e.recordSource) || e.identityVerified) && !e.elapsed && e.amount > 0 && e.at - now <= 7 * 86400000).map(e => {
+    (!['relay','cli','mcp'].includes(e.recordSource) || e.identityVerified) && !e.elapsed && e.amount > 0 && e.at - now <= 7 * 86400000 && creativeExpiry.shouldNotify(e,preferences,now)).map(e => {
     const hours = (e.at - now) / 3600000; const stage = hours <= 24 ? '1d' : hours <= 72 ? '3d' : '7d';
     return { ...e, key: 'center:' + hash(e.id) + ':' + stage, expiresAt: e.at, stage, hours: Math.ceil(hours) };
   });

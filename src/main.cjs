@@ -18,6 +18,7 @@ const {OAuthVault,NativeMcp}=require('./native-mcp.cjs');
 const {BrowserLink}=require('./browser-link.cjs');
 const {policyFor}=require('./credit-policies.cjs');
 const {creativeSnapshot,creativeQueryTargets}=require('./creative-credits.cjs');
+const creativeExpiryRules=require('./ui/creative-expiry.js');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
 if (demo) app.setPath('userData', path.join(app.getPath('temp'), 'codex-gauge-demo'));
@@ -25,7 +26,7 @@ const centerProfile = process.argv.find(a => a.startsWith('--center-profile='));
 if (centerProfile && !app.isPackaged) app.setPath('userData', path.resolve(centerProfile.slice('--center-profile='.length)));
 app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
-const openNotificationPanel = () => { pinnedPanel = true; openPanel(true, true); panel.focus(); };
+const openNotificationPanel = (target='codex') => { if(target==='center'){openCenter();return;}pinnedPanel = true; openPanel(true, true);panelFace=target==='creative'?'creative':'codex';broadcast();panel.focus(); };
 const primary = app.requestSingleInstanceLock();
 const activation = primary ? configureActivation({ app, Notification, open: openNotificationPanel, platform: demo ? 'preview' : process.platform }) : null;
 if (!primary) app.quit();
@@ -203,6 +204,12 @@ async function action(name, value) {
     case 'credit-center': openCenter(); break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
     case 'creative-refresh': await Promise.allSettled(creativeQueryTargets(center.state()).map(id=>center.refresh(id,{manual:true})));break;
+    case 'open-creative': openNotificationPanel('creative');break;
+    case 'creative-expiry-settings':
+    case 'creative-expiry-dismiss': {
+      try{if(name==='creative-expiry-settings')center.setCreativeExpiry(value?.provider,value?.threshold);else center.dismissCreativeExpiry(value);return{ok:true};}
+      catch{return{ok:false,error:'save_failed'};}
+    }
     case 'panel-face': {
       if (!['codex', 'creative'].includes(value)) return { ok: false };
       panelFace = value; broadcast(); return { ok: true };
@@ -290,13 +297,13 @@ function processResetReminders() {
       title = text('额度即将周期重置', 'Usage window resets soon');
       body = text(`${label}还有约 ${alert.minutes} 分钟重置，剩余 ${alert.remaining}%。可先安排待办任务，使用重置卡前先核对。`, `${label} resets in about ${alert.minutes} minutes; ${alert.remaining}% remains. Plan pending work and check before using a reset credit.`);
     }
-    delivery.send(alert, { title, body, silent: true });
+    delivery.send(alert, { title: 'Codex · '+title, body, silent: true });
   }
 }
 function processCreditReminders() {
   if (demo || quitting || !quota.active || !store.settings.notifications || quota.status !== 'ready') return;
   for (const alert of creditAlerts(quota.snapshot, quota.accountKey, store.ledger)) {
-    delivery.send(alert, { title: text('重置机会即将到期', 'Reset credit expiring'),
+    delivery.send(alert, { title: text('Codex 重置卡即将到期', 'Codex reset credit expiring'),
       body: text(`有一张重置卡将在约 ${alert.hours} 小时内到期。`, `A reset credit expires in about ${alert.hours} hours.`), silent: true });
   }
 }
@@ -338,6 +345,7 @@ async function start() {
         if (id === 'codex' || !id) { quota.setActive(true); quota.refresh(); }
         await center.refresh(id, {manual:true});
       } else if (name === 'rule') center.setRule(value?.key, value?.rule);
+      else if(name==='creative-expiry-settings')center.setCreativeExpiry(value?.provider,value?.threshold);
       else if(name==='monthly-rule')center.setMonthlyRule(value?.observationId,value?.itemId,value?.rule);
       else if(name==='user-dates')center.setUserDate(value);
       else if(name==='remove-user-dates')center.removeUserDate(value?.id);
@@ -382,12 +390,14 @@ async function start() {
     if (demo || quitting || !center.enabled || !center.reminders) return;
     const providerName = center.inventory.tools.find(t => t.id === alert.provider)?.name || alert.provider;
     const observedNotice=observationNotice(alert,providerName,store.settings.language);
-    delivery.send(alert, { title: observedNotice ? observedNotice.title : alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text('到了平台公布的恢复日期','Scheduled renewal date reached'):text('到了预计恢复时间','Expected renewal time reached'):text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring'),
+    const creativeExpiry=creativeExpiryRules.isCreative(alert.provider)&&(alert.kind==='expiry'||alert.scheduleKind==='expiry');
+    const prefix=creativeExpiry?text('创作积分 · ','Creative credits · '):'';
+    delivery.send({...alert,target:creativeExpiry?'creative':'center'}, { title: prefix+(observedNotice ? observedNotice.title : alert.kind === 'recovered' ? text('额度已恢复', 'Quota renewed') : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text('到了平台公布的恢复日期','Scheduled renewal date reached'):text('到了预计恢复时间','Expected renewal time reached'):text('到了你记录的恢复时间', 'Recorded renewal time reached') : alert.kind === 'reset_soon' ? text('额度即将周期重置', 'Quota reset approaching') : text('积分即将到期', 'Credits expiring')),
       body: observedNotice ? observedNotice.body : alert.kind === 'recovered' ? text(`${providerName} 的${alert.label}已核实恢复。可打开额度中心安排任务。`, `${providerName}: ${alert.labelEn} renewal verified. Open the credit center to plan work.`)
         : alert.kind === 'check_renewal' ? alert.source==='policy'?alert.dateOnly?text(`${providerName} 按本机日历已到平台公布的恢复日期。官方未说明具体时刻和时区，请刷新核实实际额度。`,`${providerName}: the published renewal date is today in your local calendar. The provider specifies no time or timezone; refresh to verify.`):text(`${providerName} 记录的账期时间为 ${new Date(alert.at).toLocaleString('zh-CN')}。请核实套餐积分是否到账；合计余额变化不单独证明恢复。`,`${providerName}: the recorded billing boundary is ${new Date(alert.at).toLocaleString('en')}. Verify the plan grant; a total balance change alone does not prove renewal.`):text(`${providerName} 已到你记录的恢复时间。请刷新核实实际到账，刻度尚未确认恢复。`, `${providerName}: your recorded renewal time has arrived. Refresh to verify the actual balance; renewal is not confirmed.`)
         : alert.kind === 'reset_soon' ? text(`${providerName} 的${alert.label}约 ${alert.minutes} 分钟后周期重置，可先安排待办任务。`, `${providerName}: ${alert.labelEn} resets in about ${alert.minutes} minutes. Plan pending work.`)
         : alert.stale ? text(`${providerName} 本人记录的到期时间在约 ${alert.hours} 小时后，请核实当前余额。`, `${providerName}: your recorded expiry is in about ${alert.hours} hours. Verify the current balance.`)
-        : text(`${providerName} 的${alert.label}将在约 ${alert.hours} 小时内到期。打开额度中心查看。`, `${providerName}: ${alert.labelEn} expires in about ${alert.hours} hours. Open the credit center for details.`), silent: true });
+        : creativeExpiry ? text(`${providerName} 的${alert.label}将在约 ${alert.hours} 小时内到期。本批剩余 ${alert.amount} ${alert.unit==='percent'?'%':alert.unit==='requests'?'次':'积分'}，打开创作积分安排使用。`, `${providerName}: ${alert.labelEn} expires in about ${alert.hours} hours (${alert.amount} ${alert.unit||'credits'} in this batch). Open creative credits to plan work.`) : text(`${providerName} 的${alert.label}将在约 ${alert.hours} 小时内到期。打开额度中心查看。`, `${providerName}: ${alert.labelEn} expires in about ${alert.hours} hours. Open the credit center for details.`), silent: true });
   });
   quota.on('state', () => {
     center.updateCodex(quota.state(), quota.accountKey);

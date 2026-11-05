@@ -1,6 +1,7 @@
 'use strict';
 const {analyze,summarizeRecord}=require('./ui/credit-overview.js');
 const {timing,selectDates,priorityExpiry}=require('./ui/creative-timing.js');
+const expiryRules=require('./ui/creative-expiry.js');
 const media={xyq:['image','video'],jimeng:['image','video'],lovart:['image','video'],runway:['image','video'],kling:['image','video'],recraft:['image'],ideogram:['image','video'],tapnow:['image','video'],suno:['music'],chatcut:['video'],adobe:['image','video'],canva:['image','video'],'comfy-local':['image','video']};
 const download=p=>p.resource==='downloads'||/download|下载/i.test(p.id+' '+p.label+' '+p.labelEn);
 function creativePool(provider,p){
@@ -24,15 +25,16 @@ function creativeSnapshot(state={},now=Date.now()){
       return tool.id!=='minimax'||/video|视频/i.test(e.label+' '+e.labelEn);
     };
     // A media entitlement of a coding service is summarized independently.
-    const view={...tool,id:tool.id==='minimax'?'creative-minimax':tool.id,records,webDates:(tool.webDates||[]).filter(allowedDate),recordedDates:(tool.recordedDates||[]).filter(allowedDate)};
+    const view={...tool,expiryPreferences:state.creativeExpiry,id:tool.id==='minimax'?'creative-minimax':tool.id,records,webDates:(tool.webDates||[]).filter(allowedDate),recordedDates:(tool.recordedDates||[]).filter(allowedDate)};
     const row=analyze(view,state.rules||{},now);
     // The center may flag mixed accounts as unknown; preview the selected account.
     row.status=row.record?summarizeRecord(row.record,view.id,state.rules||{},now).status:'unknown';
     // Unknown readings remain in the credit center, including stale balances.
     if(!['available','empty'].includes(row.status))continue;
-    const dates=row.dates.filter(d=>!d.card),selected=selectDates(dates,now),expiry=priorityExpiry(dates,row.status,now);
+    const dates=row.dates.filter(d=>!d.card).map(d=>({...d,provider:tool.id})),selected=selectDates(dates,now),expiry=priorityExpiry(dates,row.status,now,state.creativeExpiry,tool.id);
     rows.push({id:tool.id,name:tool.name,kinds,status:row.status,amount:row.metric?.amount??null,unit:row.metric?.unit||'credits',label:row.metric?.label||null,labelEn:row.metric?.labelEn||null,
       fetchedAt:row.record?.fetchedAt||null,source:row.record?.source||null,account:row.record?.account||null,accountCount:row.accountCount,
+      expiryThreshold:expiryRules.threshold(tool.id,state.creativeExpiry),expiryStage:expiryRules.stage(timing(expiry,now)),expiryBatchKey:expiry?expiryRules.batchKey(expiry):null,
       dates:[...new Set([expiry,selected.expiry,selected.reset,...dates].filter(Boolean))].slice(0,4),expiring:!!expiry,priorityExpiry:expiry,
       expiryNeedsCheck:!!expiry&&(row.status==='unknown'||expiry.stale||['web','user','user_schedule'].includes(expiry.source)||!!expiry.account&&expiry.account!==row.record?.account),
       expiryIsPrimary:!!expiry&&expiry.recordId===row.record?.id&&expiry.poolId===row.metric?.id,criticalExpiry:!!expiry&&timing(expiry,now).critical,querying:tool.querying===true,queryStatus:tool.queryStatus||null,urgent:row.urgent});

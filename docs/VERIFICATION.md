@@ -1,5 +1,11 @@
 # Verification / 验证记录
 
+## 0.4.7 creative expiry / 创作积分临期
+
+- The inclusive default cutoff is 100 credits per creative platform. The expiring pool amount, per-platform persistence, dismissal scope, daily suppression, unknown amounts, time boundaries, notification separation and Codex regression behavior are covered by 277 automated checks.
+- Fourteen isolated Windows Electron UI checks of the feature code cover Chinese/English, dark/light, a 320-pixel renderer viewport, both reminder markers, real settings writes, dismissal and ordinary/explicit reopening. Packaged first-run and legacy-profile checks run separately; release payloads are compared with their fixed source snapshot. Synthetic screenshots are labeled, and the English Suno example uses a custom cutoff of 5 credits.
+- 自然未来通知送达、真实Windows通知中心点击与Mac仍待现场验证；函数模拟、隔离界面和包内检查不能替代自然系统事件。原设置、连接和日期的升级保留单独核对。
+
 ## Independent connections — source preview (2026-11-03)
 
 Runway/Recraft native OAuth and MiniMax international Subscription Key readers have 22 targeted protocol/source-isolation tests, alongside the existing 237 checks. Windows Electron validation exercises 35 production renderer/preload interactions with a real center/native client/loopback callbacks/OS encryption and synthetic upstream data. A separate actual `main.cjs` launch in empty home/PATH passes 14 startup/IPC checks. Chinese/English, light/dark and 700/1050px guide layouts were checked. No daily profile or installer was replaced.

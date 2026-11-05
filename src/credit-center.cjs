@@ -12,6 +12,7 @@ const {cleanPreferences,followed,patchPreferences}=require('./connection-prefere
 const {policyFor,enrichSchedules}=require('./credit-policies.cjs');
 const {cleanObservations,observationEvents,observationAlerts,applyMonthlyRules,validateMonthlyRule}=require('./credit-date-observations.cjs');
 const {validateUserDate,cleanUserDates,activeUserDates,userDateEvents,userDateAlerts}=require('./credit-user-dates.cjs');
+const creativeExpiry=require('./ui/creative-expiry.js');
 const errors = ['cli_missing','login_required','account_changed','timeout','query_failed','invalid_response','invalid_balance','rate_limited','relay_unavailable','storage_failed','credential_storage_failed','invalid_credential','browser_offline','browser_setup_required','page_closed','selection_changed','permission_denied','authorization_pending','authorization_cancelled','authorization_denied'];
 const safeError = e => errors.includes(e?.message) ? e.message : 'query_failed';
 class CreditCenter extends EventEmitter {
@@ -19,6 +20,7 @@ class CreditCenter extends EventEmitter {
     super(); const existingInstallation=['credit-center.json','settings.json'].some(file=>fs.existsSync(path.join(directory,file)));this.store = new CreditStore(directory); this.options = options; this.busy = new Set(); this.statuses = {}; this.stopped = false; this.generation = 0;
     this.providerEpoch=new Map();this.queryRuns=new Map();this.connectRuns=new Map();this.connecting=new Set();
     const data = this.store.data;
+    this.creativeExpiry=creativeExpiry.clean(data.creativeExpiry);
     this.subscriptionRoutes={};if(['direct','relay'].includes(data.subscriptionRoutes?.minimax))this.subscriptionRoutes.minimax=data.subscriptionRoutes.minimax;
     this.records = [];
     this.dateObservations=cleanObservations(data.dateObservations);
@@ -60,6 +62,7 @@ class CreditCenter extends EventEmitter {
     });
   }
   persist() {
+    this.store.data.creativeExpiry=this.creativeExpiry;
     this.store.data.subscriptionRoutes=this.subscriptionRoutes;
     this.store.data.connectionPreferences=this.connectionPreferences;
     Object.assign(this.store.data, { records: this.records, dateObservations:this.dateObservations,userDates:this.userDates,onboardingCompleted:this.onboardingCompleted,monthlySchedules:this.monthlySchedules,rules: this.rules, notices: this.notices, inventory: this.inventory, customTools:this.customTools,snapshotBindings:this.snapshotBindings, enabled: this.enabled, reminders: this.reminders });
@@ -74,7 +77,7 @@ class CreditCenter extends EventEmitter {
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
       records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) });});
     return { ...this.inventory, tools, connectionPreferences:this.connectionPreferences,connectionCatalog:connectionCatalog().map(p=>({...p,name:providers[p.provider].name,nameEn:({xyq:'Pippit',jimeng:'Dreamina','wanxiang':'Tongyi Wanxiang',quark:'Quark','hailuo-audio':'Hailuo Audio','capcut-hub':'CapCut Hub','kimi-subscription':'Kimi membership','minimax-subscription':'MiniMax Token Plan',ark:'Volcengine Ark',zai:'Z.AI'})[p.provider]||providers[p.provider].name})),connectionComponents:componentCatalog(),onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
-      records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,
+      records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,creativeExpiry:this.creativeExpiry,
       events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
       browserLink:this.options.browserState?.(),storageError: this.store.error, revision: this.store.data.revision };
   }
@@ -316,6 +319,24 @@ class CreditCenter extends EventEmitter {
     else if(action==='disconnect'||action==='legacy')this.options.nativeMcp.disconnect(id,action==='legacy');
     else throw Error('unsupported');
   }
+  setCreativeExpiry(provider,threshold){
+    if(!creativeExpiry.isCreative(provider)||!creativeExpiry.validThreshold(threshold))throw Error('invalid_rule');
+    this.saveCreativeExpiry({...this.creativeExpiry,thresholds:{...this.creativeExpiry.thresholds,[provider]:threshold}});
+  }
+  dismissCreativeExpiry(event){
+    // Resolve the batch from our current data; renderer-supplied deadlines are not trusted.
+    const dates=[...events(this.records.filter(r=>r.status!=='account_changed'),this.rules),...observationEvents(this.dateObservations),...userDateEvents(this.userDates,this.records)];
+    const key=typeof event==='string'?event:creativeExpiry.batchKey(event),found=dates.find(d=>d.kind==='expiry'&&creativeExpiry.isCreative(d.provider)&&creativeExpiry.batchKey(d)===key);
+    if(!found)throw Error('invalid_rule');
+    const until=found.dateOnly?new Date(...found.onDate.split('-').map((n,i)=>Number(n)-(i===1?1:0))).getTime()+2*86400000:found.at;
+    if(until<=Date.now())throw Error('invalid_rule');
+    this.saveCreativeExpiry({...this.creativeExpiry,dismissed:{...this.creativeExpiry.dismissed,[key]:until}});
+  }
+  saveCreativeExpiry(next){
+    const old=this.creativeExpiry;this.creativeExpiry=creativeExpiry.clean(next);this.persist();
+    if(this.store.error){this.creativeExpiry=old;this.store.data.creativeExpiry=old;throw Error('storage_failed');}
+    this.emit('state');
+  }
   setPreferences({ enabled = this.enabled, reminders = this.reminders }) {
     const oldEnabled=this.enabled,oldReminders=this.reminders;
     this.enabled = enabled === true; this.reminders = reminders === true; this.persist();
@@ -341,10 +362,11 @@ class CreditCenter extends EventEmitter {
   tick() {
     if (this.stopped || !this.enabled) return;
     this.loadImports();
-    if (this.reminders) for (const alert of expiryAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
+    if (this.reminders) for (const alert of expiryAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules,Date.now(),this.creativeExpiry)) this.emit('alert', alert);
     if (this.reminders) for (const alert of renewalAlerts(this.records.filter(r => r.provider !== 'codex' && r.status !== 'account_changed'), this.rules)) this.emit('alert', alert);
-    if(this.reminders)for(const alert of observationAlerts(this.dateObservations,Date.now(),this.monthlySchedules))this.emit('alert',alert);
-    if(this.reminders)for(const alert of userDateAlerts(this.userDates,this.records))this.emit('alert',alert);
+    const dateAlert=alert=>{if(!creativeExpiry.shouldNotify(alert,this.creativeExpiry))return;const expiry=creativeExpiry.isCreative(alert.provider)&&alert.scheduleKind==='expiry';this.emit('alert',expiry?{...alert,key:'center:creative-date:'+hash(creativeExpiry.batchKey(alert))+':'+(alert.days===0?'1d':'3d')}:alert);};
+    if(this.reminders)for(const alert of observationAlerts(this.dateObservations,Date.now(),this.monthlySchedules))dateAlert(alert);
+    if(this.reminders)for(const alert of userDateAlerts(this.userDates,this.records))dateAlert(alert);
     if(this.reminders)for(const notice of this.notices)if(notice.expiresAt>Date.now()&&this.rules[notice.recordId+'/'+notice.poolId]?.notify!==false&&this.records.some(r=>r.id===notice.recordId&&r.status!=='account_changed'))this.emit('alert',notice);
     this.emit('state');
   }

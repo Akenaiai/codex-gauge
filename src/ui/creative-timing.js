@@ -1,4 +1,4 @@
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.creativeTiming=api;})(typeof window!=='undefined'?window:this,function(){
+(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./creative-expiry.js'):root.creativeExpiry);if(typeof module==='object'&&module.exports)module.exports=api;else root.creativeTiming=api;})(typeof window!=='undefined'?window:this,function(expiryRules){
   'use strict';
   const DAY=86400000;
   function timing(date,now=Date.now()){
@@ -24,9 +24,9 @@
     };
     return{expiry:select('expiry'),reset:select('reset')};
   }
-  function priorityExpiry(dates=[],status,now=Date.now()){
+  function priorityExpiry(dates=[],status,now=Date.now(),preferences={},provider){
     if(status==='empty')return null;
-    return dates.filter(d=>d.kind==='expiry'&&!d.daily&&(d.amount==null||d.amount>0)&&timing(d,now)?.near).sort((a,b)=>timing(a,now).order-timing(b,now).order)[0]||null;
+    return dates.filter(d=>d.kind==='expiry'&&!d.daily&&(d.amount==null||d.amount>0)&&expiryRules.allows({...d,provider:d.provider||provider},preferences,now)&&timing(d,now)?.near).sort((a,b)=>timing(a,now).order-timing(b,now).order)[0]||null;
   }
   return{timing,selectDates,priorityExpiry};
 });

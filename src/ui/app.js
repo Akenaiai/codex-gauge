@@ -16,6 +16,7 @@
   const t = (cn, en) => state.settings.language === 'zh-CN' ? cn : en;
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icons = {
+    creative: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m4 18 5-5 4 3 3-5 5 7"/>',
     flip: '<path d="M5 7h14v10H5zM2 10V5h5M22 14v5h-5"/>',
     settings: '<path d="M9 2h6l1 3 3 1 3 5-2 2 0 3-4 4-3-1-3 1-4-4v-3l-2-2 3-5 3-1z"/><circle cx="12" cy="12" r="3"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
@@ -112,12 +113,13 @@
     const reminderLabel = expiry ? (expiry.stale ? t('重置卡即将到期（上次数据），展开查看', 'Reset credit expiring (last reading); open for details') : t('重置卡即将到期，展开查看', 'Reset credit expiring; open for details')) : t('有重置提醒，展开查看', 'Reset reminder; open for details');
     const quotaLabel = quotaTone(p) ? t(`剩余 ${pct(p)}%，${quotaTone(p) === 'quota-critical' ? '额度即将用尽' : '额度偏低'}`, `${pct(p)}% remaining; ${quotaTone(p) === 'quota-critical' ? 'quota nearly depleted' : 'quota low'}`) + (stale() ? t('（上次读数）', ' (last reading)') : '') : '';
     const label = [quotaLabel, expiry || reminder ? reminderLabel : t('查看 Codex 额度', 'View Codex usage')].filter(Boolean).join(' · ');
-    return `<button class="micro ${quotaTone(p)} ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(label)}" title="${esc(label + ' · ' + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
+    const expiring=state.creative?.rows?.filter(r=>r.expiring)||[],creativeLabel=t(`创作积分临期：${expiring.map(r=>r.name).join('、')}，点击查看`,`Creative credits expiring: ${expiring.map(r=>r.name).join(', ')}; view details`);
+    return `<div class="micro-wrap"><button class="micro ${quotaTone(p)} ${stale() ? 'stale' : ''} ${expiry ? 'credit-urgent' : reminder ? 'has-reset' : ''}" data-action="toggle" aria-label="${esc(label)}" title="${esc(label + ' · ' + t('悬停查看 · 拖动调整 · 双击归位', 'Hover to view · Drag to move · Double-click to reset'))}">
       <svg viewBox="0 0 46 46" aria-hidden="true"><path d="${arc(19.5, 100, 23)}" fill="none" stroke="var(--line)" stroke-width="1.5"/>
       <path d="${arc(19.5, value, 23)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
       <path d="${arc(16, weekly?.remaining ?? 0, 23)}" fill="none" stroke="${quotaColor(weekly, 'var(--cool)')}" stroke-width="1" opacity=".7"/>
       ${[0, 25, 50, 75, 100].map(v => { const a = point(135 + v * 2.7, 20, 23), b = point(135 + v * 2.7, 22, 23); return `<path d="M${a}L${b}" stroke="var(--muted)" stroke-width=".7"/>`; }).join('')}</svg>
-      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${expiry || reminder ? `<span class="reset-dot ${expiry ? 'credit-dot' : ''}" role="img" aria-label="${esc(reminderLabel)}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>`;
+      <span class="reading">${pct(p)}</span><span class="unit">${p?.minutes === 10080 ? 'WEEK' : p?.minutes === 300 ? '5H' : p ? `${p.minutes}M` : 'CODEX'}</span>${expiry || reminder ? `<span class="reset-dot ${expiry ? 'credit-dot' : ''}" role="img" aria-label="${esc(reminderLabel)}">!</span>` : ''}${stale() ? '<span class="live-dot"></span>' : ''}</button>${expiring.length?`<button class="creative-dot ${expiring.some(r=>r.criticalExpiry)?'is-critical':''}" data-action="open-creative" aria-label="${esc(creativeLabel)}" title="${esc(creativeLabel)}">${icon('creative')}</button>`:''}</div>`;
   }
   function time(w) {
     if (!w?.resetsAt) return { time: '—', hint: t('重置时间未知', 'Reset time unavailable') };
@@ -205,8 +207,8 @@
       <div class="setting"><label class="label" for="language">${t('语言', 'Language')}</label><select id="language" data-select="language"><option value="zh-CN" ${s.language === 'zh-CN' ? 'selected' : ''}>简体中文</option><option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option></select></div>
       ${toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized'))}
       ${toggle('autostart', state.host.platform === 'win32' ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), state.host.platform === 'win32' ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
-      ${toggle('notifications', t('重置卡到期提醒', 'Credit expiry reminders'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
-      ${toggle('resetReminders', t('额度重置提醒', 'Usage reset reminders'), t('余量 ≥30% 时提前 2 / 1 小时提醒；新预告通知', 'At ≥30% remaining, remind within 2h / 1h; new announcements'))}
+      ${toggle('notifications', t('Codex 重置卡到期提醒', 'Codex reset credit expiry'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
+      ${toggle('resetReminders', t('Codex 额度重置提醒', 'Codex usage reset reminders'), t('余量 ≥30% 时提前 2 / 1 小时提醒；新预告通知', 'At ≥30% remaining, remind within 2h / 1h; new announcements'))}
       ${toggle('resetNews', t('临时重置与发卡消息', 'Public reset announcements'), t('匿名读取 AIHOT，每 5 分钟核对；仅程序运行时', 'Read AIHOT anonymously every 5 min while the app is active'))}
       <div class="settings-actions"><button class="text-button" data-action="reset-position">${t('恢复默认位置', 'Reset position')}</button><button class="text-button" data-action="check-update">${t('检查更新', 'Check for updates')}</button><button class="text-button" data-action="source">GitHub ↗</button></div>
       ${state.update.state !== 'idle' ? `<div class="notice">${updateLabel()}${state.update.state === 'available' ? `<br><button class="text-button" data-action="releases">${t('前往下载更新', 'Download update')} ↗</button>` : ''}</div>` : ''}
@@ -218,7 +220,7 @@
   }
   function panelMarkup() {
     return `<section class="panel" ${screenName === 'gauge' ? `data-flip-surface title="${t('单击卡片翻面', 'Click the card to flip')}"` : ''}><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
-      <button class="flip-switch" data-action="show-creative">${icon('flip')}${t('创作积分','Creative credits')}</button>${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
+      <button class="flip-switch" data-action="show-creative">${icon('flip')}${t('创作积分','Creative credits')}${state.creative?.expiring?`<span class="creative-entry-count">${state.creative.expiring}</span>`:''}</button>${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
       <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
       ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
@@ -262,7 +264,23 @@
       <div class="preview-stage"><div class="preview-rail"><div class="rail-logo">C</div><div class="rail-nav">${icon('gauge')}${icon('ticket')}${icon('settings')}</div><div class="spacer"></div>${mini()}<div class="rail-avatar">AK</div></div><div class="preview-frame">${panelFacesMarkup()}</div><div class="preview-notes"><strong>01 / ${t('常驻', 'AT A GLANCE')}</strong>${t('双弧线、小读数。只占头像上方的一点空间。', 'Two arcs. One reading. A small space above your profile.')}<strong>02 / ${t('展开', 'IN DETAIL')}</strong>${t('双周期仪表、重置时间、重置卡，一层展开。', 'Two usage windows, reset times and credits in one view.')}<div class="preview-buttons"><button data-preview="theme">${t('切换明暗', 'Theme')}</button><button data-preview="language">中 / EN</button><button data-preview="low">${t('低余量', 'Low')}</button><button data-preview="offline">${t('断线状态', 'Offline')}</button><button data-preview="reset">${t('还原', 'Reset')}</button></div></div></div>`;
     else if(view==='badge')app.innerHTML=mini();else renderPanel();
   }
+  let reminderDialog;
+  function openCreativeSettings(provider){
+    const row=state.creative?.rows?.find(r=>r.id===provider);if(!row)return;
+    if(!reminderDialog){reminderDialog=document.createElement('dialog');reminderDialog.className='creative-reminder-dialog';document.body.append(reminderDialog);}
+    reminderDialog.innerHTML=`<form><h2>${esc(row.name)} · ${t('创作积分提醒','Creative credit reminders')}</h2><p>${t('仅在即将到期的这批积分超过忽略线时提醒。不会改变 Codex 额度或重置卡提醒。','Only highlight an expiring batch above this cutoff. Codex quota and reset credit reminders are separate.')}</p><label>${t('不提醒的积分上限（含）','Ignore credits at or below')}<input name="threshold" type="number" min="0" max="1000000000000" step="any" required value="${row.expiryThreshold??100}"></label><p>${t('默认 100 积分；填 0 表示有积分就提醒。7 天内置顶，3 天内静默通知，最后一天加强标签。每日赠送不提醒。','Default: 100 credits. Use 0 to highlight any positive balance. Sort first within 7 days, send silent notices within 3 days and on the last day. Daily gifts stay silent.')}</p><p class="dialog-error" role="status"></p><div class="dialog-actions"><button type="button" data-cancel>${t('取消','Cancel')}</button><button type="submit">${t('保存','Save')}</button></div></form>`;
+    reminderDialog.querySelector('[data-cancel]').onclick=()=>reminderDialog.close();
+    reminderDialog.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();const form=event.currentTarget,submit=form.querySelector('[type=submit]');submit.disabled=true;
+      const result=preview?{ok:false}:await window.gauge.action('creative-expiry-settings',{provider,threshold:Number(form.elements.threshold.value)});
+      submit.disabled=false;if(result?.ok){reminderDialog.close();showToast(t('创作积分忽略线已保存','Creative credit cutoff saved'));}else form.querySelector('.dialog-error').textContent=t('未能保存，请重试。','Could not save. Please retry.');
+    };reminderDialog.showModal();
+  }
   async function action(name, value) {
+    if(name==='creative-expiry-settings'){openCreativeSettings(value);return;}
+    if(name==='open-creative'){if(!preview)await window.gauge.action('open-creative');return;}
+    if(name==='creative-expiry-dismiss'){if(!preview){const result=await window.gauge.action(name,value);if(result?.ok)showToast(t('本批积分已静音','This credit batch is now quiet'));else showToast(t('未能保存，请重试','Could not save. Please retry'));}return;}
+
     if(name==='show-creative'||name==='show-codex'){
       const previous=state.settings.panelFace||'codex',face=name==='show-creative'?'creative':'codex';
       screenName='gauge';state.settings.panelFace=face;
@@ -317,7 +335,7 @@
     } else action(target.dataset.action, target.dataset.event);
   });
   document.addEventListener('change', event => { if (event.target.dataset.select) action('settings', { [event.target.dataset.select]: event.target.value }); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') action('close'); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !reminderDialog?.open) action('close'); });
   if (!preview) {
     document.body.addEventListener('mouseenter', () => action('enter', view));
     document.body.addEventListener('mouseleave', () => action('leave', view));
@@ -325,7 +343,7 @@
     if (view === 'badge') {
       document.addEventListener('dblclick', () => action('reset-position'));
       document.addEventListener('pointerdown', event => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || event.target.closest('.creative-dot')) return;
         pointer = { id: event.pointerId, x: event.screenX, y: event.screenY, target: event.target.closest('.micro'), dragging: false };
         pointer.target?.setPointerCapture(event.pointerId);
       });

@@ -4,8 +4,8 @@ const { createHash } = require('node:crypto');
 const TOAST_CLSID = '{29cfae32-d308-4b2d-8a9e-8875c6fe8214}';
 const MAX_ATTEMPTS = 3, ACK_TIMEOUT = 15000;
 function configureActivation({ app, Notification, open, platform = process.platform }) {
-  let ready = false, pending = false;
-  const activate = () => { if (ready) open(); else pending = true; };
+  let ready = false, pending = null;
+  const activate = details => { const target=details?.arguments==='gauge:creative'?'creative':details?.arguments==='gauge:center'?'center':'codex';if (ready) open(target); else if(target!=='codex'||!pending)pending = target; };
   app.on('second-instance', activate);
   if (platform === 'win32') {
     app.setToastActivatorCLSID(TOAST_CLSID);
@@ -16,7 +16,7 @@ function configureActivation({ app, Notification, open, platform = process.platf
       Notification.isSupported();
     });
   }
-  return { ready() { ready = true; if (pending) { pending = false; open(); } } };
+  return { ready() { ready = true; if (pending) { const target=pending;pending = null; open(target); } } };
 }
 class NotificationDelivery {
   constructor({ store, Notification, open, changed = () => {}, platform = process.platform,
@@ -71,12 +71,15 @@ class NotificationDelivery {
     };
     try {
       const id = createHash('sha256').update(alert.key).digest('hex').slice(0, 16);
-      const notification = new this.Notification({ ...options, id, groupId: 'gauge-reminders' });
+      const target=['creative','center'].includes(alert.target)?alert.target:'codex';
+      const xml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'');
+      const toastXml=this.platform==='win32'&&target!=='codex'?`<toast launch="gauge:${target}"><visual><binding template="ToastGeneric"><text>${xml(options.title)}</text><text>${xml(options.body)}</text></binding></visual><audio silent="true"/></toast>`:options.toastXml;
+      const notification = new this.Notification({ ...options, ...(toastXml?{toastXml}:{}), id, groupId: target==='creative'?'gauge-creative':'gauge-reminders' });
       attempt.notification = notification;
       notification.on('show', () => finish('sent'));
       notification.on('failed', () => finish('failed'));
       // Windows invokes the global handler as well as instance events; use one route.
-      if (this.platform !== 'win32') notification.on('click', this.open);
+      if (this.platform !== 'win32') notification.on('click', () => this.open(target));
       notification.on('close', () => {
         if (this.live.get(alert.key) !== attempt) return;
         finish('unknown'); this.live.delete(alert.key);

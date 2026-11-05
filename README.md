@@ -1,8 +1,10 @@
 # Codex Gauge
 
-**Windows stable: [0.4.6](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.6).** [Scope, verification and isolated acceptance](docs/releases/0.4.6.md). Stable release.
+**Creative expiry reminders:** [Creative credit expiry reminders](docs/CREATIVE_EXPIRY.md) add a default inclusive 100-credit cutoff, per-platform settings, priority sorting and separate creative/Codex markers.
 
-**Windows stable:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Included in the 0.4.6 installer.
+**Windows stable: [0.4.7](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.7).** [Scope, verification and isolated acceptance](docs/releases/0.4.7.md). Stable release.
+
+**Windows stable:** [First connections and platform management](docs/NEW_USER_CONNECTIONS.md), including resumable setup and optional membership notes. Included in the 0.4.7 installer.
 
 [简体中文](README.zh-CN.md) · [Downloads](https://github.com/Akenaiai/codex-gauge/releases) · [Source](https://github.com/Akenaiai/codex-gauge)
 
@@ -12,13 +14,15 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 **No Gauge account or additional provider login inside Gauge.** It uses the current user's own local CLI/MCP connections or optional API credentials. A new installation includes no developer account, balances or date rules. Discovering a plugin is not proof that its balance can be queried. See the [distribution privacy verification](docs/PRIVACY_VERIFICATION.md).
 
-**Windows stable:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Runway/Recraft authorization and refresh passed on Windows, including after a real upgrade. MiniMax international Subscription Key reads, encrypted storage and refresh after restart also passed. Mac checks remain pending; these changes are included in stable 0.4.6. [Connection details](docs/NATIVE_CONNECTIONS.md).
+**Windows stable:** Runway/Recraft now offer direct official-browser OAuth, and MiniMax international offers a direct Subscription Key reader, without Codex/Relay/Python. Existing routes remain available. Runway/Recraft authorization and refresh passed on Windows, including after a real upgrade. MiniMax international Subscription Key reads, encrypted storage and refresh after restart also passed. Mac checks remain pending; these changes are included in stable 0.4.7. [Connection details](docs/NATIVE_CONNECTIONS.md).
 
-**Current version: 0.4.6.** Replaces the duplicate capacity bar with the real account credit balance, alongside low-quota colors, connection setup and verified direct readers. TapNow keeps its on-demand reading from normally opened home tabs; closing them preserves the last amount and timestamp. If upgrading from a version earlier than 0.4.4, reload the existing browser component once. The original badge and click-to-flip card remain available. Ideogram and Mac still need live field validation. [Release notes](docs/releases/0.4.6.md)
+**Current version: 0.4.7.** Creative credit batches of 100 or less stay quiet by default. Set a cutoff per platform, see meaningful expiries sorted first within seven days, and dismiss individual batches. Creative expiry has its own badge icon, notification source and click destination, separate from Codex. Existing balance cards, low-quota colors, connections and browser behavior remain available. [Release notes](docs/releases/0.4.7.md)
 
 ![Quota overview with synthetic sample data](assets/credit-overview-en.png)
 
-![Creative flip face with synthetic sample data](docs/images/creative-panel-en.png)
+![Creative expiry with synthetic sample data; Suno uses a custom cutoff of 5 credits](docs/images/creative-expiry-en.png)
+
+Synthetic example: Suno uses a custom cutoff of 5 credits; the default remains 100. [Reminder rules](docs/CREATIVE_EXPIRY.md).
 
 **Windows first.** Windows profile anchoring is implemented. macOS source support is an experimental floating-mode preview, not a tested equivalent of the Windows integration.
 
@@ -29,7 +33,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 - A 52-pixel gauge follows Codex's profile button on Windows. Hover to expand; click to keep the panel open.
 - Shows the 5-hour and weekly windows actually returned by Codex. Weekly-only accounts put their weekly value first. Missing data stays unknown.
 - Shows the account credit balance in place of the duplicate capacity bar. Plan percentages, balance and reset cards stay separate; unknown balances are not shown as zero.
-- Battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Included in 0.4.6.
+- Battery-style quota colors turn the displayed number and its arc amber at 20% or less, then red at 10% or less. Thresholds follow the displayed whole percentage; each quota window changes independently and restores its normal color after replenishment. The badge layout and separate credit-expiry marker stay intact. Included in 0.4.7.
 - Shows reset times, available reset credits and expiry details. Credit expiry countdowns use days and hours (for example, 84 hours appears as 3d 12h). Optional silent expiry reminders, deduplicated by account and credit.
 - Pairs the next scheduled reset countdown with the remaining percentage. With at least 30% remaining, silent reminders fire within 2 hours and 1 hour of the reset, once per account, window and stage. An amber mark on the small gauge points to reminders.
 - Active announcements and imminent scheduled resets move above the dials in prominent amber cards. Available reset credits expiring within 48 hours move to the top in red, with a stronger treatment within 24 hours and a red marker on the small gauge. During disconnections, the red credit-expiry marker and priority card retain the last known unexpired deadline, with a last-reading timestamp and an availability-awaiting-refresh label. Elapsed deadlines await refreshed data.
@@ -43,7 +47,7 @@ A desktop AI credit center with a small, precision-styled Codex usage gauge abov
 
 Download the setup executable or portable ZIP from [Releases](https://github.com/Akenaiai/codex-gauge/releases). The app is **not code-signed**. Verify the release source and SHA-256 checksum; do not disable Windows protections.
 
-Choose `Codex.Gauge.Setup.0.4.6.exe` for installation, or fully extract `Codex.Gauge-0.4.6-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
+Choose `Codex.Gauge.Setup.0.4.7.exe` for installation, or fully extract `Codex.Gauge-0.4.7-win.zip` and run `Codex Gauge.exe`. These distributions include the desktop runtime; Node.js is not required. GitHub's **Source code** archive requires the development setup below. The [first-use tutorial](docs/GETTING_STARTED.md) covers checksum comparison, the tray entry, connections and missing-data troubleshooting.
 
 You need Windows 10/11 x64. The original Codex badge additionally needs the Codex desktop app and an installed, signed-in [official Codex CLI](https://github.com/openai/codex). The CLI supplies authentication and current Codex quota data. Keep Codex open for the attached gauge. Other supported providers can use the credit center independently through their own connections; if the profile cannot be located, the tray still opens the panel.
 

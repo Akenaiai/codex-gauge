@@ -113,6 +113,19 @@ test('global activation queues cold-start and early second-instance events until
   handler({ type: 'click' }); assert.equal(opens, 2);
   app.emit('second-instance'); assert.equal(opens, 3);
 });
+test('creative toast activation keeps its destination across cold start; unknown arguments use Codex',async()=>{
+  const app=new EventEmitter(),targets=[];let handler;
+  app.setToastActivatorCLSID=()=>{};app.whenReady=()=>Promise.resolve();
+  const Notification={handleActivation:fn=>{handler=fn;fn({type:'click',arguments:'gauge:creative'});},isSupported:()=>true};
+  const activation=configureActivation({app,Notification,open:target=>targets.push(target),platform:'win32'});
+  await Promise.resolve();app.emit('second-instance');activation.ready();assert.deepEqual(targets,['creative']);
+  handler({type:'click',arguments:'gauge:center'});handler({type:'click',arguments:'untrusted'});assert.deepEqual(targets,['creative','center','codex']);
+});
+test('creative toast carries an escaped silent Windows destination and a distinct notification group',t=>{
+  const f=fixture(t);f.delivery.send({...f.alert,target:'creative'},{title:'创作积分 · A & B',body:'<Monthly> "credits"',silent:true});
+  const options=f.notifications[0].options;assert.equal(options.groupId,'gauge-creative');
+  assert.match(options.toastXml,/launch="gauge:creative"/);assert.match(options.toastXml,/&amp;/);assert.match(options.toastXml,/&lt;Monthly&gt;/);assert.match(options.toastXml,/<audio silent="true"/);
+});
 test('non-Windows instance clicks open the panel; Windows uses one global route', t => {
   for (const platform of ['darwin', 'win32']) {
     const f = fixture(t); const delivery = new NotificationDelivery({ ...f.options, platform });

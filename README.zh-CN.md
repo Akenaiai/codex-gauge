@@ -1,8 +1,10 @@
 # 刻度 · Codex Gauge
 
-**Windows 稳定版：[0.4.6](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.6)。** [范围、验证与隔离验收方法](docs/releases/0.4.6.md)。正式稳定版。
+**创作积分临期提醒：**[创作积分临期提醒](docs/CREATIVE_EXPIRY.zh-CN.md)新增默认 100 积分及以下静音、分平台忽略线、临期置顶，以及独立的创作/Codex 提醒标记。
 
-**Windows 稳定版：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。已包含在 0.4.6 安装包中。
+**Windows 稳定版：[0.4.7](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.7)。** [范围、验证与隔离验收方法](docs/releases/0.4.7.md)。正式稳定版。
+
+**Windows 稳定版：** [首次连接与平台管理](docs/NEW_USER_CONNECTIONS.zh-CN.md)，支持接续引导与可跳过会员备注。已包含在 0.4.7 安装包中。
 
 [English](README.md) · [下载](https://github.com/Akenaiai/codex-gauge/releases) · [源码](https://github.com/Akenaiai/codex-gauge)
 
@@ -12,13 +14,13 @@
 
 **不用注册刻度账号，不用在刻度里额外登录平台。** 查询沿用当前用户自己电脑上的 CLI / MCP 连接或可选 API 凭据。新安装不带开发者账号、余额和日期规则；发现插件不代表能查余额。详见[分发隐私核对记录](docs/PRIVACY_VERIFICATION.md)。
 
-**Windows 稳定版：** Runway/Recraft 新增系统浏览器中的官方独立授权，MiniMax 国际站新增 Subscription Key 直查，无需 Codex、Relay 或 Python。原路径保留；Runway/Recraft 已完成 Windows 真实授权和升级后刷新，MiniMax 国际站 Subscription Key 实查、加密保存与重启后刷新也已通过，Mac 待验；现已包含在稳定版 0.4.6 中。[连接详情](docs/NATIVE_CONNECTIONS.zh-CN.md)。
+**Windows 稳定版：** Runway/Recraft 新增系统浏览器中的官方独立授权，MiniMax 国际站新增 Subscription Key 直查，无需 Codex、Relay 或 Python。原路径保留；Runway/Recraft 已完成 Windows 真实授权和升级后刷新，MiniMax 国际站 Subscription Key 实查、加密保存与重启后刷新也已通过，Mac 待验；现已包含在稳定版 0.4.7 中。[连接详情](docs/NATIVE_CONNECTIONS.zh-CN.md)。
 
-**当前版本 0.4.6。** 用真实额度余额替换重复的余量条，并保留低余量颜色、连接引导及已验证的直连。TapNow 继续从正常打开的主页按需读取，关闭后保留上次积分与时间；从 0.4.4 之前的版本升级时，重新加载一次原浏览器组件。原 Codex 小仪表和单击翻面保持，Ideogram 与 Mac 仍待现场验证。[版本说明](docs/releases/0.4.6.md)
+**当前版本 0.4.7。** 创作积分默认100分及以下静音，可按平台设置忽略线；7天内值得提醒的临期积分按到期时间置顶，支持本批不再提醒。创作临期使用独立图标、通知来源和点击入口，与Codex区分。原余额卡、低余量颜色、连接和浏览器行为继续保留。[版本说明](docs/releases/0.4.7.md)
 
 ![额度总览，图中均为合成示例数据](assets/credit-overview-zh.png)
 
-![创作积分背面，图中均为合成示例数据](docs/images/creative-panel-zh.png)
+![创作积分背面，图中均为合成示例数据](docs/images/creative-expiry-zh.png)
 
 **先完成 Windows。** Windows 头像定位已实现；Mac 目前是源码层的自由悬浮预览，尚未实机验证，不等于 Windows 功能已全部适配。
 
@@ -31,7 +33,7 @@
 - 52 像素小仪表跟随 Windows Codex 头像。悬停展开，点击固定面板。
 - 按实际接口显示 5 小时、本周额度。只有周额度时自动放到主位；没有返回的信息保持未知。
 - 用真实额度余额替换重复的“可用余量”条。套餐百分比、余额和重置机会独立显示，未知余额不当作零。
-- 类似手机低电量，显示余量 ≤20% 时数字及对应圆弧变为琥珀黄，≤10% 时变红。阈值跟随界面显示的整数百分比，各额度周期独立变色，恢复额度后回到原色；小仪表布局及独立的重置卡到期标记保持。0.4.6 已包含此项。
+- 类似手机低电量，显示余量 ≤20% 时数字及对应圆弧变为琥珀黄，≤10% 时变红。阈值跟随界面显示的整数百分比，各额度周期独立变色，恢复额度后回到原色；小仪表布局及独立的重置卡到期标记保持。0.4.7 已包含此项。
 - 显示重置时间、重置机会及到期详情。重置卡按“几天几小时”显示剩余时间，例如 84 小时显示为“3 天 12 小时”。可选静默到期通知，按账户、卡片和阶段去重。
 - 将下次周期重置倒计时和剩余百分比放在一起。余量 ≥30% 时，在重置前 2 小时、1 小时内分别静默提醒一次，按账户、周期和阶段去重；小仪表显示暖金色提醒标记。
 - 有效预告和临近的周期重置会提到仪表上方，用醒目的橙金色卡片展示。可用重置卡剩余 48 小时内置顶为红色临期卡，24 小时内进一步加强提示，小仪表也显示红色标记；过期时间和旧读数仍保留明确的更新状态。
@@ -45,7 +47,7 @@
 
 从[发布页](https://github.com/Akenaiai/codex-gauge/releases)下载安装程序或绿色 ZIP。当前程序**没有 Windows 代码签名**，请核对来源和 SHA-256，不关闭系统保护。
 
-安装版选 `Codex.Gauge.Setup.0.4.6.exe`；免安装版选 `Codex.Gauge-0.4.6-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
+安装版选 `Codex.Gauge.Setup.0.4.7.exe`；免安装版选 `Codex.Gauge-0.4.7-win.zip`，完整解压后运行 `Codex Gauge.exe`。两者已包含桌面运行环境，不需要另装 Node.js。GitHub 的 **Source code** 压缩包是源码，需要下方的开发环境。[首次使用教程](docs/GETTING_STARTED.zh-CN.md)包含校验方法、托盘入口、连接说明和缺失数据排查。
 
 需要 Windows 10/11 x64。原 Codex 小仪表还需要 Codex 桌面客户端，以及已经安装并登录的[官方 Codex CLI](https://github.com/openai/codex)，由 CLI 提供本机登录和 Codex 额度数据。打开 Codex 后，仪表会定位到个人头像上方；其他已支持平台可通过自己的连接独立使用额度中心，暂时无法定位头像时仍可从托盘打开。
 
