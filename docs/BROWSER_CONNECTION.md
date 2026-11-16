@@ -34,3 +34,6 @@ The MCP adapter reads spendable Tapies, including team-member limits, rather tha
 - Page readings do not authenticate ownership, extract dates or confirm grants, and cannot inherit verified-account dates.
 
 Validation: version 0.4.2 has earlier Windows live balance and twenty-minute background evidence. Version 0.4.4 has isolated regression checks for ordinary-tab discovery, closed/discarded tabs, no reloads, activity throttling, menu restoration and pause. New Windows field validation also passed: a normal home tab supplied a balance matching both Gauge views; closing marked it offline while preserving amount/time; reopening an ordinary home tab produced a new matching reading. The test home page was closed afterward, with no replacement opened by Gauge. Ideogram and Mac remain without field validation.
+
+
+November 16 MCP validation: the Windows local preview read spendable Tapies through the existing Codex connection with no configured TapNow page. The credit center and creative back matched, and the next scheduled refresh produced a new MCP reading without an agent-triggered refresh. Existing settings, dates, record IDs and authorization files were retained. The response still lacks a stable account/team ID and credit-batch expiry; Mac remains unverified. The public 0.4.7 installer is unchanged.
