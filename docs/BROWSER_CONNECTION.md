@@ -2,7 +2,7 @@
 
 [简体中文](BROWSER_CONNECTION.zh-CN.md) · [First use](GETTING_STARTED.md)
 
-Version 0.4.4 supports TapNow and Ideogram through an optional Chrome/Edge component, off by default. The TapNow MCP catalog checked on November 2, 2026 exposes no balance query. Authorizing MCP alone does not supply credits. [Official connector documentation](https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector).
+Version 0.4.4 supports TapNow and Ideogram through an optional Chrome/Edge component, off by default. Source update, November 16, 2026: TapNow now exposes the free read-only `get_tapies_balance`. Gauge prefers the existing official Codex MCP connection and uses this page connection as a fallback. This source update is not included in the 0.4.7 stable installer. [Official connector documentation](https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector).
 
 ## Connect your own browser
 
@@ -23,7 +23,7 @@ Version 0.4.4 supports TapNow and Ideogram through an optional Chrome/Edge compo
 - **Read now** remains available during an automatic-query pause. Sleep suspends reads. Sign-out or changed layouts remain unconfirmed. Observation time describes the page reading, not a confirmed server refresh.
 - Ideogram retains its dedicated-tab reload flow. Reopen that dedicated tab after a browser restart; selected positions remain local.
 
-No TapNow desktop-client balance source or MCP balance adapter is connected. Any future MCP adapter needs verified read-only semantics, response fields and account scope; new tools are never executed by guessing their names. This change creates no background monitoring task.
+The MCP adapter reads spendable Tapies, including team-member limits, rather than wallet total or a generation price. It neither adds wallet figures together nor treats plan billing dates as credit expiry. The response has no stable user/team ID, so identity remains unverified and browser dates are not inherited. Fresh MCP readings suppress automatic page reads; an available paired page is used on MCP failure. No desktop-client balance source is connected.
 
 ## What is read and stored
 

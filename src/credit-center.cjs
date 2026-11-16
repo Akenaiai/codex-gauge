@@ -71,21 +71,22 @@ class CreditCenter extends EventEmitter {
     try { this.store.save(); } catch { this.store.error = 'storage_failed'; }
   }
   state() {
+    const visibleRecords=require('./tapnow-credit.cjs').visibleRecords(this.records);
     const tools = this.inventory.tools.map(t => {const access=this.access(t);return ({ ...t, nativeConnection:this.options.nativeMcp?.state(t.id),followed:followed(this.connectionPreferences,t.id),userFollowed:this.connectionPreferences.platforms[t.id]?.userChoice===true&&followed(this.connectionPreferences,t.id),membershipInput:this.connectionPreferences.platforms[t.id]?.membership||'unknown', access, canBrowser:['tapnow','ideogram'].includes(t.id),adapter:access.query.supported,policy:policyFor(t.id),canConnect:['firecrawl','tavily','deepseek','minimax'].includes(t.id),
       queryReady:access.query.canAttempt,
-      userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),this.records),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),this.records),
+      userDates:activeUserDates(this.userDates.filter(o=>o.provider===t.id),visibleRecords),recordedDates:userDateEvents(this.userDates.filter(o=>o.provider===t.id),visibleRecords),
       dateObservations:applyMonthlyRules(this.dateObservations.filter(o=>o.provider===t.id),this.monthlySchedules),webDates:observationEvents(this.dateObservations.filter(o=>o.provider===t.id),Date.now(),this.monthlySchedules),querying: this.busy.has(t.id)||this.connecting.has(t.id) || ['kimi','minimax','zai'].includes(t.id) && this.busy.has('relay'), queryStatus: this.statuses[t.id] || null,
-      records: this.records.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) });});
+      records: visibleRecords.filter(r => r.provider === t.id && r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r), rules: Object.fromEntries(Object.entries(this.rules).filter(([key]) => key.startsWith(r.id + '/'))) })) });});
     return { ...this.inventory, tools, connectionPreferences:this.connectionPreferences,connectionCatalog:connectionCatalog().map(p=>({...p,name:providers[p.provider].name,nameEn:({xyq:'Pippit',jimeng:'Dreamina','wanxiang':'Tongyi Wanxiang',quark:'Quark','hailuo-audio':'Hailuo Audio','capcut-hub':'CapCut Hub','kimi-subscription':'Kimi membership','minimax-subscription':'MiniMax Token Plan',ark:'Volcengine Ark',zai:'Z.AI'})[p.provider]||providers[p.provider].name})),connectionComponents:componentCatalog(),onboardingCompleted:this.onboardingCompleted,enabled: this.enabled, reminders: this.reminders, busy: this.busy.size > 0||this.connecting.size>0,
-      records: this.records.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,creativeExpiry:this.creativeExpiry,
-      events: [...events(this.records.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,this.records), ...this.notices].sort((a,b) => a.at-b.at),
+      records: visibleRecords.filter(r => r.status !== 'account_changed').map(r => ({ ...r, stale: !fresh(r) })), rules: this.rules,creativeExpiry:this.creativeExpiry,
+      events: [...events(visibleRecords.filter(r => r.status !== 'account_changed'), this.rules),...observationEvents(this.dateObservations,Date.now(),this.monthlySchedules),...userDateEvents(this.userDates,visibleRecords), ...this.notices].sort((a,b) => a.at-b.at),
       browserLink:this.options.browserState?.(),storageError: this.store.error, revision: this.store.data.revision };
   }
   access(tool){
     this.componentProbe ||= probeComponents(this.options);
     const relayEnabled=this.inventory.tools.some(t=>t.id==='agent-relay'&&t.connections.some(c=>c.enabled&&c.evidence==='configured'&&c.kind==='plugin'&&c.source==='Codex'))||this.inventory.tools.some(t=>['kimi','minimax','zai'].includes(t.id)&&t.connections.some(c=>c.enabled&&c.kind==='cli'&&c.evidence==='installed'))||this.records.some(r=>['kimi','minimax','zai'].includes(r.provider)&&r.source==='relay');
     let hasCredential=false;try{hasCredential=!!this.options.hasCredential?.(tool.id);}catch{}
-    return accessFor(tool,{probe:this.componentProbe,records:this.records,queryStatus:this.statuses[tool.id]||(['kimi','minimax','zai'].includes(tool.id)?this.statuses.relay:null),browser:this.options.browserState?.(),hasCredential,native:this.options.nativeMcp?.state(tool.id),subscriptionRoute:this.subscriptionRoutes[tool.id],relayEnabled});
+    return accessFor(tool,{probe:this.componentProbe,records:require('./tapnow-credit.cjs').visibleRecords(this.records),queryStatus:this.statuses[tool.id]||(['kimi','minimax','zai'].includes(tool.id)?this.statuses.relay:null),browser:this.options.browserState?.(),hasCredential,native:this.options.nativeMcp?.state(tool.id),subscriptionRoute:this.subscriptionRoutes[tool.id],relayEnabled});
   }
   rescan() {
     this.componentProbe=probeComponents(this.options);
@@ -139,10 +140,11 @@ class CreditCenter extends EventEmitter {
   ensureUserDateTool(id){const existing=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const tool=this.inventory.tools.find(t=>t.id===id);if(!existing)tool.connections=[];if(!tool.connections.some(c=>c.evidence==='user_dates'))tool.connections.push({kind:'manual',source:'User dates',label:id,enabled:true,evidence:'user_dates'});}
   acceptBrowserReading(input,{manual=false}={}){
     if(this.stopped||!this.enabled&&!manual||!['tapnow','ideogram'].includes(input?.provider)||input.source!=='browser'||input.identityVerified!==false)throw Error('invalid_response');
+    if(input.provider==='tapnow'&&this.records.some(r=>r.provider==='tapnow'&&r.source==='mcp'&&fresh(r)))return;
     const r=cleanRecord(input);this.put(r,false);this.ensureBrowserTool(r.provider);this.statuses[r.provider]='ready';this.persist();if(this.store.error)throw Error('storage_failed');this.emit('state');
   }
   browserUnavailable(id,error='browser_offline'){
-    for(const r of this.records)if(r.provider===id&&r.source==='browser'&&r.status!=='account_changed'){r.status='offline';r.error=error;}this.statuses[id]=error;this.persist();this.emit('state');
+    for(const r of this.records)if(r.provider===id&&r.source==='browser'&&r.status!=='account_changed'){r.status='offline';r.error=error;}if(!(id==='tapnow'&&(this.busy.has(id)||this.records.some(r=>r.provider===id&&r.source==='mcp'&&fresh(r)))))this.statuses[id]=error;this.persist();this.emit('state');
   }
   ensureBrowserTool(id){const had=this.inventory.tools.some(t=>t.id===id);this.ensureTool(id);const t=this.inventory.tools.find(t=>t.id===id);if(!had)t.connections=[];const c=t.connections.find(c=>c.kind==='browser');if(c)c.enabled=!!this.options.browserState?.()?.enabled;else t.connections.push({kind:'browser',source:'User-linked browser page',label:id,enabled:!!this.options.browserState?.()?.enabled,evidence:'user_linked'});}
   completeOnboarding(){const old=this.onboardingCompleted;this.onboardingCompleted=true;this.persist();if(this.store.error){this.onboardingCompleted=old;this.store.data.onboardingCompleted=old;throw Error('storage_failed');}this.emit('state');}
@@ -221,6 +223,16 @@ class CreditCenter extends EventEmitter {
       else if(id==='lovart')rows=await require('./codex-mcp-credit.cjs').lovart(this.options);
       else if(id==='suno')rows=await require('./codex-mcp-credit.cjs').suno(this.options);
       else if(['runway','kling','recraft'].includes(id))rows=await require('./creative-providers.cjs')[id](this.options);
+      else if(id==='tapnow'&&this.access({id,connections:[]}).query.route==='codex_mcp'){
+        try{rows=await require('./tapnow-credit.cjs').tapnow(this.options);}
+        catch(e){
+          if(this.stopped||generation!==this.generation||epoch!==(this.providerEpoch.get(id)||0))return;
+          const browser=this.options.browserState?.();
+          if(!browser?.enabled||!browser.paired||!browser.connected||!browser.providers?.tapnow?.configured||!this.options.browserRefresh)throw e;
+          for(const old of this.records)if(old.provider===id&&old.source==='mcp'&&old.status!=='account_changed'){old.status='offline';old.error=safeError(e);}
+          rows=await this.options.browserRefresh(id,{manual});
+        }
+      }
       else if(['tapnow','ideogram'].includes(id)&&this.options.browserRefresh)rows=await this.options.browserRefresh(id,{manual});
       else if (id === 'jimeng') rows = await adapters.jimeng(this.options);
       else if (id === 'relay') rows = await adapters.relay(this.options);

@@ -1,5 +1,7 @@
 # Codex Gauge
 
+**TapNow source update (November 16):** automatic spendable-Tapies queries now use the existing official Codex MCP connection, with optional page fallback and unverified account identity. The 0.4.7 stable installer does not include this update yet. [Details](docs/BROWSER_CONNECTION.md).
+
 **Creative expiry reminders:** [Creative credit expiry reminders](docs/CREATIVE_EXPIRY.md) add a default inclusive 100-credit cutoff, per-platform settings, priority sorting and separate creative/Codex markers.
 
 **Windows stable: [0.4.7](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.7).** [Scope, verification and isolated acceptance](docs/releases/0.4.7.md). Stable release.

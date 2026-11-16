@@ -1,5 +1,7 @@
 # 刻度 · Codex Gauge
 
+**TapNow 源码更新（11月16日）：** 已接入官方可支配积分查询，沿用Codex已有连接并保留网页后备，账号身份仍待核实。公开0.4.7稳定安装包尚未包含此更新。[说明](docs/BROWSER_CONNECTION.zh-CN.md)。
+
 **创作积分临期提醒：**[创作积分临期提醒](docs/CREATIVE_EXPIRY.zh-CN.md)新增默认 100 积分及以下静音、分平台忽略线、临期置顶，以及独立的创作/Codex 提醒标记。
 
 **Windows 稳定版：[0.4.7](https://github.com/Akenaiai/codex-gauge/releases/tag/v0.4.7)。** [范围、验证与隔离验收方法](docs/releases/0.4.7.md)。正式稳定版。

@@ -82,3 +82,7 @@ test('extension permissions are site-optional, with no cookie, debugger or brows
  assert.deepEqual(manifest.optional_host_permissions.sort(),['https://app.tapnow.ai/*','https://ideogram.ai/*'].sort());assert.deepEqual(manifest.host_permissions,['http://127.0.0.1/*']);for(const p of ['cookies','debugger','history','webRequest','tabs'])assert.ok(!manifest.permissions.includes(p));assert.equal(manifest.externally_connectable,undefined);
  const files=['worker.js','reader.js','popup.js'].map(f=>fs.readFileSync(path.join(__dirname,'../browser-extension',f),'utf8')).join('\n');assert.doesNotMatch(files,/document\.cookie|chrome\.cookies|window\.localStorage|sessionStorage|XMLHttpRequest|webRequest|eval\(/);
 });
+
+test('a preferred fresh non-browser source suppresses automatic page commands while manual reads remain explicit',async t=>{
+ const f=await fixture(t);f.link.canRead=()=>false;await assert.rejects(f.link.requestRead('tapnow'),/browser_offline/);assert.equal((await f.poll({refreshProvider:'tapnow'})).commands.length,0);const manual=await f.poll({manualProvider:'tapnow'});assert.equal(manual.commands.length,1);assert.equal(manual.commands[0].manual,true);
+});

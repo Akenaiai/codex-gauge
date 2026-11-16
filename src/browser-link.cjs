@@ -8,8 +8,8 @@ function browserRecord(data,clientRef,now=Date.now()){
  const marker=data.marker.trim();return{provider:data.provider,scope:'browser:'+clientRef+':'+hash(marker),account:marker,source:'browser',identityVerified:false,fetchedAt:data.observedAt,pools:[{id:'effective',amount:data.amount,unit:'credits',label:data.provider==='tapnow'?'网页显示 Tapies':'网页显示积分',labelEn:data.provider==='tapnow'?'Tapies shown on page':'Credits shown on page'}]};
 }
 class BrowserLink extends EventEmitter{
- constructor(directory,storage,{extensionKey,receive,paused=()=>false,now=()=>Date.now()}={}){
-  super();this.directory=directory;this.storage=storage;this.receive=receive;this.paused=paused;this.now=now;this.origin='chrome-extension://'+extensionId(extensionKey);this.boot=crypto.randomBytes(24).toString('base64url');this.lastSeen=0;this.providers={};this.pending=new Map();this.server=null;this.key=null;this.error=null;this.suspended=false;this.wasPaused=!!paused();
+ constructor(directory,storage,{extensionKey,receive,paused=()=>false,canRead=()=>true,now=()=>Date.now()}={}){
+  super();this.directory=directory;this.storage=storage;this.receive=receive;this.paused=paused;this.canRead=canRead;this.now=now;this.origin='chrome-extension://'+extensionId(extensionKey);this.boot=crypto.randomBytes(24).toString('base64url');this.lastSeen=0;this.providers={};this.pending=new Map();this.server=null;this.key=null;this.error=null;this.suspended=false;this.wasPaused=!!paused();
   try{this.profile=JSON.parse(fs.readFileSync(path.join(directory,'browser-link.json'),'utf8'));if(this.profile.version!==1||typeof this.profile.enabled!=='boolean'||typeof this.profile.cipher!=='string'||!Number.isInteger(this.profile.port))throw Error();}catch(e){if(e.code!=='ENOENT')this.error='storage_failed';this.profile={version:1,enabled:false,port:0,cipher:null,clientRef:null};}
  }
  state(){const connected=!this.suspended&&!!this.server&&this.lastSeen>this.now()-75000;return{enabled:!!this.server,paired:!!this.profile.clientRef,connected,error:this.error,extensionId:this.origin.slice(19),providers:Object.fromEntries(PROVIDERS.map(id=>[id,{configured:this.providers[id]?.configured===true,connected,error:this.providers[id]?.error||null,readAt:this.providers[id]?.readAt||null}]))};}
@@ -35,7 +35,7 @@ class BrowserLink extends EventEmitter{
  disable(){const prior={...this.profile};this.profile.enabled=false;try{this.save();}catch(e){this.profile=prior;throw e;}this.close();for(const id of PROVIDERS)if(this.providers[id]?.configured)this.emit('unavailable',id,'browser_offline');this.emit('state');}
  close(){clearInterval(this.health);this.server?.closeAllConnections();this.server?.close();this.server=null;this.key=null;this.lastSeen=0;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(Error('browser_offline'));}this.pending.clear();}
  requestRead(provider,{manual=false}={}){
-  this.syncPause();if(this.suspended||this.wasPaused&&!manual)return Promise.reject(Error('browser_offline'));
+  this.syncPause();if(!manual&&!this.canRead(provider)||this.suspended||this.wasPaused&&!manual)return Promise.reject(Error('browser_offline'));
   const state=this.state();if(!PROVIDERS.includes(provider)||!state.enabled||!state.paired||!state.connected||!state.providers[provider].configured)return Promise.reject(Error('browser_setup_required'));
   if(this.pending.has(provider)){const p=this.pending.get(provider);if(manual)p.command.manual=true;return p.promise;}
   const command={id:crypto.randomBytes(16).toString('hex'),provider,manual:manual===true};let resolve,reject;const promise=new Promise((r,j)=>{resolve=r;reject=j;});

@@ -29,7 +29,7 @@ Object.assign(profiles.deepseek, { entry: 'https://platform.deepseek.com/', sour
 Object.assign(profiles.firecrawl, { entry: 'https://www.firecrawl.dev/app', sources: ['https://docs.firecrawl.dev/api-reference/endpoint/credit-usage'], limits: text('对应 API Key 的团队积分；账期结束不自动当作积分到期。Windows 私有 DPAPI 后备需要 PowerShell。', 'Team credits for the API key; billing-period end is not automatically expiry. Windows private DPAPI fallback requires PowerShell.') });
 Object.assign(profiles.tavily, { entry: 'https://app.tavily.com/', sources: ['https://docs.tavily.com/documentation/api-reference/endpoint/usage'], limits: text('API 套餐剩余积分，与按量付费分开。', 'Remaining API plan credits, separate from pay-as-you-go.') });
 define(['tapnow', 'ideogram'], { route: 'browser', quotaKind: 'visible_page_credits', components: ['browser_extension'], auth: 'original_browser', remote: false, evidence: 'adapter_contract', sources: [], limits: text('需本人安装并配对刻度浏览器组件；只读已授权可见余额，网页身份始终待核实。官方 MCP 可见不等于有可用余额接口。', 'Requires the user-installed paired Gauge browser extension; reads authorized visible credits with unverified identity. MCP availability does not establish a balance method.') });
-profiles.tapnow.entry = 'https://www.tapnow.ai/';
+profiles.tapnow={...profiles.tapnow,checkedOn:'2026-11-16',route:'tapnow',auth:'original_client',quotaKind:'account_credits',components:['codex_cli'],remote:true,entry:'https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector',endpoint:'https://mcp.tapnow.ai/api/agent-gateway/mcp/general/mcp',sources:['https://docs.tapnow.ai/en/docs/mcp/add-a-custom-connector'],limits:text('优先原Codex官方MCP的可支配Tapies，计入成员使用上限；网页连接作为后备。接口没有稳定账号/团队ID或积分批次到期日，套餐账期不是积分到期。','Prefers spendable Tapies from the existing official Codex MCP, including member limits, with optional page fallback. No stable account/team ID or credit-batch expiry is returned; plan billing dates are not credit expiry.')};
 profiles.ideogram.entry = 'https://ideogram.ai/';
 define(['kimi-subscription','minimax-subscription'], { route: 'unsupported', quotaKind: 'membership_record', components: [], os: [], auth: 'unknown', entry: null, sources: [], evidence: 'adapter_inventory', limits: text('本人会员与日期记录；不证明登录、可用余额或编程/API 权益。', 'User membership/date record; does not establish sign-in, balance or coding/API entitlement.') });
 profiles['openai-api'] = { ...profileFor('unconfigured-api'), provider: 'openai-api', quotaKind: 'api_balance', entry: 'https://platform.openai.com/' };
@@ -55,7 +55,7 @@ function connectionSource(provider,component){
   if(!Object.hasOwn(providers,provider))return null;
   const p=profileFor(provider);
   if(component==null)return p.entry||null;
-  const allowed=[...p.components,...(p.route==='kling'?['kling_cli']:[]),...(p.route==='api'?['powershell']:[])];
+  const allowed=[...p.components,...(p.route==='kling'?['kling_cli']:[]),...(p.route==='tapnow'?['browser_extension']:[]),...(p.route==='api'?['powershell']:[])];
   return allowed.includes(component)?componentCatalog().find(c=>c.id===component)?.entry||null:null;
 }
 function file(p) { try { return fs.statSync(p).isFile(); } catch { return false; } }
@@ -92,7 +92,7 @@ function probeComponents(options = {}) {
   }
   let config = '', entries = []; try { config = fs.readFileSync(path.join(home, '.codex/config.toml'), 'utf8'); entries = entriesToml(config); } catch { }
   const mcp = {}, mcpErrors = {};
-  for (const id of ['lovart', 'suno', 'runway', 'recraft', 'kling']) {
+  for (const id of ['lovart', 'suno', 'runway', 'recraft', 'kling', 'tapnow']) {
     if (id === 'lovart' || id === 'suno') mcp[id] = entries.some(e => e.kind === 'mcp' && e.name === id && e.enabled);
     else try { require('./creative-providers.cjs').officialServer(id, profiles[id].endpoint, { home }); mcp[id] = true; } catch (e) { mcp[id] = false; if(e.message !== 'login_required') mcpErrors[id] = 'invalid_mcp_configuration'; }
   }
@@ -110,6 +110,10 @@ function accessFor(tool, { probe, records = [], queryStatus = null, browser = {}
     route='native_mcp';required=[];connected=native.connected;configurationError=null;
   } else if(tool.id==='minimax'&&subscriptionRoute!=='relay'&&(subscriptionRoute==='direct'||hasCredential||p.api?.minimax?.key||!relayEnabled)){
     route='subscription_api';required=[];connected=!!(hasCredential||p.api?.minimax?.key);
+  } else if(route==='tapnow'){
+    const useMcp=!!(p.mcp.tapnow&&p.checks.codex_cli)||!!configurationError;
+    route=useMcp?'codex_mcp':'browser';required=[useMcp?'codex_cli':'browser_extension'];
+    connected=useMcp?!!p.mcp.tapnow:!!(browser.enabled&&browser.paired&&browser.providers?.tapnow?.configured);
   } else if (route === 'kling') {
     const useMcp = p.mcp.kling || configurationError;
     route = useMcp ? 'codex_mcp' : 'cli'; required = [useMcp ? 'codex_cli' : 'kling_cli'];
