@@ -181,6 +181,7 @@ class CreditCenter extends EventEmitter {
     if (['cli','relay','api'].includes(record.source)||record.source==='mcp'&&['suno','recraft','kling'].includes(record.provider)) for (const old of this.records) if (old.provider === record.provider && old.source === record.source && old.id !== record.id) old.status = 'account_changed';
     if(record.provider==='kling'&&record.source==='mcp')for(const old of this.records)if(old.provider==='kling'&&old.source==='cli')old.status='account_changed';
     if(record.provider==='runway'&&record.source==='mcp'&&record.connectionRef)for(const old of this.records)if(old.provider==='runway'&&old.source==='mcp'&&old.id!==record.id&&(!old.connectionRef||old.connectionRef===record.connectionRef))old.status='account_changed';
+    if(record.provider==='tapnow'&&record.source==='mcp')for(const old of this.records)if(old.provider==='tapnow'&&old.source==='browser'&&old.status!=='account_changed'){old.status='offline';old.error=null;}
     const recovered = notify && previous ? recoveryAlerts(previous, record) : [];
     this.records = [...this.records.filter(r => r.id !== record.id), record].slice(-250);
     this.followReading(record);

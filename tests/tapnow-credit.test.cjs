@@ -20,7 +20,7 @@ test('MCP is available with a closed browser; absent MCP retains the paired-page
 });
 test('a fresh MCP reading wins over browser observations and page closure without erasing history',async()=>{
  const{c}=fixture(),prior=api.tapnow;c.put(page(),false);
- try{api.tapnow=async()=>[api.tapnowRecord(data())];await c.query('tapnow');assert.equal(c.statuses.tapnow,'ready');c.acceptBrowserReading({...page(),scope:'other-browser',identityVerified:false});c.browserUnavailable('tapnow','page_closed');const rows=c.state().tools.find(t=>t.id==='tapnow').records;assert.equal(rows.length,1);assert.equal(rows[0].source,'mcp');assert.equal(rows[0].pools[0].amount,12);assert.equal(c.statuses.tapnow,'ready');assert.equal(c.records.some(r=>r.source==='browser'),true);assert.equal(c.state().records.filter(r=>r.provider==='tapnow').length,1);}
+ try{api.tapnow=async()=>[api.tapnowRecord(data())];await c.query('tapnow');assert.equal(c.statuses.tapnow,'ready');assert.equal(c.records.find(r=>r.source==='browser').status,'offline');c.acceptBrowserReading({...page(),scope:'other-browser',identityVerified:false});c.browserUnavailable('tapnow','page_closed');const rows=c.state().tools.find(t=>t.id==='tapnow').records;assert.equal(rows.length,1);assert.equal(rows[0].source,'mcp');assert.equal(rows[0].pools[0].amount,12);assert.equal(c.statuses.tapnow,'ready');assert.equal(c.records.some(r=>r.source==='browser'),true);assert.equal(c.state().records.filter(r=>r.provider==='tapnow').length,1);}
  finally{api.tapnow=prior;}
 });
 test('MCP failure falls back only to an already available page, then recovery selects MCP without adding both',async()=>{
