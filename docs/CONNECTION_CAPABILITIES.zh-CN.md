@@ -38,7 +38,7 @@
 | Recraft | 刻度独立 OAuth 或原 Codex 托管会员 MCP；当前个人账户 | [官方 MCP](https://www.recraft.ai/docs/mcp-reference/remote-server)；本地 API MCP、未知或团队文本不替代此余额 |
 | 可灵 | 原中国站 MCP 经 Codex，否则原中国站 CLI | [官方全球站说明](https://kling.ai/app/mcp/guide)核实个人付费额度范围；**不能据此核实中国站安装入口**，该入口留空，原适配地址不改 |
 | Lovart | 原 Codex 命名 MCP；总量，身份待核实 | [官方积分规则](https://www.lovart.ai/statement/lovart-subscribe-faq)；公开安装说明仍未核实 |
-| Kimi / Z.AI；MiniMax 旧路径 | 独立 Relay 配套插件、Python、随包桥接；编程订阅 | 现有本地适配契约，不宣称已核实公开 Relay 安装器；MiniMax 视频及本人会员记录独立 |
+| Kimi；MiniMax 旧路径 | 独立 Relay 配套插件、Python、随包桥接；编程订阅 | 现有本地适配契约，不宣称已核实公开 Relay 安装器；MiniMax 视频及本人会员记录独立 |
 | MiniMax 独立查询 | 国际站 Subscription Key；通用订阅周期，无额外组件 | [官方额度接口](https://platform.minimax.io/subscribe/token-plan)；不推断按量余额与视频权益 |
 | DeepSeek / Firecrawl / Tavily | API Key，不依赖 Codex | [DeepSeek 余额](https://api-docs.deepseek.com/api/get-user-balance/)、[Firecrawl 积分](https://docs.firecrawl.dev/api-reference/endpoint/credit-usage)、[Tavily 用量](https://docs.tavily.com/documentation/api-reference/endpoint/usage)；不当作聊天会员 |
 | TapNow / Ideogram | 本人安装并配对刻度浏览器组件、已授权可见页面 | [已有网页连接](BROWSER_CONNECTION.zh-CN.md)；MCP 可见不代表已实现余额读取。TapNow 复用已有主页，Ideogram 真实读取待验 |

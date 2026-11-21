@@ -18,8 +18,12 @@ Use **Reminder settings** on a creative platform card to set that platform's inc
 
 Date-only records retain day precision: the final notice is on the recorded date, without inventing an exact expiry time or timezone. Website/user records still request verification. Existing account, freshness, notification opt-outs and daily-gift suppression remain applicable. Restarts do not reset notification receipts.
 
+Windows 0.4.8-preview.6 shows gaps in expiry coverage when a current creative credit balance exceeds the cutoff. Runway plan credits can be identified separately. For balance-only connections, Gauge asks you to verify the individual batches and keeps separate web expiry records available. With reminders enabled, each connection and account gets one silent prompt if it has no eligible expiry reminder. Estimated grant dates remain separate.
+
+When you enter an expiry date in Credit center, you can opt in to a verification reminder while the batch balance is unknown. This uses the recorded date and does not add to the expiring-balance count. Known balances at or below the cutoff and daily gifts remain quiet.
+
 **Dismiss this batch** removes that batch's expiry emphasis and future notices across restarts. It is scoped to the account, pool and expiry date. Other pools and subsequent batches remain eligible. Balances and dates remain visible, and Codex reminders remain independent.
 
-The small Codex gauge keeps its quota reading and reset marker. A separate image icon identifies creative expiry and opens the creative face directly. The flip button shows the number of expiring creative platforms. Notifications name their source; creative expiry uses its own notification group and click destination. Ordinary reopening still starts on Codex.
+The small Codex gauge keeps its quota reading and reset marker. A separate image icon identifies creative expiry and opens the creative panel directly. The creative entry shows the number of expiring platforms. Notifications name their source; creative expiry uses its own notification group and click destination. Ordinary reopening still starts on Codex.
 
 Settings and dismissal receipts stay in the existing local credit-center store. No new service, provider sign-in, generation request or telemetry is introduced. Automated and isolated Windows checks do not establish natural future notification delivery or Mac behavior.

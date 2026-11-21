@@ -1,10 +1,10 @@
 'use strict';
-const { HOUR, freshQuota, freshNews, resetWindows, activeNews } = require('./ui/reset-model.js');
+const { HOUR, freshQuota, freshNews, resetWindows, resetStage, activeNews } = require('./ui/reset-model.js');
 function resetAlerts(snapshot, accountKey, ledger, now = Date.now()) {
   if (!accountKey || !freshQuota(snapshot, now)) return [];
   return resetWindows(snapshot, now).flatMap(w => {
-    if (w.delta <= 0 || w.delta > 2 * HOUR || w.remaining < 30) return [];
-    const stage = w.delta <= HOUR ? 1 : 2;
+    const stage = resetStage(w);
+    if (!stage) return [];
     const key = `${accountKey}:reset:${w.minutes}:${w.resetsAt}:${stage}`;
     return ledger[key] ? [] : [{ key, expiresAt: w.resetsAt, minutes: Math.ceil(w.delta / 60000), window: w.minutes, remaining: Math.floor(w.remaining) }];
   });

@@ -140,7 +140,7 @@ The displayed percentage is the tightest coding-model window, excluding separate
 | Dreamina / 即梦 | Native `user_credit` | Uses response account identity; no expiry schedule in this response |
 | Lovart | Existing Codex OAuth through app-server, allowlisted `get_credits` | Ephemeral context only, no model turn or persistent chat; account identity and expiry are not returned |
 | Suno | Existing enabled `suno` MCP, `account-me` / `account-usage` / `account-me` | Song and download credits separated; public handle checked but stable identity unverified; subscription renewal is billing only |
-| Kimi, MiniMax, ZCode | Installed Agent Relay quota implementation via a narrow Python bridge | Requires the separate companion and Python; before/after account or credential-source fingerprints prevent cross-account reuse |
+| Kimi, MiniMax | Installed Agent Relay quota implementation via a narrow Python bridge | Requires the separate companion and Python; before/after account or credential-source fingerprints prevent cross-account reuse |
 | DeepSeek | Official `GET /user/balance` | Granted and purchased balances are separate; no inferred expiration |
 | Firecrawl | Official `GET /v2/team/credit-usage` | Billing-period end is not asserted to be expiry or renewal |
 | Tavily | Official `GET /usage` | Plan allowance is separate from pay-as-you-go; first-of-month renewal is policy-derived, with no invented time/timezone |
@@ -148,7 +148,7 @@ The displayed percentage is the tightest coding-model window, excluding separate
 
 API credentials may be taken from existing matching MCP configuration, provider environment variables or the app's optional encrypted API connection. On Windows, Firecrawl and DeepSeek queries can also use existing current-user DPAPI files at `~/.codex/private/credentials/<provider>-api-key.dpapi`; Tavily does not support this fallback. Automatic queries do not send keys to renderer state, balance records or logs. The optional connection dialog temporarily accepts the user's API key in a masked field and passes it to the main process for verification/encryption; it clears the field afterward. For the DPAPI fallback, decryption and the authenticated request stay in the PowerShell child. No provider password, verification code or browser cookie is collected, and no purchase, generation, account switch, card redemption or model request is performed.
 
-The Agent Relay bridge is optional. It queries existing logins; it does not start Relay's task scheduler or dispatch work. ZCode uses a conservative whole-credential-source fingerprint: token rotation can create a new source and suppress a renewal notification rather than risk carrying another account's dates forward. An unverified source cannot inherit account-specific reminder rules. A package update can change the companion interface; failed reads stay failed, never zero.
+The Agent Relay bridge is optional. It queries existing logins; it does not start Relay's task scheduler or dispatch work. ZCode uses a personal BigModel China Coding Plan API key entered by the user. An unverified source cannot inherit account-specific reminder rules. A package update can change the companion interface; failed reads stay failed, never zero.
 
 Lovart reuses Codex's existing authenticated MCP connection through the locally installed app-server protocol. The app creates only an ephemeral context and invokes the fixed `get_credits` tool; it never starts a model turn. Other configured MCPs and plugins are disabled inside that context, with the user's actual configuration unchanged. Because this response does not identify the Lovart account, it cannot inherit account-specific date rules or assert renewal; use a separately named manual account reading for user-confirmed dates. Current official protocol reference: [Codex app-server](https://learn.chatgpt.com/docs/app-server).
 
@@ -201,7 +201,7 @@ Sources checked 2026-10-30: [Pippit CLI](https://github.com/Pippit-dev/cli), [De
 
 目录梳理覆盖本机常见客户端的 MCP/插件配置、已知 CLI、相关 Skill 与插件缓存。配置、安装、已连通和可查额度分别表达；缓存不代表启用。自定义位置、其他用户配置、纯网页服务和远端设备不保证自动发现，可补充本人记录。
 
-小云雀、即梦走原生 CLI；Kimi、MiniMax、ZCode 复用已安装 Agent Relay 的只读查询，并核对前后身份或凭据来源指纹；DeepSeek 和 Firecrawl 使用官方余额接口。Lovart 沿用 Codex 已登录的 MCP，通过临时、不留存的内部上下文仅调用固定余额工具，不创建模型回合、不提取凭据；其他 MCP/插件只在该临时上下文停用，实际配置不变。Lovart 接口未返回账号身份和到期日期，不继承账号级日期规则。其他宿主托管连接可导入带时间的快照，明确区别于自动刷新。工具不会自动生成、充值、切换账号、使用重置卡或消耗模型额度。
+小云雀、即梦走原生 CLI；Kimi、MiniMax 复用已安装 Agent Relay 的只读查询，并核对前后身份或凭据来源指纹；DeepSeek 和 Firecrawl 使用官方余额接口。Lovart 沿用 Codex 已登录的 MCP，通过临时、不留存的内部上下文仅调用固定余额工具，不创建模型回合、不提取凭据；其他 MCP/插件只在该临时上下文停用，实际配置不变。Lovart 接口未返回账号身份和到期日期，不继承账号级日期规则。其他宿主托管连接可导入带时间的快照，明确区别于自动刷新。工具不会自动生成、充值、切换账号、使用重置卡或消耗模型额度。
 
 各账号、工作区和积分池独立记录。到期、恢复和账期结束分开显示，缺失日期保持未知。自动查询每五分钟执行，失败保留上次读数；关闭自动查询后仍能手动刷新。来源核实的到期提醒在7/3/1天触发，周期额度可在重置前2小时和1小时提醒。恢复通知须有同一来源身份、跨过周期、进入新周期与额度恢复的实际证据；余额增加本身不算恢复。本人记录的恢复时间到了，只提醒查询核实，不宣称已到账。
 

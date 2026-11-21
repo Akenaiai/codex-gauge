@@ -23,7 +23,9 @@
   function shouldNotify(event,preferences={},now=Date.now()){
     const expiry=event.kind==='expiry'||event.scheduleKind==='expiry';
     if(!expiry||!isCreative(event.provider))return true;
-    return allows(event,preferences,now)&&(event.dateOnly?event.days>=0&&event.days<=3:event.at>now&&event.at-now<=3*86400000);
+    const verify = event.source === 'user' && event.verifyWithoutAmount === true && event.amount == null &&
+      !event.daily && !(preferences?.dismissed?.[batchKey(event)] > now);
+    return (verify || allows(event,preferences,now))&&(event.dateOnly?event.days>=0&&event.days<=3:event.at>now&&event.at-now<=3*86400000);
   }
   return{DEFAULT_THRESHOLD,isCreative,validThreshold,clean,threshold,batchKey,allows,stage,shouldNotify};
 });

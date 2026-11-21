@@ -1,6 +1,6 @@
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./creative-timing.js'):root.creativeTiming);if(typeof module==='object'&&module.exports)module.exports=api;else root.creativePanel=api;})(typeof window!=='undefined'?window:this,function(clock){
   'use strict';
-  function markup({state,t,esc,button,icon,now=Date.now()}){
+  function markup({state,t,esc,icon,now=Date.now()}){
     const data=state.creative||{rows:[],available:0,empty:0,unknown:0,enabled:true},language=state.settings.language;
     const format=value=>new Intl.NumberFormat(language,{maximumFractionDigits:3}).format(value);
     const when=value=>new Date(value).toLocaleString(language,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
@@ -15,8 +15,14 @@
     }
     function dateLines(row){
       const selected=clock.selectDates(row.dates,now),dates=[row.priorityExpiry||selected.expiry,selected.reset].filter(Boolean);
-      if(!dates.length)return `<div class="creative-date-missing">${t('积分日期未提供','Credit dates not provided')}</div>`;
-      return dates.map(d=>{
+      const coverage = {
+        plan: t('套餐积分缺少到期日，无法提醒', 'Plan credit expiry unknown. Alerts unavailable.'),
+        balance_only: t('当前余额的到期分项待核实', 'Expiry details for this balance need verification'),
+        partial: t('已有到期记录，当前余额的分项仍待核实', 'Expiry recorded. Current credit batches need verification.')
+      }[row.expiryCoverage];
+      const gap = coverage ? `<div class="creative-date-note"><strong>${coverage}</strong> <button class="text-button" data-action="credit-center">${t('去额度中心补充到期日','Add expiry in Credit center')}</button></div>` : '';
+      if(!dates.length)return gap || `<div class="creative-date-missing">${t('积分日期未提供','Credit dates not provided')}</div>`;
+      return gap + dates.map(d=>{
         const time=clock.timing(d,now),poolName=language==='en'?d.labelEn:d.label,pool=poolName+(d.kind==='expiry'&&d.amount>0?' · '+format(d.amount)+(d.unit==='percent'?'%':d.unit==='credits'?t('积分',' credits'):d.unit||''):'');
         const basis=d.source==='web'?t('网页记录 · 非实时','Web record · Not live'):d.source==='user'?t('本人填写','User entered'):d.estimated?t('按月预计 · 未确认到账','Monthly forecast · Grant unconfirmed'):d.policy?t('依规则预计 · 待核实','Policy forecast · Verify'):d.stale?t('上次读数 · 待刷新','Last reading · Refresh needed'):'';
         const account=d.account&&d.account!==row.account?d.account+' · ':'';
@@ -34,7 +40,7 @@
       const reminderActions=`<div class="creative-reminder-actions"><button class="text-button" data-action="creative-expiry-settings" data-event="${esc(row.id)}">${t('提醒设置','Reminder settings')}</button>${row.expiring?`<button class="text-button" data-action="creative-expiry-dismiss" data-event="${esc(row.expiryBatchKey)}">${t('本批不再提醒','Dismiss this batch')}</button>`:''}</div>`;
       return `<article class="creative-row is-${row.status} ${row.expiring?'is-expiring':''} ${row.criticalExpiry?'is-critical':''} ${row.expiryIsPrimary?'expiry-is-primary':''} expiry-${row.expiryStage||'none'}" data-provider="${esc(row.id)}"><div class="creative-row-top"><div><strong>${esc(row.name)}</strong><span class="creative-kind">${esc(row.kinds.map(kind).join(' / '))}</span></div><span class="creative-status">${status}</span></div><div class="creative-amount">${row.amount==null?'—':format(row.amount)}<small>${row.amount==null?'':esc(unit)}</small></div><div class="creative-read-time">${esc(reading+provenance+account)}</div>${dateLines(row)}${row.unit==='credits'?reminderActions:row.expiring?reminderActions:''}</article>`;
     }).join('');
-    return `<section class="panel creative-panel" data-flip-surface title="${t('单击卡片翻面', 'Click the card to flip')}"><header class="header"><div class="brand-mark">${icon('flip')}</div><div class="brand">${t('创作积分','Creative credits')}<small>IMAGE · VIDEO · MUSIC</small></div><span class="spacer"></span><button class="flip-switch" data-action="show-codex">${icon('flip')}${t('翻回','Flip back')}</button>${button('close',t('关闭面板','Close panel'),'close')}</header><div class="content creative-content"><div class="creative-summary"><span><strong>${data.expiring||0}</strong>${t('7 天内临期','expiring in 7d')}</span><span><strong>${data.available}</strong>${t('有积分','available')}</span><span><strong>${data.empty}</strong>${t('已用尽','used up')}</span></div>${state.demo?`<p class="notice demo-label">${t('示例数据','Sample data')}</p>`:''}${data.expiring?`<p class="creative-priority-note">${t('创作积分临期 · 按到期时间优先排列','Creative credit expiry · Soonest first')}</p>`:''}<div class="creative-list">${rows||`<div class="empty"><h1>${t('还没有创作额度读数','No creative quota readings yet')}</h1><p>${t('这里只显示已查到有效余额的工具。有积分和已用尽的都会保留，其他工具请到额度中心查看。','Only tools with current balance readings appear here, including used-up balances. Find other tools in the credit center.')}</p></div>`}</div></div><footer class="footer"><button class="text-button" data-action="credit-center">${t('额度中心','Credit center')} ↗</button><span>${data.enabled?t('运行时每5分钟查询','Queries every 5 min while running'):t('自动查询已暂停','Automatic queries paused')}</span><button class="icon-button" data-action="creative-refresh" ${data.busy?'disabled':''} aria-label="${t('刷新创作积分','Refresh creative credits')}">${icon('refresh')}</button></footer></section>`;
+    return `<div class="content creative-content"><div class="creative-summary"><span><strong>${data.expiring||0}</strong>${t('7 天内临期','expiring in 7d')}</span><span><strong>${data.available}</strong>${t('有积分','available')}</span><span><strong>${data.empty}</strong>${t('已用尽','used up')}</span></div>${state.demo?`<p class="notice demo-label">${t('示例数据','Sample data')}</p>`:''}${data.expiring?`<p class="creative-priority-note">${t('创作积分临期 · 按到期时间优先排列','Creative credit expiry · Soonest first')}</p>`:''}<div class="creative-list">${rows||`<div class="empty"><h1>${t('还没有创作额度读数','No creative quota readings yet')}</h1><p>${t('这里只显示已查到有效余额的工具。有积分和已用尽的都会保留，其他工具请到额度中心查看。','Only tools with current balance readings appear here, including used-up balances. Find other tools in the credit center.')}</p></div>`}</div></div><footer class="footer"><button class="text-button" data-action="credit-center">${t('额度中心','Credit center')} ↗</button><span>${data.enabled?t('运行时每5分钟查询','Queries every 5 min while running'):t('自动查询已暂停','Automatic queries paused')}</span><button class="icon-button" data-action="creative-refresh" ${data.busy?'disabled':''} aria-label="${t('刷新创作积分','Refresh creative credits')}">${icon('refresh')}</button></footer>`;
   }
   return{markup};
 });

@@ -52,9 +52,10 @@ function runwayRecord(before,after,link){
   const c=after.credits;if(!c||c.unlimited!==false)throw Error('invalid_response');
   const total=amount(c,['total']),plan=amount(c,['plan']),purchased=amount(c,['purchased']);
   if(Math.abs(total-plan-purchased)>0.000001)throw Error('invalid_balance');
+  const free = typeof after.upgradeUrl === 'string' && after.upgradeUrl.length > 0;
   return{provider:'runway',scope:'runway-mcp:'+hash(link)+':'+hash(id),connectionRef:hash(link),account:typeof after.team.name==='string'?after.team.name.slice(0,100):'Runway MCP',identityVerified:true,source:'mcp',fetchedAt:Date.now(),pools:[
     {id:'effective',amount:total,unit:'credits',label:'可用积分合计',labelEn:'Available credits'},
-    {id:'subscription',amount:plan,unit:'credits',poolType:'subscription',label:'套餐积分',labelEn:'Plan credits'},
+    {id:'subscription',amount:plan,unit:'credits',poolType:free?'permanent':'subscription',label:free?'免费积分':'套餐积分',labelEn:free?'Free credits':'Plan credits'},
     {id:'purchased',amount:purchased,unit:'credits',poolType:'purchased',label:'购买积分',labelEn:'Purchased credits'}]};
 }
 async function runway(options={}){

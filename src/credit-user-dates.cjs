@@ -17,7 +17,8 @@ function validateUserDate(input,now=Date.now()){
   const d=new Date(now),anchorDate=day?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate())).padStart(2,'0')}`:null;
   if(input.recordId!=null&&(typeof input.recordId!=='string'||input.recordId.length>140||typeof input.poolId!=='string'||input.poolId.length>100))throw Error('invalid_dates');
   return{provider:input.provider,account:label(input.account),label:label(input.label),poolType:input.poolType,expiryDate,monthlyDay:day,
-    anchorDate:day&&calendarDate(input.anchorDate)||anchorDate,recordId:input.recordId||null,poolId:input.recordId?input.poolId:null,notify:input.notify!==false};
+    anchorDate:day&&calendarDate(input.anchorDate)||anchorDate,recordId:input.recordId||null,poolId:input.recordId?input.poolId:null,notify:input.notify!==false,
+    ...(expiryDate && input.verifyWithoutAmount === true ? { verifyWithoutAmount: true } : {})};
 }
 function cleanUserDates(rows,now=Date.now()){
   const result=new Map();
@@ -38,7 +39,8 @@ function userDateEvents(rows,records=[],now=Date.now()){
     return dates.map(value=>{const days=Math.round((Date.parse(value.onDate+'T00:00:00Z')-today)/DAY);return{
       ...value,id:`user:${row.id}/${row.recordId?hash(row.recordId+'/'+row.poolId):'independent'}/${value.kind}/${value.onDate}`,userDateId:row.id,recordId:row.recordId||'user:'+row.id,poolId:row.poolId||row.id,
       provider:row.provider,label:row.label,labelEn:row.label,account:row.account,amount:value.estimated||!fresh(record,now)?null:pool?.amount??null,unit:pool?.unit||'credits',
-      at:Date.parse(value.onDate+'T12:00:00Z'),dateOnly:true,days,elapsed:days<0,stale:true,poolType:row.poolType,daily:isDailyCredit(row),source:value.estimated?'user_schedule':'user',observedAt:row.updatedAt,notify:row.notify&&!(value.kind==='expiry'&&isDailyCredit(row))};});
+      at:Date.parse(value.onDate+'T12:00:00Z'),dateOnly:true,days,elapsed:days<0,stale:true,poolType:row.poolType,daily:isDailyCredit(row),source:value.estimated?'user_schedule':'user',observedAt:row.updatedAt,notify:row.notify&&!(value.kind==='expiry'&&isDailyCredit(row)),
+      ...(value.kind === 'expiry' && row.verifyWithoutAmount === true ? { verifyWithoutAmount: true } : {})};});
   });
 }
 function userDateAlerts(rows,records,now=Date.now()){

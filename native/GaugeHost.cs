@@ -8,7 +8,13 @@ using System.Windows.Automation;
 
 class GaugeHost {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  [StructLayout(LayoutKind.Sequential)] struct Point { public int X, Y; }
+  [StructLayout(LayoutKind.Sequential)] struct Message {
+    public IntPtr Window; public uint Id; public UIntPtr WParam; public IntPtr LParam;
+    public uint Time; public Point Position; public uint Private;
+  }
   delegate bool EnumProc(IntPtr hwnd, IntPtr data);
+  delegate IntPtr MouseProc(int code, IntPtr message, IntPtr data);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback, IntPtr data);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
@@ -17,6 +23,13 @@ class GaugeHost {
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
   [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr context);
   [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hwnd);
+  [DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int id, MouseProc callback, IntPtr module, uint thread);
+  [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr message, IntPtr data);
+  [DllImport("user32.dll")] static extern int GetMessage(out Message message, IntPtr hwnd, uint min, uint max);
+  [DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
+  static IntPtr panelWindow, badgeWindow;
+  static int dismissRequested;
+  static readonly MouseProc mouseProc = ObserveMouse;
   static int parent;
   static IntPtr host = IntPtr.Zero;
   static AutomationElement avatar;
@@ -66,11 +79,36 @@ class GaugeHost {
       }
     } catch { avatar = null; }
   }
+  static bool Contains(IntPtr window, Point p) {
+    RECT bounds;
+    return IsWindowVisible(window) && GetWindowRect(window, out bounds) &&
+      p.X >= bounds.Left && p.X < bounds.Right && p.Y >= bounds.Top && p.Y < bounds.Bottom;
+  }
+  static IntPtr ObserveMouse(int code, IntPtr message, IntPtr data) {
+    int id = message.ToInt32();
+    // Only button-down events matter. No positions, buttons or input history leave this process.
+    if (code >= 0 && (id == 0x201 || id == 0x204 || id == 0x207 || id == 0x20B) && IsWindowVisible(panelWindow)) {
+      var point = (Point)Marshal.PtrToStructure(data, typeof(Point));
+      if (!Contains(panelWindow, point) && !Contains(badgeWindow, point)) Interlocked.Exchange(ref dismissRequested, 1);
+    }
+    return CallNextHookEx(IntPtr.Zero, code, message, data);
+  }
+  static void WatchOutsideClicks() {
+    if (SetWindowsHookEx(14, mouseProc, GetModuleHandle(null), 0) == IntPtr.Zero) return;
+    Message message;
+    while (GetMessage(out message, IntPtr.Zero, 0, 0) > 0) { }
+  }
   [STAThread] static void Main(string[] args) {
-    if (args.Length != 1 || !Int32.TryParse(args[0], out parent)) return;
+    if (args.Length == 0 || !Int32.TryParse(args[0], out parent)) return;
     try { SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { }
+    long panelHandle, badgeHandle;
+    if (args.Length == 3 && Int64.TryParse(args[1], out panelHandle) && Int64.TryParse(args[2], out badgeHandle)) {
+      panelWindow = new IntPtr(panelHandle); badgeWindow = new IntPtr(badgeHandle);
+      new Thread(WatchOutsideClicks) { IsBackground = true }.Start();
+    }
     while (true) {
       try { if (Process.GetProcessById(parent).HasExited) return; } catch { return; }
+      if (Interlocked.Exchange(ref dismissRequested, 0) != 0) Console.WriteLine("{\"dismissPanel\":true}");
       try { Observe(); } catch { Console.WriteLine("{\"exists\":false,\"error\":true}"); }
       Console.Out.Flush(); Thread.Sleep(250);
     }

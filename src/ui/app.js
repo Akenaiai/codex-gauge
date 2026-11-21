@@ -6,8 +6,8 @@
   const preview = !window.gauge;
   const app = document.getElementById('app');
   let screenName = 'gauge', details = false, newsDetails = false, toast = '', lastRender = '', toastTimer, pointer, suppressClick = false;
-  let flipGesture = null, lastSurfaceFlip = -Infinity;
-  const interactive = 'button,a,input,select,textarea,label,[role="button"],[role="switch"],[contenteditable]:not([contenteditable="false"]),[data-action],[data-setting],[data-preview]';
+  const tabIds = ['codex', 'coding', 'creative'];
+  const panelScroll = {};
   const now = Date.now();
   let state = { settings: { language: 'zh-CN', theme: 'dark', topmost: false, notifications: false, autostart: false, resetReminders: true, resetNews: true },
     dark: true, status: 'ready', snapshot: { fiveHour: { remaining: 68, minutes: 300, resetsAt: now + 8640000 },
@@ -17,7 +17,8 @@
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icons = {
     creative: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m4 18 5-5 4 3 3-5 5 7"/>',
-    flip: '<path d="M5 7h14v10H5zM2 10V5h5M22 14v5h-5"/>',
+    coding: '<path d="m8 6-6 6 6 6m8-12 6 6-6 6m-2-15-4 18"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     settings: '<path d="M9 2h6l1 3 3 1 3 5-2 2 0 3-4 4-3-1-3 1-4-4v-3l-2-2 3-5 3-1z"/><circle cx="12" cy="12" r="3"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
     back: '<path d="m14 6-6 6 6 6"/>',
@@ -42,8 +43,6 @@
   const expiringCredit = () => window.resetModel.expiringCredit(state.snapshot, state.status === 'ready', Date.now());
   const pendingAnnouncement = () => state.settings.resetNews && window.resetModel.freshNews(state.resetFeed, Date.now()) &&
     window.resetModel.activeNews(state.resetFeed, Date.now()).some(e => e.status === 'announced' && (!e.until || e.until > Date.now()));
-  const urgentReset = () => state.status === 'ready' && window.resetModel.freshQuota(state.snapshot, Date.now()) &&
-    window.resetModel.resetWindows(state.snapshot, Date.now()).some(w => w.delta > 0 && w.delta <= 2 * 3600000 && w.remaining >= 30);
   function duration(delta) {
     const minutes = Math.max(1, Math.ceil(delta / 60000)), hours = Math.floor(minutes / 60), days = Math.floor(hours / 24);
     if (days) return t(`${days} 天 ${hours % 24} 小时`, `${days}d ${hours % 24}h`);
@@ -51,15 +50,11 @@
   }
   const windowLabel = minutes => minutes === 300 ? t('5 小时额度', '5-hour usage') : minutes === 10080 ? t('本周额度', 'Weekly usage') : t(`${minutes} 分钟周期`, `${minutes}-minute window`);
   const eventDate = value => new Date(value).toLocaleString(state.settings.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-  function resetPlanning(snapshot) {
-    const windows = window.resetModel.resetWindows(snapshot, Date.now());
-    const next = windows.find(w => w.delta > 0 && w.delta <= 2 * 3600000 && w.remaining >= 30) || windows.find(w => w.delta > 0) || windows[0];
+  function resetPlanning(next, ready, urgent) {
     if (!next) return '';
-    const ready = state.status === 'ready' && window.resetModel.freshQuota(snapshot, Date.now());
-    const urgent = ready && next.delta > 0 && next.delta <= 2 * 3600000 && next.remaining >= 30;
     return `<div class="reset-planning ${urgent ? 'urgent' : ''}" role="status"><div class="reset-heading">${icon('refresh')}<strong>${t('下次周期重置', 'NEXT SCHEDULED RESET')}</strong><span>${esc(windowLabel(next.minutes))}</span></div>
       <div class="reset-countdown">${next.delta > 0 ? t(`还有 ${duration(next.delta)}`, `In ${duration(next.delta)}`) : t('已到预计时间，等待更新', 'Scheduled time reached; awaiting update')}<span>${t(`剩余 ${Math.floor(next.remaining)}%`, `${Math.floor(next.remaining)}% remaining`)}${!ready ? t(' · 上次读数', ' · last reading') : ''}</span></div>
-      ${urgent ? `<p>${t('近期有任务可先安排，使用重置卡前先核对重置时间。', 'Plan pending work and check the reset time before using a credit.')}</p>` : ''}</div>`;
+      ${urgent ? `<p>${t('有待办任务的话，建议在重置前优先用掉这部分额度。', 'Use this quota for pending tasks before it resets.')}</p>` : ''}</div>`;
   }
   function newsContent() {
     const feed = state.resetFeed;
@@ -187,13 +182,17 @@
     const secondLabel = five ? t('本周', 'THIS WEEK') : t('5 小时', '5 HOURS');
     const a = time(first), b = time(second);
     const unknown = !five && !week;
-    const priorityCredit = !!expiringCredit(), priorityNews = pendingAnnouncement(), priorityReset = urgentReset();
+    const now = Date.now(), ready = state.status === 'ready' && window.resetModel.freshQuota(s, now);
+    const windows = window.resetModel.resetWindows(s, now);
+    const priorityReset = ready && windows.find(window.resetModel.resetStage);
+    const planning = resetPlanning(priorityReset || windows.find(w => w.delta > 0) || windows[0], ready, priorityReset);
+    const priorityCredit = !!expiringCredit(), priorityNews = pendingAnnouncement();
     return `<div class="eyebrow"><span>${t('剩余额度', 'REMAINING USAGE')}</span><span class="status ${stale() ? 'warn' : ''}"><i></i>${state.demo ? t('示例数据', 'DEMO DATA') : stale() ? t('上次读数', 'LAST READING') : t('已同步', 'LIVE')}</span></div>
-      ${priorityCredit ? creditCard(s) : ''}${priorityNews ? newsContent() : ''}${priorityReset ? resetPlanning(s) : ''}
+      ${priorityCredit ? creditCard(s) : ''}${priorityNews ? newsContent() : ''}${priorityReset ? planning : ''}
       ${unknown ? `<p class="notice">${t('当前账户返回其他周期，请等待适配。', 'This account returns a different usage window.')}</p>` : ''}
       <div class="dials">${dial(first, firstLabel)}${dial(second, secondLabel, true)}</div>
       <div class="resets"><div><div class="reset-time">${a.time}</div><div class="reset-hint">${a.hint}</div></div><div><div class="reset-time">${b.time}</div><div class="reset-hint">${b.hint}</div></div></div>
-      ${!priorityReset ? resetPlanning(s) : ''}
+      ${!priorityReset ? planning : ''}
       ${balanceCard(s)}
       ${!priorityCredit ? creditCard(s) : ''}${!priorityNews ? newsContent() : ''}
       ${stale() ? `<div class="notice warn">${errors()} · ${t('当前为上次成功读取的数据', 'Showing the last successful reading')}</div>` : ''}
@@ -208,8 +207,9 @@
       ${toggle('topmost', t('保持置顶', 'Keep on top'), t('Codex 最小化时也能看见', 'Visible while Codex is minimized'))}
       ${toggle('autostart', state.host.platform === 'win32' ? t('随 Codex 启动', 'Start with Codex') : t('开机启动', 'Launch at login'), state.host.platform === 'win32' ? t('打开 Codex 自动运行；后台助手随登录启动', 'Open with Codex; helper starts at sign-in') : t('登录电脑后自动运行', 'Start when you sign in'))}
       ${toggle('notifications', t('Codex 重置卡到期提醒', 'Codex reset credit expiry'), t('到期前 48 / 24 小时，静默通知', 'Silent notices within 48 / 24 hours'))}
-      ${toggle('resetReminders', t('Codex 额度重置提醒', 'Codex usage reset reminders'), t('余量 ≥30% 时提前 2 / 1 小时提醒；新预告通知', 'At ≥30% remaining, remind within 2h / 1h; new announcements'))}
+      ${toggle('resetReminders', t('Codex 额度重置提醒', 'Codex usage reset reminders'), t('余量 ≥30% 时，周额度提前 24 小时提醒。各周期另有 4、2、1 小时提醒，也通知新预告。', 'At ≥30% remaining, weekly quota gets a 24h reminder. All windows have 4h, 2h and 1h reminders. Also notify for new announcements.'))}
       ${toggle('resetNews', t('临时重置与发卡消息', 'Public reset announcements'), t('匿名读取 AIHOT，每 5 分钟核对；仅程序运行时', 'Read AIHOT anonymously every 5 min while the app is active'))}
+      ${toggle('hideCursor', t('隐藏 Cursor', 'Hide Cursor'), t('在编程工具看板中隐藏 Cursor，并暂停读取', 'Hide Cursor in Coding tools and pause its reads'))}
       <div class="settings-actions"><button class="text-button" data-action="reset-position">${t('恢复默认位置', 'Reset position')}</button><button class="text-button" data-action="check-update">${t('检查更新', 'Check for updates')}</button><button class="text-button" data-action="source">GitHub ↗</button></div>
       ${state.update.state !== 'idle' ? `<div class="notice">${updateLabel()}${state.update.state === 'available' ? `<br><button class="text-button" data-action="releases">${t('前往下载更新', 'Download update')} ↗</button>` : ''}</div>` : ''}
       <div class="about">Codex Gauge ${esc(state.version)} · MIT<br>${t('本机只读 · 无分析追踪 · 不发送模型请求', 'Local, read-only · No analytics · No model requests')}<br>${t('第三方工具，与 OpenAI 无隶属关系。', 'Independent tool, not affiliated with OpenAI.')}</div>`;
@@ -219,28 +219,173 @@
       failed: t('检查失败，请稍后重试', 'Check failed. Try again later'), unreleased: t('暂时没有已发布的正式版本', 'No stable release is published yet') })[state.update.state] || '';
   }
   function panelMarkup() {
-    return `<section class="panel" ${screenName === 'gauge' ? `data-flip-surface title="${t('单击卡片翻面', 'Click the card to flip')}"` : ''}><header class="header"><div class="brand-mark">${icon('gauge')}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
-      <button class="flip-switch" data-action="show-creative">${icon('flip')}${t('创作积分','Creative credits')}${state.creative?.expiring?`<span class="creative-entry-count">${state.creative.expiring}</span>`:''}</button>${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${screenName === 'settings' ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>
+    const tab = state.settings.panelFace || 'codex';
+    const titles = { codex: 'Codex', coding: t('编程工具', 'Coding tools'), creative: t('创作积分', 'Creative credits') };
+    const symbols = { codex: 'gauge', coding: 'coding', creative: 'creative' };
+    const settings = screenName === 'settings';
+    const header = `<header class="header"><div class="brand-mark">${icon(symbols[tab])}</div><div class="brand">${t('刻度', 'GAUGE')}<small>CODEX GAUGE</small></div><span class="spacer"></span>
+      ${button('credit-center', t('全部 AI 工具额度', 'All AI tool quotas'), 'gauge')}${settings ? button('back', t('返回额度', 'Back to usage'), 'back') : button('settings-page', t('设置', 'Settings'), 'settings')}${button('close', t('关闭面板', 'Close panel'), 'close')}</header>`;
+    const tabs = `<div class="panel-tabs" role="tablist" aria-label="${t('额度看板', 'Quota panels')}">${tabIds.map(id => `<button id="tab-${id}" role="tab" type="button" data-action="panel-tab" data-event="${id}" aria-controls="panel-${id}" aria-selected="${!settings && tab === id}" tabindex="${tab === id ? 0 : -1}">${icon(symbols[id])}<span>${titles[id]}</span>${id === 'creative' && state.creative?.expiring ? `<span class="creative-entry-count" aria-label="${t(`${state.creative.expiring} 项临期`, `${state.creative.expiring} expiring`)}">${state.creative.expiring}</span>` : ''}</button>`).join('')}</div>`;
+    let body;
+    if (!settings && tab === 'creative') body = window.creativePanel.markup({ state, t, esc, icon });
+    else if (!settings && tab === 'coding') body = codingMarkup();
+    else body = `
       <div class="content">${screenName === 'settings' ? settingsContent() : gaugeContent()}${notificationNotice()}${state.settingsError ? `<p class="notice warn">${t('设置未保存，原有设置文件已保留。', 'Settings were not saved. The existing file is preserved.')}</p>` : ''}${state.startupError ? `<p class="notice warn">${t('自动启动登记失败，请在设置中重试。', 'Automatic startup registration failed. Retry in settings.')}</p>` : ''}</div>
       <footer class="footer"><span class="footer-left">${icon('lock')}<span>${state.demo ? `<span class="demo-label">${t('设计预览 · 示例数据', 'DESIGN PREVIEW · DEMO DATA')}</span>` : state.snapshot ? t('同步于 ', 'Updated ') + new Date(state.snapshot.fetchedAt).toLocaleTimeString(state.settings.language, { hour: '2-digit', minute: '2-digit', hour12: false }) : t('本机只读连接', 'Local read-only connection')}</span></span>${button('refresh', t('刷新额度', 'Refresh usage'), 'refresh')}</footer>
-      ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
+      `;
+    return `<section class="panel ${!settings && tab === 'creative' ? 'creative-panel' : ''}" data-section="${settings ? 'settings' : tab}">${header}${tabs}
+      ${tabIds.map(id => `<div class="panel-tab-body" role="tabpanel" id="panel-${id}" aria-labelledby="tab-${id}" ${!settings && tab === id ? '' : 'hidden'}>${!settings && tab === id ? body : ''}</div>`).join('')}
+      ${settings ? `<div class="panel-tab-body">${body}</div>` : ''}${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ''}</section>`;
   }
-  function panelFacesMarkup() {
-    const flipped=screenName!=='settings'&&state.settings.panelFace==='creative';
-    return `<div class="flip-stage"><div class="flip-deck ${flipped?'is-flipped':''}"><div class="flip-face codex-face" ${flipped?'inert aria-hidden="true"':'aria-hidden="false"'}>${panelMarkup()}</div><div class="flip-face creative-face" ${flipped?'aria-hidden="false"':'inert aria-hidden="true"'}>${window.creativePanel.markup({state,t,esc,button,icon})}</div></div></div>`;
+  function codingMarkup() {
+    const now = Date.now();
+    const data = state.coding || {};
+    const cursor = data.cursor || { status: 'idle' };
+    const qoder = data.qoder || { status: 'idle' };
+    const kilo = data.kilo || { status: 'idle' };
+    const devin = data.devin || { status: 'idle' };
+    const reading = cursor.reading;
+    const date = (value, options) => new Date(value).toLocaleString(state.settings.language, options);
+    const updated = value => date(value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    const status = {
+      idle: t('待读取', 'Waiting to read'), ready: t('客户端读数', 'Desktop reading'),
+      closed: t('Cursor 未打开', 'Cursor is closed'),
+      usage_hidden: t('当前用量不可见', 'Usage is not visible'),
+      multiple: t('检测到多个用量页', 'Multiple usage pages'),
+      unsupported: t('仅支持 Windows', 'Windows only'),
+      unavailable: t('读取失败', 'Read failed')
+    }[cursor.status];
+    const instructions = cursor.status === 'multiple' ? t('请只保留一个 Cursor 用量页。', 'Leave only one Cursor usage page open.') :
+      cursor.status === 'unsupported' ? t('Cursor 客户端读取目前适用于 Windows。', 'Cursor desktop reading is currently available on Windows.') :
+      t('在 Cursor 打开「设置 → Plan & Usage」，看到用量条后回这里刷新。', 'Open Settings → Plan & Usage in Cursor. Once the usage bars appear, refresh here.');
+    const labels = {
+      empty: t('已用光', 'Used up'), critical: t('余量告急', 'Critically low'),
+      low: t('快用完', 'Running low'), stale: t('待刷新', 'Needs refresh'),
+      unknown: t('余量未知', 'Usage unknown')
+    };
+    const counters = { reset: 0, low: 0, empty: 0 };
+    const { resetStatus, poolStatus } = window.codingStatus;
+    const format = new Intl.NumberFormat(state.settings.language, { maximumFractionDigits: 2 });
+    const usd = new Intl.NumberFormat(state.settings.language, { style: 'currency', currency: 'USD' });
+    const dollars = amount => amount > 0 && amount < 0.01 ? '<' + usd.format(0.01) : usd.format(amount);
+    function resetLine(reset, label, stale) {
+      const near = reset?.near && !stale;
+      if (near) counters.reset++;
+      const caption = reset?.elapsed ? t('重置已过 · 待刷新', 'Reset passed · Refresh') :
+        near && reset.kind === 'date' ? t('今天重置', 'Resets today') :
+        near ? t(`${duration(reset.time)}后重置`, `Resets in ${duration(reset.time)}`) : t('重置', 'Resets');
+      return `<p class="coding-reset ${near ? 'is-near' : ''}">${icon('clock')}<span><b>${esc(caption)}</b><span> · ${esc(label)}</span></span></p>`;
+    }
+    function meters(pools, fetchedAt, stale, sharedReset = null) {
+      return (pools || []).map(p => {
+        const reset = p.resetsAt || p.resetDate ? resetStatus({ ...p, fetchedAt }, now) : sharedReset;
+        const expiry = p.expiryDate ? resetStatus({ resetDate: p.expiryDate, fetchedAt }, now) : null;
+        const level = poolStatus(p.remaining, stale || expiry?.elapsed, reset);
+        const label = esc(t(p.label, p.labelEn));
+        if (level === 'empty') counters.empty++;
+        if (level === 'low' || level === 'critical') counters.low++;
+        const creditFormat = p.unit === 'USD' ? dollars : amount => format.format(amount);
+        const reading = level === 'unknown' ? '—' : Number.isFinite(p.credits) ? `${creditFormat(p.credits)} / ${creditFormat(p.total)}` :
+          p.remaining > 0 && p.remaining < 1 ? '<1%' : `${format.format(p.remaining)}%`;
+        return `<div class="coding-meter is-${level}"><div class="coding-meter-head"><span>${label}</span><strong>${esc(reading)} <small>${t('剩余', 'left')}</small></strong></div>
+          ${level === 'unknown' ? '' : `<progress max="100" value="${p.remaining}" aria-label="${label}"></progress>`}
+          <div class="coding-signals">${level === 'normal' ? '' : `<span class="coding-state">${icon(level === 'stale' ? 'clock' : 'alert')}${labels[level]}</span>`}
+          ${p.resetsAt ? resetLine(reset, (p.resetApproximate ? t('约 ', '≈ ') : '') + updated(p.resetsAt), stale) : reset && p.resetDate ? resetLine(reset, p.resetDate, stale) : ''}
+          ${expiry ? `<p class="coding-reset">${icon('clock')}<span><b>${expiry.elapsed ? t('有效期已过', 'Expiry passed') : t('有效期至', 'Expires on')}</b><span> · ${esc(p.expiryDate)}</span></span></p>` : ''}</div></div>`;
+      }).join('');
+    }
+    function card({ name, pools, resetDate, fetchedAt, stale, hint, message, balance, organization, balanceLabel, plans }) {
+      const sharedReset = resetStatus({ resetDate, fetchedAt }, now);
+      let balanceRow = '';
+      if (Number.isFinite(balance)) {
+        const empty = balance <= 0;
+        if (empty && !stale) counters.empty++;
+        balanceRow = `<div class="coding-meter is-${stale ? 'stale' : empty ? 'empty' : 'normal'}"><div class="coding-meter-head">
+          <span>${esc(balanceLabel || (organization ? t('团队积分余额', 'Team credit balance') : t('个人积分余额', 'Personal credit balance')))}</span>
+          <strong>${esc(dollars(balance))}</strong></div>
+          ${empty && !stale ? `<div class="coding-signals"><span class="coding-state">${icon('alert')}${labels.empty}</span></div>` : ''}</div>`;
+      } else if (balanceLabel) {
+        balanceRow = `<div class="coding-meter is-unknown"><div class="coding-meter-head"><span>${esc(balanceLabel)}</span>
+          <small>${t('未提供', 'Not reported')}</small></div></div>`;
+      }
+      const planRows = (plans || []).map(plan => `<section class="coding-subscription"><b>${esc(plan.name)}</b>
+        ${meters(plan.pools, fetchedAt, stale) || `<p class="coding-meta">${t('暂未读到套餐额度', 'Plan allowance unavailable')}</p>`}
+        ${plan.billingAt ? `<p class="coding-meta">${t('下次账单', 'Next billing')} · ${esc(date(plan.billingAt,
+          { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }))}</p>` : ''}
+        </section>`).join('');
+      return `<article class="creative-row coding-card"><div class="creative-row-top"><div><strong>${esc(name)}</strong></div>
+        <span class="creative-status">${esc(hint)}</span></div>${meters(pools, fetchedAt, stale, sharedReset)}${balanceRow}${planRows}
+        ${resetDate ? resetLine(sharedReset, resetDate, stale) : ''}
+        ${fetchedAt ? `<p class="coding-meta">${t('上次读取', 'Last read')} · ${esc(updated(fetchedAt))}</p>` : ''}
+        ${message ? `<p class="coding-meta">${esc(message)}</p>` : ''}</article>`;
+    }
+    const cursorCard = state.settings.hideCursor ? '' : card({ name: 'Cursor', ...reading, stale: cursor.status !== 'ready',
+      hint: data.busy ? t('正在读取…', 'Reading…') : status, message: cursor.status === 'ready' ? '' : instructions });
+    const qoderHint = {
+      ready: t('客户端读数', 'Desktop reading'), closed: t('Qoder 未打开', 'Qoder is closed'),
+      usage_hidden: t('用量面板未打开', 'Usage panel is closed'), multiple: t('检测到多个用量面板', 'Multiple usage panels'),
+      empty: t('无可显示的额度', 'No quota to show'), unavailable: t('读取失败', 'Read failed')
+    }[qoder.status];
+    const qoderMessage = qoder.status === 'multiple' ? t('请只保留一个 Qoder 用量面板。', 'Leave only one Qoder usage panel open.') :
+      ['ready', 'empty'].includes(qoder.status) ? '' : t('在 Qoder 左下角打开「查看我的用量」。', 'Open “View my usage” in the bottom-left corner of Qoder.');
+    const qoderCard = qoder.reading || !['idle', 'unsupported', 'closed'].includes(qoder.status) ? card({
+      name: 'Qoder', ...qoder.reading, stale: qoder.status !== 'ready', message: qoderMessage,
+      hint: data.busy ? t('正在读取…', 'Reading…') : qoderHint
+    }) : '';
+    const kiloCard = ['ready', 'sign_in', 'unavailable'].includes(kilo.status) ? card({
+      name: 'Kilo', ...kilo.reading, stale: data.kiloBusy,
+      balanceLabel: kilo.status === 'ready' && !Number.isFinite(kilo.reading?.balance) ?
+        t('个人积分余额', 'Personal credit balance') : null,
+      hint: data.kiloBusy ? t('正在刷新…', 'Refreshing…') : {
+        ready: kilo.reading?.plans?.length ? t('官方读数', 'Official reading') : t('官方余额', 'Official balance'),
+        sign_in: t('登录失效', 'Sign-in expired'), unavailable: t('读取失败', 'Read failed')
+      }[kilo.status],
+      message: kilo.status === 'sign_in' ? t('请在 Kilo 重新登录后刷新。', 'Sign in to Kilo again and refresh.') :
+        kilo.reading?.subscriptionsUnavailable ? t('部分订阅信息暂时无法读取。', 'Some subscription data is temporarily unavailable.') : ''
+    }) : '';
+    const devinCard = ['ready', 'sign_in', 'unavailable'].includes(devin.status) ? card({
+      name: 'Devin', ...devin.reading, stale: data.devinBusy,
+      balanceLabel: devin.reading ? t('额外用量余额', 'Extra usage balance') : null,
+      hint: data.devinBusy ? t('正在刷新…', 'Refreshing…') : {
+        ready: t('CLI 读数', 'CLI reading'), sign_in: t('CLI 未登录', 'CLI sign-in required'), unavailable: t('读取失败', 'Read failed')
+      }[devin.status],
+      message: devin.status === 'sign_in' ? t('登录 Devin CLI 后刷新。', 'Sign in to Devin CLI and refresh.') : ''
+    }) : '';
+    const rows = data.rows || [];
+    const otherCards = rows.map(row => card({ ...row,
+      hint: row.querying ? t('正在刷新…', 'Refreshing…') : row.stale ? t('待刷新', 'Needs refresh') : t('额度中心', 'Credit center'),
+      message: row.stale && !row.querying && row.error ? row.error === 'credential_storage_failed'
+        ? t('暂时无法读取已保存的连接凭据。', 'The saved connection credential could not be read.')
+        : t('最近一次刷新失败，以上是上次读数。', 'The last refresh failed. Showing the previous reading.') : ''
+    })).join('');
+    const summary = [
+      ['reset', 'clock', t('即将重置', 'Reset soon')],
+      ['low', 'alert', t('低余量', 'Low quota')],
+      ['empty', 'alert', t('已用光', 'Used up')]
+    ].map(([id, symbol, label]) => `<span class="coding-total is-${id} ${counters[id] ? 'has-count' : ''}"><strong>${counters[id]}</strong><span>${icon(symbol)}${label}</span></span>`).join('');
+    return `<div class="coding-overview"><div class="coding-summary" aria-label="${t('编程额度状态概览', 'Coding quota summary')}">${summary}</div>
+      <p class="coding-key">${t('灰色条表示上次读数，不计入提醒。', 'Gray bars show previous readings and are excluded from alerts.')}</p></div>
+      <div class="content coding-content">
+      ${state.demo ? `<p class="notice demo-label">${t('示例数据', 'Sample data')}</p>` : ''}
+      <div class="creative-list">${cursorCard + qoderCard + devinCard + kiloCard + otherCards || `<p class="notice">${t('暂无可显示的编程额度。', 'No coding quota readings to show.')}</p>`}</div></div>
+      <footer class="footer"><button class="text-button" data-action="credit-center">${t('额度中心', 'Credit center')} ↗</button>
+        <button class="text-button coding-refresh" data-action="coding-refresh" ${data.busy || data.kiloBusy || data.devinBusy || rows.some(row => row.querying) ? 'disabled' : ''}>${icon('refresh')}${t('刷新编程额度', 'Refresh coding quotas')}</button></footer>`;
   }
-  function renderPanel() {
-    const deck=app.querySelector?.('.flip-deck');
-    if(!deck){app.innerHTML=panelFacesMarkup();return;}
-    const front=deck.querySelector('.codex-face'),back=deck.querySelector('.creative-face');
-    const active=document.activeElement,focus=active?.dataset?.action;
-    const frontScroll=front.querySelector('.content')?.scrollTop||0,backScroll=back.querySelector('.content')?.scrollTop||0;
-    front.innerHTML=panelMarkup();back.innerHTML=window.creativePanel.markup({state,t,esc,button,icon});
-    front.querySelector('.content').scrollTop=frontScroll;back.querySelector('.content').scrollTop=backScroll;
-    const flipped=screenName!=='settings'&&state.settings.panelFace==='creative';
-    deck.classList.toggle('is-flipped',flipped);front.inert=flipped;back.inert=!flipped;front.setAttribute('aria-hidden',String(flipped));back.setAttribute('aria-hidden',String(!flipped));
-    const face=flipped?back:front;
-    if(focus){const target=Array.from(face.querySelectorAll('[data-action]')).find(button=>button.dataset.action===focus)||face.querySelector('.flip-switch');target?.focus({preventScroll:true});}
+  function renderPanel(container = app) {
+    const previous = container.querySelector('.panel');
+    const active = previous?.contains(document.activeElement) ? document.activeElement : null;
+    if (previous) panelScroll[previous.dataset.section] = previous.querySelector('.content')?.scrollTop || 0;
+    container.innerHTML = panelMarkup();
+    const panel = container.querySelector('.panel');
+    if (!panel) return;
+    panel.querySelector('.content').scrollTop = panelScroll[panel.dataset.section] || 0;
+    if (active) {
+      const { action, event, setting, select } = active.dataset;
+      const target = action === 'panel-tab' ? panel.querySelector('[role="tab"][tabindex="0"]') :
+        [...panel.querySelectorAll('[data-action],[data-setting],[data-select]')].find(node =>
+          node.dataset.action === action && node.dataset.event === event && node.dataset.setting === setting && node.dataset.select === select);
+      (target || panel.querySelector('[role="tab"][tabindex="0"]'))?.focus({ preventScroll: true });
+    }
   }
   function notificationNotice() {
     const d = state.notificationDelivery;
@@ -261,7 +406,7 @@
     document.documentElement.lang = state.settings.language;
     document.body.className = `${preview ? 'preview ' : ''}${state.dark ? '' : 'light'}`;
     if (preview) app.innerHTML = `<div class="preview-intro"><div class="kicker">CODEX GAUGE / 01</div><h1>${t('额度，一眼有数。', 'Your usage, at a glance.')}</h1><p>${t('贴在个人头像上方的一枚小仪表。暖金色记录当前余量，细刻度保留读数的秩序。以下为设计预览，全部为示例数据。', 'A small instrument above your profile. Warm brass for remaining capacity; fine graduations for clarity. Design preview with sample data only.')}</p></div>
-      <div class="preview-stage"><div class="preview-rail"><div class="rail-logo">C</div><div class="rail-nav">${icon('gauge')}${icon('ticket')}${icon('settings')}</div><div class="spacer"></div>${mini()}<div class="rail-avatar">AK</div></div><div class="preview-frame">${panelFacesMarkup()}</div><div class="preview-notes"><strong>01 / ${t('常驻', 'AT A GLANCE')}</strong>${t('双弧线、小读数。只占头像上方的一点空间。', 'Two arcs. One reading. A small space above your profile.')}<strong>02 / ${t('展开', 'IN DETAIL')}</strong>${t('双周期仪表、重置时间、重置卡，一层展开。', 'Two usage windows, reset times and credits in one view.')}<div class="preview-buttons"><button data-preview="theme">${t('切换明暗', 'Theme')}</button><button data-preview="language">中 / EN</button><button data-preview="low">${t('低余量', 'Low')}</button><button data-preview="offline">${t('断线状态', 'Offline')}</button><button data-preview="reset">${t('还原', 'Reset')}</button></div></div></div>`;
+      <div class="preview-stage"><div class="preview-rail"><div class="rail-logo">C</div><div class="rail-nav">${icon('gauge')}${icon('ticket')}${icon('settings')}</div><div class="spacer"></div>${mini()}<div class="rail-avatar">AK</div></div><div class="preview-frame">${panelMarkup()}</div><div class="preview-notes"><strong>01 / ${t('常驻', 'AT A GLANCE')}</strong>${t('双弧线、小读数。只占头像上方的一点空间。', 'Two arcs. One reading. A small space above your profile.')}<strong>02 / ${t('展开', 'IN DETAIL')}</strong>${t('双周期仪表、重置时间、重置卡，一层展开。', 'Two usage windows, reset times and credits in one view.')}<div class="preview-buttons"><button data-preview="theme">${t('切换明暗', 'Theme')}</button><button data-preview="language">中 / EN</button><button data-preview="low">${t('低余量', 'Low')}</button><button data-preview="offline">${t('断线状态', 'Offline')}</button><button data-preview="reset">${t('还原', 'Reset')}</button></div></div></div>`;
     else if(view==='badge')app.innerHTML=mini();else renderPanel();
   }
   let reminderDialog;
@@ -281,12 +426,16 @@
     if(name==='open-creative'){if(!preview)await window.gauge.action('open-creative');return;}
     if(name==='creative-expiry-dismiss'){if(!preview){const result=await window.gauge.action(name,value);if(result?.ok)showToast(t('本批积分已静音','This credit batch is now quiet'));else showToast(t('未能保存，请重试','Could not save. Please retry'));}return;}
 
-    if(name==='show-creative'||name==='show-codex'){
-      const previous=state.settings.panelFace||'codex',face=name==='show-creative'?'creative':'codex';
-      screenName='gauge';state.settings.panelFace=face;
-      if(preview){const deck=app.querySelector('.flip-deck');deck.classList.toggle('is-flipped',face==='creative');for(const side of deck.querySelectorAll('.flip-face')){const hidden=side.classList.contains('creative-face')!==(face==='creative');side.inert=hidden;side.setAttribute('aria-hidden',String(hidden));}return;}
-      render(true);const result=await window.gauge.action('panel-face',face);
-      if(!result?.ok){state.settings.panelFace=previous;showToast(t('翻面失败，请重试','Could not flip the panel. Please retry'));}return;
+    if (name === 'panel-tab') {
+      screenName = 'gauge';
+      if (preview) {
+        state.settings.panelFace = value;
+        renderPanel(app.querySelector('.preview-frame'));
+      } else {
+        const result = await window.gauge.action('panel-face', value);
+        if (!result?.ok) showToast(t('切换失败，请重试', 'Could not switch tabs. Please retry'));
+      }
+      return;
     }
     if (name === 'settings-page' || name === 'back') { screenName = name === 'back' ? 'gauge' : 'settings'; render(true); return; }
     if (name === 'credits') { details = !details; render(true); return; }
@@ -301,28 +450,13 @@
     if (name === 'reset-position') showToast(t('已恢复到默认位置', 'Position reset'));
   }
   function showToast(message) { toast = message; render(true); clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast = ''; render(true); }, 3500); }
-  document.addEventListener('pointerdown', event => {
-    flipGesture = event.button === 0 && event.target.closest('[data-flip-surface]') && !event.target.closest(interactive)
-      ? { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false } : null;
-  });
-  document.addEventListener('pointermove', event => {
-    if (flipGesture?.id === event.pointerId && Math.hypot(event.clientX - flipGesture.x, event.clientY - flipGesture.y) >= 4) flipGesture.moved = true;
-  });
-  document.addEventListener('scroll', () => { if (flipGesture) flipGesture.moved = true; }, true);
-  document.addEventListener('pointercancel', () => { if (flipGesture) flipGesture.moved = true; });
   document.addEventListener('click', event => {
     if (suppressClick) { suppressClick = false; return; }
     const target = event.target.closest('[data-action],[data-setting],[data-preview]');
     if (!target) {
-      const gesture = flipGesture; flipGesture = null;
-      const surface = event.target.closest('[data-flip-surface]');
-      if (!surface || screenName !== 'gauge' || event.target.closest(interactive) || surface.closest('[inert]') ||
-          event.button > 0 || event.detail > 1 || gesture?.moved || window.getSelection()?.toString() || Date.now() - lastSurfaceFlip < 500) return;
-      lastSurfaceFlip = Date.now();
-      action(state.settings.panelFace === 'creative' ? 'show-codex' : 'show-creative');
+      if (!preview && view === 'panel' && !event.target.closest('.panel') && !reminderDialog?.open) action('close');
       return;
     }
-    flipGesture = null;
     if (target.dataset.setting) action('settings', { [target.dataset.setting]: !state.settings[target.dataset.setting] });
     else if (target.dataset.preview) {
       const name = target.dataset.preview;
@@ -335,7 +469,16 @@
     } else action(target.dataset.action, target.dataset.event);
   });
   document.addEventListener('change', event => { if (event.target.dataset.select) action('settings', { [event.target.dataset.select]: event.target.value }); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !reminderDialog?.open) action('close'); });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !reminderDialog?.open) action('close');
+    const tab = event.target.closest('[role="tab"]');
+    if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const current = tabIds.indexOf(tab.dataset.event);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabIds.length - 1 :
+      (current + (event.key === 'ArrowLeft' ? -1 : 1) + tabIds.length) % tabIds.length;
+    action('panel-tab', tabIds[next]);
+  });
   if (!preview) {
     document.body.addEventListener('mouseenter', () => action('enter', view));
     document.body.addEventListener('mouseleave', () => action('leave', view));
@@ -358,7 +501,15 @@
       };
       document.addEventListener('pointerup', release); document.addEventListener('pointercancel', release);
     }
-    window.gauge.onState(next => { state = next; render(); });
+    window.gauge.onState(next => {
+      if (view === 'panel' && next.panelOpen === false && state.panelOpen !== false) {
+        screenName = 'gauge';
+        for (const key of Object.keys(panelScroll)) delete panelScroll[key];
+        reminderDialog?.close();
+      }
+      state = next;
+      render();
+    });
     window.gauge.state().then(next => { state = next; render(); });
   }
   render();

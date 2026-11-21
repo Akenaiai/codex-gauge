@@ -24,10 +24,44 @@ test('scheduled reminders keep account, reset time and 2h/1h stages isolated', (
   assert.equal(resetAlerts(s, 'account-a', ledger, later).length, 0);
 });
 test('expired, low balance, stale, unavailable and distant quotas cannot urge use', () => {
-  for (const s of [quota(-1), quota(HOUR, 29), quota(3 * HOUR), { ...quota(), fetchedAt: NOW - 121000 }, null])
+  for (const s of [quota(-1), quota(24 * HOUR, 29.99), quota(24 * HOUR + 1), { ...quota(), fetchedAt: NOW - 121000 }, null])
     assert.equal(resetAlerts(s, 'account', {}, NOW).length, 0);
   assert.equal(resetAlerts(quota(), null, {}, NOW).length, 0);
   assert.equal(attention(quota(), false, null, NOW), false);
+});
+test('weekly reminders start 24 hours ahead and short windows keep the four-hour threshold', () => {
+  const s = quota(24 * HOUR, 44);
+  const [first] = resetAlerts(s, 'account', {}, NOW);
+  assert.ok(first.key.endsWith(':24'));
+  assert.equal(first.minutes, 1440);
+  const ledger = { [first.key]: first.expiresAt };
+  for (const hoursLeft of [23, 8, 4]) {
+    const now = NOW + (24 - hoursLeft) * HOUR;
+    s.fetchedAt = now;
+    const alerts = resetAlerts(s, 'account', ledger, now);
+    assert.deepEqual(alerts.map(alert => alert.key.split(':').at(-1)), hoursLeft === 4 ? ['4'] : []);
+  }
+  const short = quota(4 * HOUR + 1, 44);
+  short.windows[0].minutes = 300;
+  assert.deepEqual(resetAlerts(short, 'account', {}, NOW), []);
+});
+test('four-hour notice uses the current stage only and survives repeated checks', () => {
+  for (const minutes of [300, 10080]) {
+    const s = quota(4 * HOUR, 44), ledger = {};
+    s.windows[0].minutes = minutes;
+    for (const hours of [4, 2, 1]) {
+      const now = NOW + (4 - hours) * HOUR;
+      s.fetchedAt = now;
+      const alerts = resetAlerts(s, 'account', ledger, now);
+      assert.equal(alerts.length, 1);
+      const alert = alerts[0];
+      assert.equal(alert.key, `account:reset:${minutes}:${NOW + 4 * HOUR}:${hours}`);
+      assert.equal(alert.remaining, 44);
+      ledger[alert.key] = alert.expiresAt;
+      assert.deepEqual(resetAlerts(s, 'account', ledger, now), []);
+    }
+  }
+  assert.equal(resetAlerts(quota(4 * HOUR, 30), 'account', {}, NOW).length, 1);
 });
 test('first historical confirmation forms baseline; future confirmations and changed posts notify once', () => {
   const f = feed([event({ status: 'confirmed' })]);

@@ -32,9 +32,21 @@ The original badge needs the Codex desktop app and an installed, signed-in [offi
 
 Open **Details → Dates & source** for all pools and timestamps, or **Calendar** for dates. Different accounts are not automatically combined. A website record is not automatically identified as the API account. New installations contain no developer account, balances or date rules. Without a supported local source, the list may be empty. Screenshots use synthetic data.
 
-### Preview only creative credits
+### Switch between quota panels
 
-Hover over the badge to expand, then click the card content or blank area to flip between Codex usage and creative image/video/music credits. The corner **Creative credits** / **Flip back** buttons also remain available. Fast double clicks flip once; buttons, links, dragging, scrolling and text selection keep their own behavior. Closing and reopening the panel starts on Codex. Reduced-motion preferences disable rotation. Each provider retains its own reading time and known dates; creative refresh queries media sources only. Use the credit center for full details and date editing.
+In the tabbed panel, hover over the badge to open **Codex**, then use the **Coding tools** and **Creative credits** tabs to switch. On Windows, click outside the panel to dismiss it, including after pinning it with a badge click. Reopening starts on Codex. Creative refresh queries media sources only. Use the credit center for full details and date editing.
+
+For Cursor on Windows, open **Settings → Plan & Usage** in the running Cursor desktop app. Keep that view open while selecting **Coding tools** or refreshing the Cursor card. The preview recognizes the **Cursor Models** and **Other Models** usage bars and the reset date when shown. It reads those fields locally through Windows accessibility, using the session already open in Cursor. If the view is unavailable, the last reading is marked as such for the current Gauge session. Other coding tools appear when the credit center has a supported plan percentage for them.
+
+**Hide Cursor** in Gauge settings hides its card in Coding tools and pauses Cursor reads. Turn it off to show the card again.
+
+In Windows 0.4.8, open **View my usage** at the bottom left of Qoder and leave the usage panel open. In Gauge, select **Coding tools**. The Qoder card reads the displayed credit buckets through Windows accessibility and shows each supported bucket's remaining and total credits. Renewal and expiry dates are shown when present. Refresh in Qoder to request fresh figures from Qoder. Gauge can reread the displayed figures with **Refresh coding quotas**.
+
+Windows 0.4.8 also reads the Devin CLI bundled with Devin Desktop. Sign in to the CLI once with `devin auth login`, then open **Coding tools**. Gauge runs the CLI's read-only `/usage` command in an isolated session to show daily or weekly quota, reset times and any reported extra usage balance. Resets shown by the CLI as a countdown are labeled approximate. The account values stay in memory and Gauge uses the CLI's own sign-in. The panel refreshes about once a minute while open.
+
+In **Coding tools**, Kilo shows the current Kilo Gateway credit balance in USD. For personal accounts it also detects active Kilo Pass and marketplace subscriptions. Kilo Pass shows the remaining allowance for the current cycle (including the reported bonus allowance) and the next billing time when supplied. Marketplace plans show each supported usage window's remaining percentage and reset time when supplied. With a team selected, Gauge reads the team wallet. Gauge uses the existing local Kilo login, so the Kilo window can stay closed. The tab refreshes about once a minute while open, and **Refresh coding quotas** queries immediately. Gauge keeps readings in memory and does not copy the login.
+
+The Coding tools panel keeps the colored alert key above the scrolling list. Above 10% through 20% is amber, above 0% through 10% is red, and a confirmed 0% has a solid red label. Blue reset labels appear within two hours when a time is known, or on the displayed day for a date-only reset. Low and reset labels can appear together. Old readings are gray and do not count as current alerts. **Refresh coding quotas** retries Cursor, Qoder, and supported connected coding tools.
 
 Expiries within seven days move first in red; within 24 hours, or due today with date-only precision, the border is stronger. Used-up tools are gray at the end. Expiry and expected-renewal countdowns appear together. A date-only record uses days/today, with no invented clock time; hover for the full date and source. Reached forecasts require verification. A bonus expiry names its own amount; it does not mean the total balance expires. Stale/unmatched dates stay unconfirmed.
 
@@ -62,7 +74,8 @@ Supported automatic balance reads are listed below. Other discovered tools remai
 | Pippit / 小云雀, Dreamina / 即梦 | Their installed, signed-in native CLIs | Current balance responses omit credit expiry and grant dates |
 | Lovart | Existing working Lovart MCP connection in Codex | Fixed balance tool only; current response omits account identity and dates |
 | Suno | Existing enabled `suno` MCP connection in Codex | Generation and download credits are separate; subscription renewal is billing only; no stable account ID |
-| Kimi, MiniMax, ZCode | Separately installed Agent Relay, Python and the corresponding existing connections | Dates depend on returned data; Gauge does not install the companion or dispatch tasks |
+| Kimi, MiniMax | Separately installed Agent Relay, Python and the corresponding existing connections | Dates depend on returned data; Gauge does not install the companion or dispatch tasks |
+| ZCode / BigModel China | Personal Coding Plan API key entered in Gauge and encrypted after verification | Reported quota windows and reset times |
 | Firecrawl, Tavily, DeepSeek | Matching API credentials | Returned dates and policy-derived dates stay distinct; a balance may have no expiry |
 
 Runway, Kling and Recraft use their official member MCPs in Codex. If already configured and authorized, Gauge reuses them. Otherwise configure the original Codex client and complete the provider's normal browser authorization once:
@@ -115,7 +128,7 @@ Bound dates stop following a source after its verified account changes. Separate
 
 In **Query & reminder settings**, enable **Query while running** and **Expiry & renewal reminders**. Automatic center queries run every five minutes; manual refresh is also available. The original Codex badge normally polls every minute and retains its own reminder settings.
 
-Supported known expiries can remind at seven, three and one day. Eligible quota windows can remind two hours and one hour before reset. Monthly forecasts prompt verification before, on and for a bounded period after the date; **a date reaching its deadline never means credits arrived**. Reminders are deduplicated by source, account and stage. Delivery also depends on Windows notification settings.
+Supported known expiries can remind at seven, three and one day. Codex weekly reminders start 24 hours before reset at 30% or more remaining. All Codex windows also have 4h, 2h and 1h stages. Monthly forecasts prompt verification before, on and for a bounded period after the date; **a date reaching its deadline never means credits arrived**. Reminders are deduplicated by source, account and stage. Delivery also depends on Windows notification settings.
 
 Queries pause when Gauge exits or the computer sleeps or powers off. Launching again checks current data, without guaranteeing a replay of every missed notice. The installed Windows app can enable **Start with Codex** in the original badge settings; it defaults off for new users and can be disabled to remove its current-user task. There is no cloud or overnight monitoring service.
 

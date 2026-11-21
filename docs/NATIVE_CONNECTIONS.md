@@ -35,7 +35,7 @@ The center and grant commit roll back together on center-save failure. Disconnec
 
 ## Retained dependencies
 
-Suno's official remote endpoint is documented, but independent authorization discovery could not be verified from this environment; the working Codex reader remains. Lovart's public independent setup contract remains unverified. Kling keeps its existing China MCP/CLI paths: global and China endpoints/identities are not interchanged. Kimi and Z.AI keep Relay/Python because this change has no verified independent official quota/authentication contract and does not reuse private client tokens. TapNow/Ideogram retain their browser component because their current member MCPs have no implemented balance method. No claimed universal replacement is made.
+Suno's official remote endpoint is documented, but independent authorization discovery could not be verified from this environment; the working Codex reader remains. Lovart's public independent setup contract remains unverified. Kling keeps its existing China MCP/CLI paths: global and China endpoints/identities are not interchanged. Kimi keeps Relay/Python because this change has no verified independent official quota/authentication contract and does not reuse private client tokens. TapNow/Ideogram retain their browser component because their current member MCPs have no implemented balance method. No claimed universal replacement is made.
 
 ## Evidence and outstanding actions
 

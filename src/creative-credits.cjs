@@ -2,12 +2,36 @@
 const {analyze,summarizeRecord}=require('./ui/credit-overview.js');
 const {timing,selectDates,priorityExpiry}=require('./ui/creative-timing.js');
 const expiryRules=require('./ui/creative-expiry.js');
+const { fresh, poolWithRule } = require('./credit-model.cjs');
+const { isDailyCredit } = require('./ui/credit-cadence.js');
 const media={xyq:['image','video'],jimeng:['image','video'],lovart:['image','video'],runway:['image','video'],kling:['image','video'],recraft:['image'],ideogram:['image','video'],tapnow:['image','video'],suno:['music'],chatcut:['video'],adobe:['image','video'],canva:['image','video'],'comfy-local':['image','video']};
 const download=p=>p.resource==='downloads'||/download|下载/i.test(p.id+' '+p.label+' '+p.labelEn);
 function creativePool(provider,p){
   if(p.unit==='cards'||['CNY','USD','tokens'].includes(p.unit)||p.resource==='tools'||download(p))return false;
   if(provider==='minimax')return p.id==='video'&&p.entitlement!=='not_in_plan';
   return !!media[provider]&&!/^window\.|weekly|five_hour|5.hour/i.test(p.id);
+}
+// These readers provide a generation balance without the credit batches behind it.
+const balanceOnly = { suno: 'song_credits', kling: 'effective', xyq: 'effective', jimeng: 'effective',
+  lovart: 'effective', tapnow: 'effective', ideogram: 'effective', recraft: 'effective' };
+function creditExpiryCoverage(record, rules, dates, preferences, now) {
+  if (!fresh(record, now) || !expiryRules.isCreative(record.provider) || !['mcp','cli','browser'].includes(record.source)) return null;
+  const cutoff = expiryRules.threshold(record.provider, preferences);
+  const upcoming = dates.filter(d => d.provider === record.provider && d.kind === 'expiry' && !d.daily && timing(d, now)?.elapsed === false);
+  const missing = raw => {
+    if (!creativePool(record.provider, raw) || raw.unit !== 'credits' || !(raw.amount > cutoff) ||
+        raw.poolType === 'permanent' || raw.expiryStatus === 'never' || isDailyCredit(raw)) return false;
+    const pool = poolWithRule(record, raw, rules);
+    return !(pool.expiresAt > now || upcoming.some(d => d.recordId === record.id && d.poolId === pool.id));
+  };
+  const subscription = record.identityVerified && record.pools.find(p => p.poolType === 'subscription' && missing(p));
+  if (subscription) return { kind: 'plan', amount: subscription.amount, notify: rules[record.id + '/' + subscription.id]?.notify !== false };
+  if (record.provider === 'recraft' && !/ · (basic|advanced|pro|teams?)$/i.test(record.account)) return null;
+  const total = record.pools.find(p => p.id === balanceOnly[record.provider] && missing(p));
+  if (!total) return null;
+  const hasSeparateDate = upcoming.some(d => d.notify !== false &&
+    (expiryRules.allows(d, preferences, now) || d.source === 'user' && d.verifyWithoutAmount === true && d.amount == null));
+  return { kind: hasSeparateDate ? 'partial' : 'balance_only', notify: !hasSeparateDate && rules[record.id + '/' + total.id]?.notify !== false };
 }
 function creativeSnapshot(state={},now=Date.now()){
   const rows=[];
@@ -35,6 +59,7 @@ function creativeSnapshot(state={},now=Date.now()){
     rows.push({id:tool.id,name:tool.name,kinds,status:row.status,amount:row.metric?.amount??null,unit:row.metric?.unit||'credits',label:row.metric?.label||null,labelEn:row.metric?.labelEn||null,
       fetchedAt:row.record?.fetchedAt||null,source:row.record?.source||null,account:row.record?.account||null,accountCount:row.accountCount,
       expiryThreshold:expiryRules.threshold(tool.id,state.creativeExpiry),expiryStage:expiryRules.stage(timing(expiry,now)),expiryBatchKey:expiry?expiryRules.batchKey(expiry):null,
+      expiryCoverage:creditExpiryCoverage(row.record,state.rules||{},dates,state.creativeExpiry,now)?.kind||null,
       dates:[...new Set([expiry,selected.expiry,selected.reset,...dates].filter(Boolean))].slice(0,4),expiring:!!expiry,priorityExpiry:expiry,
       expiryNeedsCheck:!!expiry&&(row.status==='unknown'||expiry.stale||['web','user','user_schedule'].includes(expiry.source)||!!expiry.account&&expiry.account!==row.record?.account),
       expiryIsPrimary:!!expiry&&expiry.recordId===row.record?.id&&expiry.poolId===row.metric?.id,criticalExpiry:!!expiry&&timing(expiry,now).critical,querying:tool.querying===true,queryStatus:tool.queryStatus||null,urgent:row.urgent});
@@ -43,4 +68,4 @@ function creativeSnapshot(state={},now=Date.now()){
   return{rows,expiring:rows.filter(r=>r.expiring).length,available:rows.filter(r=>r.status==='available').length,empty:rows.filter(r=>r.status==='empty').length,unknown:0,enabled:state.enabled!==false,busy};
 }
 function creativeQueryTargets(state){const ids=(state.tools||[]).filter(t=>['xyq','jimeng','lovart','suno','runway','kling','recraft','tapnow','ideogram'].includes(t.id)&&t.queryReady).map(t=>t.id);if((state.tools||[]).some(t=>t.id==='minimax'&&t.records?.some(r=>r.pools.some(p=>creativePool('minimax',p)))))ids.push('relay');return ids;}
-module.exports={creativeSnapshot,creativeQueryTargets,creativePool};
+module.exports={creativeSnapshot,creativeQueryTargets,creativePool,creditExpiryCoverage};

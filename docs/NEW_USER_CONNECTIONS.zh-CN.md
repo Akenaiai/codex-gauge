@@ -22,7 +22,7 @@
 - Suno 与原 Lovart 路径仍需本机 Codex CLI；Runway/Recraft 原 Codex 路径继续可用。托管 MCP 服务运行在平台端。引导为已核实的 Suno、Runway、Recraft 地址展示手动 Codex 命令，正确的已有连接名称与配置应保留。登录仍由原客户端完成。
 - 可灵沿用中国站 MCP 或 CLI 路径。公开中国站安装入口尚未核实，引导不猜入口、不换全球站地址。
 - MiniMax 国际站可 **连接 Subscription Key**，无需额外组件，仅读取通用订阅周期额度，不代替按量余额或视频权益；旧 Relay 路径保留。换 Key 使用独立来源，失败不切换 Relay 身份。
-- Kimi、Z.AI 与旧 MiniMax 编程额度仍需单独的 Agent Relay 插件、Python 和刻度随附桥接。公开 Relay 安装器尚未核实。编程额度不证明视频、通用 API 或会员权益。
+- Kimi 与旧 MiniMax 编程额度仍需单独的 Agent Relay 插件、Python 和刻度随附桥接。公开 Relay 安装器尚未核实。编程额度不证明视频、通用 API 或会员权益。
 - DeepSeek、Firecrawl、Tavily 在原加密连接表单使用已有 API Key。免费 API 账号可使用已支持查询，聊天会员另计。正常 API 路径无需 Codex、Relay 或 Python。
 - TapNow、Ideogram 复用原可选浏览器组件说明，由本人安装、配对与授权。网页读数账号身份待核实；Ideogram 真实读取仍待验。
 

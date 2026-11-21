@@ -2,7 +2,9 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../src/ui');
-const files = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/reset-model.js': 'reset-model.js', '/style.css': 'style.css' };
+const assets = ['index.html', 'app.js', 'reset-model.js', 'style.css', 'creative-panel.css',
+  'creative-expiry.js', 'creative-timing.js', 'creative-panel.js', 'coding-status.js'];
+const files = { '/': 'index.html', ...Object.fromEntries(assets.map(file => ['/' + file, file])) };
 http.createServer((req, res) => {
   const filename = files[new URL(req.url, 'http://localhost').pathname];
   if (!filename) { res.writeHead(404); res.end(); return; }

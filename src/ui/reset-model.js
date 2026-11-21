@@ -11,6 +11,13 @@
       Number.isFinite(w.remaining) && w.remaining >= 0 && w.remaining <= 100)
       .map(w => ({ ...w, delta: w.resetsAt - now })).sort((a, b) => a.resetsAt - b.resetsAt);
   }
+  function resetStage(w) {
+    if (!(w.delta > 0 && w.remaining >= 30)) return 0;
+    if (w.delta <= HOUR) return 1;
+    if (w.delta <= 2 * HOUR) return 2;
+    if (w.delta <= 4 * HOUR) return 4;
+    return w.minutes === 10080 && w.delta <= 24 * HOUR ? 24 : 0;
+  }
   function activeNews(feed, now = Date.now()) {
     return (feed?.events || []).filter(e => {
       if (e.status === 'confirmed') return now - e.updatedAt <= 7 * 86400000;
@@ -18,7 +25,7 @@
     }).sort((a, b) => (a.status === 'announced' ? 0 : 1) - (b.status === 'announced' ? 0 : 1) || b.updatedAt - a.updatedAt);
   }
   function attention(snapshot, quotaReady, feed, now = Date.now()) {
-    return quotaReady && freshQuota(snapshot, now) && resetWindows(snapshot, now).some(w => w.delta > 0 && w.delta <= 2 * HOUR && w.remaining >= 30) ||
+    return quotaReady && freshQuota(snapshot, now) && resetWindows(snapshot, now).some(resetStage) ||
       freshNews(feed, now) && activeNews(feed, now).some(e => e.kindKnown && e.type === 'direct_reset' && e.status === 'announced' && (!e.until || e.until > now));
   }
   function expiringCredit(snapshot, quotaReady, now = Date.now()) {
@@ -28,5 +35,5 @@
     if (!credit || credit.expiresAt - now > 48 * HOUR) return null;
     return { ...credit, critical: credit.expiresAt - now <= 24 * HOUR, stale: !quotaReady || !freshQuota(snapshot, now) };
   }
-  return { HOUR, freshQuota, freshNews, resetWindows, activeNews, attention, expiringCredit };
+  return { HOUR, freshQuota, freshNews, resetWindows, resetStage, activeNews, attention, expiringCredit };
 });

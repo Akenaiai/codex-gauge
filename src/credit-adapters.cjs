@@ -59,6 +59,10 @@ async function apiBalance(provider, key, request = jsonRequest) {
   if (!key) throw new Error('login_required');
   const headers = { Authorization: 'Bearer ' + key, Accept: 'application/json' };
   const base = { provider, scope: 'key:' + (key.startsWith('ref:') ? key.slice(4).toLowerCase().slice(0,20) : hash(key)), identityVerified: false, account: 'API Key', source: 'api', fetchedAt: Date.now() };
+  if (provider === 'zai') {
+    const pools = await require('./zcode-quota.cjs').zcodePools(key, request);
+    return [{ ...base, account: 'BigModel Coding Plan', pools }];
+  }
   if (provider === 'minimax') {
     const raw = await request('https://www.minimax.io/v1/token_plan/remains', { headers: {...headers,'Content-Type':'application/json'} });
     if (raw.base_resp?.status_code !== 0) throw Error([1004,2049,2057].includes(raw.base_resp?.status_code)?'login_required':'query_failed');
@@ -101,6 +105,7 @@ async function apiBalance(provider, key, request = jsonRequest) {
 async function securedApiBalance(provider, options = {}) {
   const env = options.env || process.env, key = options.credentialProvider?.(provider) || configuredKey(provider,options)?.key;
   if (key) return apiBalance(provider,key,options.request||jsonRequest);
+  if (provider === 'zai') throw Error('login_required');
   const file = path.join(options.home || os.homedir(),'.codex','private','credentials',provider+'-api-key.dpapi');
   if (process.platform !== 'win32' || !fs.existsSync(file) || !['firecrawl','deepseek'].includes(provider)) throw new Error('login_required');
   const endpoint = provider === 'firecrawl' ? 'https://api.firecrawl.dev/v2/team/credit-usage' : 'https://api.deepseek.com/user/balance';
@@ -130,9 +135,9 @@ async function relay({ home = os.homedir(), env = process.env } = {}) {
   const raw = await execJson(python, [bridge,plugin], { cwd:plugin,env,timeout:65000 });
   const rows = Array.isArray(raw) ? raw : raw.pools || raw.quotas;
   if (!Array.isArray(rows)) throw new Error('invalid_response');
-  return rows.map(row => {
-    if (!['kimi','minimax','zcode'].includes(row.id)) return null;
-    const provider = row.id === 'zcode' ? 'zai' : row.id;
+  const results = rows.map(row => {
+    if (!['kimi','minimax'].includes(row.id)) return null;
+    const provider = row.id;
     if (row.error || row.binding_error === 'account_changed') return {provider,pools:[],error:'query_failed'};
     const labelEn = label => String(label).replace(/小时/g,'hours').replace(/天/g,'days').replace(/月/g,'month').replace(/周额度/g,'Weekly quota').replace(/工具次数/g,'Tool requests').replace(/当前时段/g,'Current interval');
     const pools = (row.windows || []).filter(w => w.remaining_percent != null).map(w => ({ id: hash(w.id || w.label), label: w.label, labelEn: labelEn(w.label), amount: value(w.remaining_percent), unit: 'percent', resetsAt: w.reset_at ? Math.round(w.reset_at * 1000) : null }));
@@ -145,5 +150,6 @@ async function relay({ home = os.homedir(), env = process.env } = {}) {
       fetchedAt: row.observed_at ? Math.round(row.observed_at * 1000) : Date.now(), pools, error: row.error ? 'query_failed' : null,
       reportedStatus: row.error || row.status === 'stale' ? 'stale' : pools.length ? 'ready' : 'unknown' };
   }).filter(Boolean);
+  return results;
 }
 module.exports = { nativePippit, execJson, jsonRequest, xyq, jimeng, apiBalance, securedApiBalance, relay };

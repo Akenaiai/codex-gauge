@@ -34,10 +34,6 @@ def fingerprint(pool):
                 return None
             value = config.get('ANTHROPIC_AUTH_TOKEN') or config.get('ANTHROPIC_API_KEY')
             return hashlib.sha256(value.encode()).hexdigest() if value else None
-        if pool == 'zcode':
-            # Conservative credential-source binding: a token rotation creates a
-            # new source rather than accidentally inheriting another account's dates.
-            return hashlib.sha256((Path.home()/'.zcode/v2/credentials.json').read_bytes()).hexdigest()
     except Exception:
         return None
 
@@ -54,6 +50,6 @@ def read(pool):
     except Exception:
         return {'id': pool, 'error': 'query_failed', 'windows': []}
 
-with ThreadPoolExecutor(max_workers=3) as executor:
-    rows = list(executor.map(read, ('kimi','minimax','zcode')))
+with ThreadPoolExecutor(max_workers=2) as executor:
+    rows = list(executor.map(read, ('kimi','minimax')))
 print(json.dumps(rows, ensure_ascii=True))

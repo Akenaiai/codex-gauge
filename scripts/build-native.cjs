@@ -11,7 +11,14 @@ const references = ['UIAutomationClient.dll', 'UIAutomationTypes.dll', 'WindowsB
   if (!version) throw new Error(`Missing .NET reference: ${name}`);
   return '/reference:' + path.join(base, version, name);
 });
-for (const [name, target, refs] of [['GaugeHost', 'exe', references], ['GaugeStarter', 'winexe', ['/reference:Microsoft.CSharp.dll', '/reference:System.Core.dll', '/reference:System.Web.Extensions.dll']]]) {
+const helpers = [
+  ['GaugeHost', 'exe', references],
+  ['CursorUsage', 'exe', references],
+  ['QoderUsage', 'exe', [...references, '/reference:System.Web.Extensions.dll']],
+  ['DevinUsage', 'exe', []],
+  ['GaugeStarter', 'winexe', ['/reference:Microsoft.CSharp.dll', '/reference:System.Core.dll', '/reference:System.Web.Extensions.dll']]
+];
+for (const [name, target, refs] of helpers) {
   const input = path.join(root, 'native', name + '.cs');
   const output = path.join(root, 'native/bin', name + '.exe');
   if (fs.existsSync(output) && fs.statSync(output).mtimeMs >= fs.statSync(input).mtimeMs) continue;

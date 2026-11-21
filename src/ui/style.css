@@ -18,7 +18,7 @@ body.light{--quota-low:#936000;--quota-critical:#bf3028}
 /* Precision instrument surface */
 :root{--bg:#181b1d;--surface:#23282b;--ink:#f4f1e9;--muted:#a1a9ab;--line:#363d40;--subtle:#2c3336;--accent:#dfb878;--cool:#86bdb5;--danger:#ee9484;--shadow:0 18px 48px #0007,0 2px 8px #0004;--expiry-ink:#ffaaa0;--expiry-bg:#382526;--expiry-border:#d87569;--reminder-bg:#322b21;--on-accent:#211d17}
 body.light{--bg:#f6f4ee;--surface:#fffdf8;--ink:#252c2e;--muted:#687477;--line:#d9dcd5;--subtle:#e8e9e2;--accent:#966b30;--cool:#397e77;--danger:#b54438;--shadow:0 18px 44px #25302b1f,0 2px 8px #25302b12;--expiry-ink:#a73229;--expiry-bg:#fff0eb;--expiry-border:#c55b4e;--reminder-bg:#f7eddc;--on-accent:#fffaf1}
-button,.flip-switch,.icon-button,.micro{ -webkit-tap-highlight-color:transparent }
+button,.icon-button,.micro{ -webkit-tap-highlight-color:transparent }
 button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .micro{background:radial-gradient(circle at 42% 35%,#303639 0,var(--bg) 68%);border-color:#4a5050;box-shadow:0 4px 12px #0005,inset 0 1px 0 #ffffff0d}
 .micro:before{content:"";position:absolute;inset:5px;border:1px solid #ffffff09;border-radius:50%;pointer-events:none}
@@ -50,3 +50,51 @@ body.light .micro{background:radial-gradient(circle at 42% 35%,#fff 0,var(--bg) 
 /* Account credit balance replaces the duplicate capacity meter. */
 .balance-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--surface)}
 .balance-info{min-width:0}.balance-info h2{font-size:10px;font-weight:600;margin:0 0 5px}.balance-info p{font-size:9px;line-height:1.5;color:var(--muted);margin:0}.balance-amount{font-family:var(--number);font-variant-numeric:tabular-nums;font-size:24px;font-weight:500;line-height:1.15;letter-spacing:-.5px;min-width:0;max-width:58%;overflow-wrap:anywhere;text-align:right;color:var(--ink)}.balance-stale .balance-amount{color:var(--muted)}
+.panel-tabs{display:grid;grid-template-columns:.82fr 1fr 1.2fr;gap:4px;margin:8px 12px 5px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--subtle);flex-shrink:0}
+.panel-tabs button{min-width:0;min-height:32px;display:flex;align-items:center;justify-content:center;gap:4px;padding:4px 2px;border:1px solid transparent;border-radius:7px;color:var(--muted);font-size:10px;white-space:nowrap}
+.panel-tabs button:hover{color:var(--ink);background:var(--surface)}
+.panel-tabs button[aria-selected=true]{border-color:var(--line);background:var(--bg);color:var(--accent);font-weight:650;box-shadow:0 1px 3px #0002}
+.panel-tabs button .icon{width:13px;height:13px;flex-shrink:0}
+.panel-tabs button .creative-entry-count{font-size:8px;min-width:12px;padding-inline:2px}
+.panel-tab-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.panel-tab-body[hidden]{display:none}
+.panel-tab-body{--reset-blue:#8bc3ff}
+.light .panel-tab-body{--reset-blue:#215da2}
+.coding-overview{flex:none;padding:3px 19px 9px}
+.coding-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.coding-total{display:grid;gap:3px;padding:6px 7px;border:1px solid color-mix(in srgb,var(--signal) 30%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--signal) 5%,var(--surface));color:var(--signal);font-size:9px;white-space:nowrap}
+.coding-total>span,.coding-state,.coding-reset{display:flex;align-items:center;gap:4px}
+.coding-total strong{font-family:var(--number);font-size:20px;font-weight:600;line-height:1}
+.coding-total:not(.has-count) strong{color:var(--muted)}
+.coding-total .icon,.coding-state .icon,.coding-reset .icon,.coding-refresh .icon{width:12px;height:12px;flex:none}
+.coding-total.has-count{border-color:color-mix(in srgb,var(--signal) 55%,var(--line));background:color-mix(in srgb,var(--signal) 12%,var(--surface))}
+.coding-total.is-reset{--signal:var(--reset-blue)}
+.coding-total.is-low{--signal:var(--quota-low)}
+.coding-total.is-empty{--signal:var(--quota-critical)}
+.coding-key{color:var(--muted);font-size:9px;line-height:1.4;margin:5px 0 0}
+.coding-refresh{display:flex;align-items:center;gap:4px}
+.coding-refresh:disabled{opacity:.55}
+.coding-meter{margin-top:9px;padding:7px 8px 6px;border:1px solid var(--line);border-left:2px solid currentColor;border-radius:8px;color:var(--cool)}
+.coding-meter.is-low{color:var(--quota-low);background:color-mix(in srgb,var(--quota-low) 7%,transparent)}
+.coding-meter.is-critical,.coding-meter.is-empty{color:var(--quota-critical);background:color-mix(in srgb,var(--quota-critical) 8%,transparent)}
+.coding-meter.is-stale,.coding-meter.is-unknown{color:var(--muted)}
+.coding-meter-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px}
+.coding-meter-head>span{color:var(--ink)}
+.coding-meter strong{font-family:var(--number);font-size:15px;font-weight:600;white-space:nowrap}
+.coding-meter small{font-family:var(--font);font-size:9px;color:var(--muted)}
+.coding-meter progress{display:block;width:100%;height:5px;margin-top:4px;appearance:none;border:0;border-radius:5px;overflow:hidden;color:inherit}
+.coding-meter progress::-webkit-progress-bar{background:var(--subtle)}
+.coding-meter progress::-webkit-progress-value{background:currentColor;border-radius:5px}
+.coding-subscription{margin-top:12px}
+.coding-subscription>b{font-size:12px;overflow-wrap:anywhere}
+.coding-meter.is-empty progress::-webkit-progress-bar{background:repeating-linear-gradient(135deg,transparent 0 3px,currentColor 3px 4px)}
+.coding-signals{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;margin-top:5px}
+.coding-signals:empty{display:none}
+.coding-state,.coding-reset{max-width:100%;width:fit-content;border-radius:5px;font-size:10px;line-height:1.4}
+.coding-state{padding:2px 5px;background:color-mix(in srgb,currentColor 12%,transparent);font-weight:650}
+.coding-meter.is-empty .coding-state{background:var(--quota-critical);color:var(--bg)}
+.coding-reset{margin:6px 0 0;color:var(--muted)}
+.coding-reset b{font-weight:600}
+.coding-reset.is-near{padding:2px 5px;color:var(--reset-blue);background:color-mix(in srgb,var(--reset-blue) 12%,transparent)}
+.coding-signals .coding-reset{margin:0}
+.coding-meta{margin:6px 0 0;color:var(--muted);font-size:10px;line-height:1.5}

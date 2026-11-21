@@ -21,6 +21,7 @@ window.connectionFlow={create({api,t,esc,connect,browser}){
     }).join('');
     let how='';
     if(route==='native_mcp')how=`<p>${t('刻度可直接连接此平台的官方会员 MCP，无需安装 Codex、Relay 或 Python。','Gauge connects directly to this official subscription MCP, without Codex, Relay or Python.')}</p>`;
+    else if(route==='api' && p.provider==='zai')how=button('api','连接编程套餐密钥','Connect Coding Plan key',`data-provider="zai"`,true);
     else if(route==='api')how=`<p>${t('使用这个平台已有的 API Key。验证只读查询成功后，由本机系统加密保存；免费额度可用，聊天会员不能代替 API 账户。无需 Codex、Relay 或 Python。','Use an existing API key for this platform. After a successful read-only query, the local system encrypts it. Free API allowances work; chat membership is separate. No Codex, Relay or Python required.')}</p>${button('api','连接已有 API Key','Connect existing API key',`data-provider="${p.provider}"`,true)}`;
     else if(route==='browser')how=`<p>${t('使用刻度随附的浏览器组件，由本人安装、配对并授权网站。平台登录留在原浏览器。网页读数的账号归属仍待核实。','Use the bundled Gauge browser extension. Install, pair and grant site access yourself; sign-in stays in the original browser. Page reading identity remains unverified.')}</p>${button('browser','打开网页连接步骤','Open page connection steps',`data-provider="${p.provider}"`,true)}`;
     else if(route==='codex_mcp'){

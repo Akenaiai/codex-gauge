@@ -71,6 +71,16 @@ async function main(){
  check(s.records.find(r=>r.provider==='minimax').pools[0].amount===null,'Unknown amount remains unknown');
  check(s.rules[record.id+'/effective'].notify===false,'Per-pool reminder choice retained');
  await a.screenshot('packaged-legacy-en');
+ await a.click('.overview-row[data-provider="suno"] [data-action="details"]');
+ await a.click('#tool-dialog [data-action="user-dates"]');
+ check(await a.js('(() => { const v=document.querySelector("#date-entry-form").elements.verifyWithoutAmount;return v.disabled&&!v.checked; })()'),'Unknown-balance verification is an explicit opt-in and needs an expiry date');
+ await a.js(`(() => { const form=document.querySelector('#date-entry-form');const e=form.elements;
+   e.target.value='';e.target.dispatchEvent(new Event('change',{bubbles:true}));
+   e.account.value='Sample Suno';e.label.value='Sample credits';e.expiryDate.value='2030-02-01';e.expiryDate.dispatchEvent(new Event('input',{bubbles:true}));
+   e.verifyWithoutAmount.click();form.requestSubmit(); })()`);
+ for(let i=0;i<50&&await a.js('document.querySelector("#date-entry-dialog").open');i++)await delay(100);
+ s=await a.state();
+ check(s.tools.find(t=>t.id==='suno').userDates.some(d=>d.expiryDate==='2030-02-01'&&d.verifyWithoutAmount&&!d.recordId),'A date-only verification saves without claiming it matches a current balance');
  const badge=a.targets.find(t=>t.url.includes('/index.html'));check(!!badge,'Original badge renderer is present');{const b=await connect(badge.webSocketDebuggerUrl);const r=await b.call('Runtime.evaluate',{expression:'window.gauge.state()',awaitPromise:true,returnByValue:true});check(['cli_missing','offline','connecting'].includes(r.result.value.status),'Original badge handles absent Codex CLI');b.ws.close();}
  await a.stop();check(hash(pair)===pairHash,'Browser pairing reference preserved byte-for-byte');const stored=JSON.parse(fs.readFileSync(path.join(data,'settings.json')));check(stored.ledger['synthetic-reminder']===true&&stored.settings.language==='en'&&stored.settings.autostart===false,'Original badge settings and reminder ledger preserved');
  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:checks.length,checks,exeSha256:hash(exe),asarSha256:hash(path.join(path.dirname(exe),'resources/app.asar')),scope:'Actual packaged main/preload/UI; empty tool PATH and synthetic legacy profile on Windows host. No provider OAuth, paid requests, physical clean-machine install, OS installer execution or Mac validation.'},null,2));console.log(JSON.stringify({passed:checks.length}));

@@ -18,6 +18,9 @@ const {OAuthVault,NativeMcp}=require('./native-mcp.cjs');
 const {BrowserLink}=require('./browser-link.cjs');
 const {policyFor}=require('./credit-policies.cjs');
 const {creativeSnapshot,creativeQueryTargets}=require('./creative-credits.cjs');
+const { readCursor, readQoder, codingRows, codingQueryTargets } = require('./coding-quotas.cjs');
+const { readKiloQuota } = require('./kilo-quota.cjs');
+const { readDevinQuota } = require('./devin-quota.cjs');
 const creativeExpiryRules=require('./ui/creative-expiry.js');
 const ROOT = path.resolve(__dirname, '..');
 const demo = process.argv.includes('--demo');
@@ -26,7 +29,7 @@ const centerProfile = process.argv.find(a => a.startsWith('--center-profile='));
 if (centerProfile && !app.isPackaged) app.setPath('userData', path.resolve(centerProfile.slice('--center-profile='.length)));
 app.setName('Codex Gauge');
 app.setAppUserModelId('com.aken.codexgauge');
-const openNotificationPanel = (target='codex') => { if(target==='center'){openCenter();return;}pinnedPanel = true; openPanel(true, true);panelFace=target==='creative'?'creative':'codex';broadcast();panel.focus(); };
+const openNotificationPanel = (target='codex') => { if(target==='center'){openCenter();return;}closePanel();pinnedPanel = true; openPanel(true, true);panelFace=target==='creative'?'creative':'codex';broadcast();panel.focus(); };
 const primary = app.requestSingleInstanceLock();
 const activation = primary ? configureActivation({ app, Notification, open: openNotificationPanel, platform: demo ? 'preview' : process.platform }) : null;
 if (!primary) app.quit();
@@ -35,23 +38,34 @@ let badge, panel, tray, store, quota, resetFeed, observer, watchdog, host = {}, 
 let hoverTimer, leaveTimer, drag, dragTimer, quitting = false, helperRetries = 0, hostGeneration = 0, hadAnchor = false;
 let badgeRaisedAt = 0;
 let panelFace = 'codex';
+let cursor = { status: 'idle' }, qoder = { status: 'idle' }, desktopQuotaBusy = false, desktopQuotaTimer;
+let kilo = { status: 'idle' }, kiloBusy = false, kiloCheckedAt = 0, kiloTimer;
+let devin = { status: 'idle' }, devinBusy = false, devinCheckedAt = 0;
 let update = { state: 'idle' }, startup, startupError = false, delivery, reminderTimer;
 let center, centerWindow, creditSecrets, browserLink, browserLinkError, nativeMcp;
 const browserExtensionRoot=()=>app.isPackaged?path.join(process.resourcesPath,'browser-extension'):path.join(ROOT,'browser-extension');
 const zh = () => store.settings.language === 'zh-CN';
 const text = (cn, en) => zh() ? cn : en;
+const nativeDirectory = () => app.isPackaged ? path.join(process.resourcesPath, 'native') : path.join(ROOT, 'native/bin');
 
 function state() {
+  const credits = center?.state();
   return { ...quota.state(), settings: { ...store.settings, panelFace }, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors,
     settingsError: store.error, startupError, notificationDelivery: delivery?.state(), host: { exists: !!host.exists, anchored: !!host.anchored, platform: process.platform },
-    resetFeed: resetFeed.state(),creative:creativeSnapshot(center?.state()), update, version: app.getVersion(), demo };
+    resetFeed: resetFeed.state(),creative:creativeSnapshot(credits), update, version: app.getVersion(), demo,
+    panelOpen: !!panel?.isVisible(), coding: { cursor, qoder, kilo, kiloBusy, devin, devinBusy, busy: desktopQuotaBusy, rows: codingRows(credits) } };
 }
 function centerState() { return { ...center.state(), language: store.settings.language, dark: store.settings.theme === 'dark' || store.settings.theme === 'system' && nativeTheme.shouldUseDarkColors }; }
 function broadcast() {
-  for (const w of [badge, panel]) if (w && !w.isDestroyed()) w.webContents.send('gauge:state', state());
+  const windows = [badge, panel].filter(w => w && !w.isDestroyed());
+  if (windows.length) {
+    const snapshot = state();
+    for (const window of windows) window.webContents.send('gauge:state', snapshot);
+  }
   if (centerWindow && !centerWindow.isDestroyed() && center) centerWindow.webContents.send('credits:state', centerState());
 }
 function openCenter() {
+  if (panel?.isVisible()) closePanel();
   if (centerWindow && !centerWindow.isDestroyed()) { centerWindow.show(); centerWindow.focus(); return; }
   centerWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 700, minHeight: 560, show: false,
     backgroundColor: '#f5f4ef', title: text('刻度 · 额度中心', 'Codex Gauge · Credit center'), icon: path.join(ROOT, 'assets/icon.png'),
@@ -128,8 +142,45 @@ function openPanel(activate = false, force = false) {
   broadcast();
 }
 function closePanel() {
+  const wasVisible = panel?.isVisible();
   clearTimeout(leaveTimer); clearTimeout(hoverTimer); pinnedPanel = false; forcedPanel = false; panel?.hide();
-  if (panelFace !== 'codex') { panelFace = 'codex'; broadcast(); }
+  const changed = panelFace !== 'codex';
+  panelFace = 'codex';
+  if (wasVisible || changed) broadcast();
+}
+async function refreshDesktopQuotas() {
+  if (desktopQuotaBusy || !panel.isVisible() || panelFace !== 'coding' || quitting || demo) return;
+  desktopQuotaBusy = true;
+  broadcast();
+  const executable = name => process.platform === 'win32' ? path.join(nativeDirectory(), name + '.exe') : null;
+  const [cursorResult, qoderResult] = await Promise.all([
+    store.settings.hideCursor ? null : readCursor(executable('CursorUsage')),
+    readQoder(executable('QoderUsage'))
+  ]);
+  if (cursorResult) cursor = { ...cursor, ...cursorResult };
+  qoder = ['empty', 'multiple'].includes(qoderResult.status) ? qoderResult : { ...qoder, ...qoderResult };
+  desktopQuotaBusy = false;
+  if (!quitting) broadcast();
+}
+async function refreshKilo(force = false) {
+  if (kiloBusy || !panel.isVisible() || panelFace !== 'coding' || quitting || demo ||
+      (!force && Date.now() - kiloCheckedAt < 60000)) return;
+  kiloCheckedAt = Date.now();
+  kiloBusy = true;
+  broadcast();
+  kilo = await readKiloQuota();
+  kiloBusy = false;
+  if (!quitting) broadcast();
+}
+async function refreshDevin(force = false) {
+  if (process.platform !== 'win32' || devinBusy || !panel.isVisible() || panelFace !== 'coding' || quitting || demo ||
+      (!force && Date.now() - devinCheckedAt < 60_000)) return;
+  devinCheckedAt = Date.now();
+  devinBusy = true;
+  broadcast();
+  devin = await readDevinQuota(path.join(nativeDirectory(), 'DevinUsage.exe'));
+  devinBusy = false;
+  if (!quitting) broadcast();
 }
 function save(patch) {
   try { store.save(patch); refreshTray(); broadcast(); layout(); updateVisibility(); return { ok: true }; }
@@ -159,19 +210,26 @@ function updateDrag() {
 function observe() {
   if (process.platform !== 'win32') { host = { exists: true, anchored: false }; updateVisibility(); return; }
   const generation = ++hostGeneration;
-  const executable = path.join(app.isPackaged ? process.resourcesPath : ROOT, app.isPackaged ? 'native' : 'native/bin', 'GaugeHost.exe');
-  observer = spawn(executable, [String(process.pid)], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  const executable = path.join(nativeDirectory(), 'GaugeHost.exe');
+  const handle = win => win.getNativeWindowHandle().readBigUInt64LE().toString();
+  observer = spawn(executable, [String(process.pid), handle(panel), handle(badge)], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
   const lines = createInterface({ input: observer.stdout });
   lines.on('line', line => {
     if (generation !== hostGeneration) return;
     try {
-      host = JSON.parse(line); lastHost = Date.now(); helperRetries = 0;
+      const event = JSON.parse(line);
+      if (event.dismissPanel) {
+        if (panel.isVisible()) { closePanel(); updateVisibility(); }
+        return;
+      }
+      if (demo) return;
+      host = event; lastHost = Date.now(); helperRetries = 0;
       if (host.anchored) hadAnchor = true; else if (!host.exists) hadAnchor = false;
       updateVisibility(); broadcast();
     } catch { }
   });
   const failed = () => {
-    if (quitting || generation !== hostGeneration) return;
+    if (quitting || demo || generation !== hostGeneration) return;
     host = {}; lastHost = 0; updateVisibility(); broadcast();
     if (helperRetries++ < 3) setTimeout(() => { if (!quitting && generation === hostGeneration) observe(); }, 3000);
   };
@@ -204,6 +262,10 @@ async function action(name, value) {
     case 'credit-center': openCenter(); break;
     case 'refresh': await Promise.allSettled([quota.refresh(), resetFeed.refresh()]); break;
     case 'creative-refresh': await Promise.allSettled(creativeQueryTargets(center.state()).map(id=>center.refresh(id,{manual:true})));break;
+    case 'coding-refresh':
+      await Promise.allSettled([refreshDesktopQuotas(), refreshKilo(true), refreshDevin(true),
+        ...codingQueryTargets(center.state()).map(id => center.refresh(id, { manual: true }))]);
+      break;
     case 'open-creative': openNotificationPanel('creative');break;
     case 'creative-expiry-settings':
     case 'creative-expiry-dismiss': {
@@ -211,8 +273,10 @@ async function action(name, value) {
       catch{return{ok:false,error:'save_failed'};}
     }
     case 'panel-face': {
-      if (!['codex', 'creative'].includes(value)) return { ok: false };
-      panelFace = value; broadcast(); return { ok: true };
+      if (!['codex', 'coding', 'creative'].includes(value) || !panel.isVisible()) return { ok: false };
+      panelFace = value; broadcast();
+      if (value === 'coding') { refreshDesktopQuotas(); refreshKilo(true); refreshDevin(true); }
+      return { ok: true };
     }
     case 'reset-news-source': {
       const event = resetFeed.state().events.find(e => e.id === value);
@@ -221,7 +285,7 @@ async function action(name, value) {
     case 'settings': {
       if (!value || typeof value !== 'object') return { ok: false };
       const patch = {};
-      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews']) if (key in value) patch[key] = value[key];
+      for (const key of ['theme', 'language', 'topmost', 'notifications', 'resetReminders', 'resetNews', 'hideCursor']) if (key in value) patch[key] = value[key];
       if ('autostart' in value) {
         if (!app.isPackaged) return { ok: false, error: 'install_first' };
         patch.autostart = value.autostart === true;
@@ -295,7 +359,9 @@ function processResetReminders() {
     } else {
       const label = alert.window === 300 ? text('5 小时额度', '5-hour usage') : alert.window === 10080 ? text('本周额度', 'Weekly usage') : text(`${alert.window} 分钟周期`, `${alert.window}-minute window`);
       title = text('额度即将周期重置', 'Usage window resets soon');
-      body = text(`${label}还有约 ${alert.minutes} 分钟重置，剩余 ${alert.remaining}%。可先安排待办任务，使用重置卡前先核对。`, `${label} resets in about ${alert.minutes} minutes; ${alert.remaining}% remains. Plan pending work and check before using a reset credit.`);
+      const hours = Math.floor(alert.minutes / 60), minutes = alert.minutes % 60;
+      const timeLeft = [hours && text(`${hours} 小时`, `${hours}h`), minutes && text(`${minutes} 分钟`, `${minutes}m`)].filter(Boolean).join(' ');
+      body = text(`${label}还剩 ${alert.remaining}%，约 ${timeLeft}后重置。有待办任务的话，建议优先用掉这部分额度。`, `${label} has ${alert.remaining}% remaining and resets in about ${timeLeft}. Use this quota for pending tasks before it resets.`);
     }
     delivery.send(alert, { title: 'Codex · '+title, body, silent: true });
   }
@@ -326,6 +392,7 @@ async function start() {
   session.defaultSession.setPermissionRequestHandler((_w, _p, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   badge = createWindow(52, 52, 'badge'); panel = createWindow(356, 650, 'panel');
+  if (process.platform !== 'win32') panel.on('blur', () => { if (panel.isVisible()) closePanel(); });
   tray = new Tray(nativeImage.createFromPath(path.join(ROOT, 'assets', 'tray.png')));
   refreshTray(); tray.on('click', () => { pinnedPanel = true; openPanel(true, true); });
   ipcMain.handle('gauge:state', event => { if (![badge.webContents, panel.webContents].includes(event.sender)) throw new Error('Unauthorized'); return state(); });
@@ -372,7 +439,7 @@ async function start() {
         else return{ok:false};
       }
       else if(name==='credential-page'){
-        const urls={minimax:'https://platform.minimax.io/subscribe/token-plan',firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
+        const urls={zai:'https://bigmodel.cn/usercenter/proj-mgmt/apikeys',minimax:'https://platform.minimax.io/subscribe/token-plan',firecrawl:'https://www.firecrawl.dev/app/api-keys',tavily:'https://app.tavily.com/home',deepseek:'https://platform.deepseek.com/api_keys'};
         if(!Object.hasOwn(urls,value?.provider))return{ok:false};await shell.openExternal(urls[value.provider]);
       }
       else if(name==='policy-source'){const policy=policyFor(value?.provider);if(!policy)return{ok:false};await shell.openExternal(policy.url);}
@@ -389,6 +456,19 @@ async function start() {
   center.on('alert', alert => {
     if (demo || quitting || !center.enabled || !center.reminders) return;
     const providerName = center.inventory.tools.find(t => t.id === alert.provider)?.name || alert.provider;
+    if (alert.kind === 'expiry_date_missing') {
+      const plan = Number.isFinite(alert.amount);
+      delivery.send({ ...alert, target: 'creative' }, {
+        title: plan ? text(`${providerName} 套餐积分缺少到期日`, `${providerName} plan credit expiry is unknown`)
+          : text(`${providerName} 积分到期分项待核实`, `${providerName} credit expiries need verification`),
+        body: plan ? text(`还有 ${alert.amount} 套餐积分。请核实到期日，再到刻度补充日期。`,
+          `${alert.amount} plan credits remain. Verify their expiry and add it in Gauge.`)
+          : text('刻度没有读到会到期的积分分项。请在平台核对有效期，可在刻度补充核实提醒。',
+            'Gauge could not read the expiring credit batches. Check their dates on the platform and add a verification reminder in Gauge.'),
+        silent: true
+      });
+      return;
+    }
     const observedNotice=observationNotice(alert,providerName,store.settings.language);
     const creativeExpiry=creativeExpiryRules.isCreative(alert.provider)&&(alert.kind==='expiry'||alert.scheduleKind==='expiry');
     const prefix=creativeExpiry?text('创作积分 · ','Creative credits · '):'';
@@ -413,10 +493,15 @@ async function start() {
   if (demo) {
     quota.setActive = () => {}; quota.refresh = async () => {};
     quota.status = 'ready'; quota.snapshot = require('./ui/demo-data.cjs')();
+    cursor = { status: 'ready', reading: { fetchedAt: Date.now(), resetDate: 'Nov 25', pools: [
+      { label: 'Cursor 模型', labelEn: 'Cursor Models', remaining: 74 },
+      { label: '其他模型', labelEn: 'Other Models', remaining: 21 }
+    ] } };
     host = { exists: true, foreground: true, anchored: true, x: 130, y: 620 };
     badge.once('ready-to-show', updateVisibility);
     panel.once('ready-to-show', () => openPanel(true, true));
     updateVisibility();
+    if (process.platform === 'win32') observe();
   } else {
     center.start();
     observe();
@@ -426,9 +511,11 @@ async function start() {
     }, 2000);
   }
   reminderTimer = setInterval(() => { processCreditReminders(); processResetReminders(); }, 30000);
+  if (!demo && process.platform === 'win32') desktopQuotaTimer = setInterval(() => { refreshDesktopQuotas(); refreshDevin(); }, 15000);
+  if (!demo) kiloTimer = setInterval(refreshKilo, 15000);
   activation.ready();
   if (!center.onboardingCompleted || process.argv.includes('--credit-center') || centerProfile) openCenter();
   app.on('activate', () => openPanel(true, true));
 }
-app.on('before-quit', () => { quitting = true; center?.stop(); nativeMcp?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
+app.on('before-quit', () => { quitting = true; center?.stop(); nativeMcp?.stop(); browserLink?.close(); delivery?.stop(); clearInterval(reminderTimer); clearInterval(watchdog); clearInterval(desktopQuotaTimer); clearInterval(kiloTimer); clearInterval(dragTimer); clearTimeout(leaveTimer); clearTimeout(hoverTimer); quota?.stop(); resetFeed?.stop(); observer?.kill(); tray?.destroy(); });
 app.on('window-all-closed', () => { if (!quitting) app.quit(); });
